@@ -113,23 +113,14 @@ const AdminDashboard = () => {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
-      const response = await fetch(`https://bhmnazydmfklmhsunafx.supabase.co/rest/v1/rpc/update_user_role`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJobW5henlkbWZrbG1oc3VuYWZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzOTk0ODIsImV4cCI6MjA1OTk3NTQ4Mn0.s07hjV8EueBVLSZHyOYBqYfLbvQCoKAoRNfrDcJS5u4`,
-          'apikey': `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJobW5henlkbWZrbG1oc3VuYWZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzOTk0ODIsImV4cCI6MjA1OTk3NTQ4Mn0.s07hjV8EueBVLSZHyOYBqYfLbvQCoKAoRNfrDcJS5u4`,
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          new_role: newRole
-        }),
+      const { error } = await supabase.rpc('update_user_role', {
+        user_id: userId,
+        new_role: newRole
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Error updating role:", errorData);
-        throw new Error(errorData.message || "Error updating role");
+      if (error) {
+        console.error("Error updating role:", error);
+        throw error;
       }
 
       setUsers(users.map(user => 
