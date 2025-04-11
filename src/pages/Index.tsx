@@ -1,22 +1,134 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dumbbell, Users, ClipboardList, Plus, BookOpen } from "lucide-react";
-import { mockExercises, mockClients, mockPlans } from "@/data/mockData";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Client, Plan, Exercise } from "@/types";
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [stats] = useState({
-    exercises: mockExercises.length,
-    clients: mockClients.length,
-    plans: mockPlans.length,
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    exercises: 0,
+    clients: 0,
+    plans: 0,
   });
+  const [recentPlans, setRecentPlans] = useState<Plan[]>([]);
+  const [recentClients, setRecentClients] = useState<Client[]>([]);
   
+  useEffect(() => {
+    if (user) {
+      fetchStats();
+      fetchRecentPlans();
+      fetchRecentClients();
+    }
+  }, [user]);
+
+  const fetchStats = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch exercise count
+      const { count: exercisesCount, error: exercisesError } = await supabase
+        .from("exercises")
+        .select('*', { count: 'exact', head: true });
+      
+      // Fetch clients count
+      const { count: clientsCount, error: clientsError } = await supabase
+        .from("clients")
+        .select('*', { count: 'exact', head: true })
+        .eq("trainer_id", user.id);
+      
+      // Fetch plans count
+      const { count: plansCount, error: plansError } = await supabase
+        .from("plans")
+        .select('*', { count: 'exact', head: true })
+        .eq("trainer_id", user.id);
+      
+      if (exercisesError || clientsError || plansError) {
+        throw new Error("Error fetching stats");
+      }
+      
+      setStats({
+        exercises: exercisesCount || 0,
+        clients: clientsCount || 0,
+        plans: plansCount || 0,
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las estadísticas.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRecentPlans = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("plans")
+        .select(`
+          id,
+          name,
+          client_id,
+          created_at,
+          plan_exercises:plan_exercises(*)
+        `)
+        .eq("trainer_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      if (error) throw error;
+
+      const formattedPlans: Plan[] = data.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        clientId: item.client_id,
+        createdAt: item.created_at,
+        exercises: item.plan_exercises.map((ex: any) => ({
+          exerciseId: ex.exercise_id,
+          level: ex.level,
+          evaluations: []
+        }))
+      }));
+
+      setRecentPlans(formattedPlans);
+    } catch (error) {
+      console.error("Error fetching recent plans:", error);
+    }
+  };
+
+  const fetchRecentClients = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("trainer_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(4);
+
+      if (error) throw error;
+
+      setRecentClients(data);
+    } catch (error) {
+      console.error("Error fetching recent clients:", error);
+    }
+  };
+
   const handleCreatePlan = () => {
     navigate("/plans/new");
   };
@@ -35,9 +147,6 @@ const Index = () => {
       description: "Función de añadir cliente estará disponible pronto",
     });
   };
-
-  const recentPlans = mockPlans.slice(0, 3);
-  const recentClients = mockClients.slice(0, 4);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -117,50 +226,56 @@ const Index = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentPlans.length > 0 ? (
-                    recentPlans.map((plan) => {
-                      const client = mockClients.find((c) => c.id === plan.clientId);
-                      return (
-                        <div
-                          key={plan.id}
-                          className="flex items-center justify-between p-4 border rounded-md hover:bg-gray-50 cursor-pointer"
-                          onClick={() => navigate(`/plans/${plan.id}`)}
-                        >
-                          <div className="flex items-center">
-                            {client && (
-                              <img
-                                src={client.avatar}
-                                alt={client.name}
-                                className="h-10 w-10 rounded-full mr-3"
-                              />
-                            )}
-                            <div>
-                              <h3 className="font-medium">{plan.name}</h3>
-                              <p className="text-sm text-gray-500">
-                                {client?.name || "Cliente"}
-                              </p>
+                {loading ? (
+                  <div className="text-center py-4">
+                    <p>Cargando planes...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentPlans.length > 0 ? (
+                      recentPlans.map((plan) => {
+                        const client = recentClients.find((c) => c.id === plan.clientId);
+                        return (
+                          <div
+                            key={plan.id}
+                            className="flex items-center justify-between p-4 border rounded-md hover:bg-gray-50 cursor-pointer"
+                            onClick={() => navigate(`/plans/${plan.id}`)}
+                          >
+                            <div className="flex items-center">
+                              {client && (
+                                <img
+                                  src={client.avatar || "https://i.pravatar.cc/150"}
+                                  alt={client.name}
+                                  className="h-10 w-10 rounded-full mr-3"
+                                />
+                              )}
+                              <div>
+                                <h3 className="font-medium">{plan.name}</h3>
+                                <p className="text-sm text-gray-500">
+                                  {client?.name || "Cliente"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {plan.exercises.length} ejercicios
                             </div>
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {plan.exercises.length} ejercicios
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-6">
-                      <p className="text-gray-500">No hay planes recientes</p>
-                      <Button
-                        variant="outline"
-                        className="mt-2"
-                        onClick={handleCreatePlan}
-                      >
-                        Crear primer plan
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-6">
+                        <p className="text-gray-500">No hay planes recientes</p>
+                        <Button
+                          variant="outline"
+                          className="mt-2"
+                          onClick={handleCreatePlan}
+                        >
+                          Crear primer plan
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -177,31 +292,43 @@ const Index = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentClients.map((client) => (
-                    <div
-                      key={client.id}
-                      className="flex items-center p-3 border rounded-md hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/clients/${client.id}`)}
-                    >
-                      <img
-                        src={client.avatar}
-                        alt={client.name}
-                        className="h-10 w-10 rounded-full mr-3"
-                      />
-                      <div>
-                        <h3 className="font-medium">{client.name}</h3>
-                        <p className="text-sm text-gray-500">{client.email}</p>
-                      </div>
-                    </div>
-                  ))}
-
-                  <div className="flex justify-center pt-2">
-                    <Button variant="outline" onClick={handleAddClient}>
-                      <Plus className="h-4 w-4 mr-1" /> Añadir Cliente
-                    </Button>
+                {loading ? (
+                  <div className="text-center py-4">
+                    <p>Cargando clientes...</p>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentClients.length > 0 ? (
+                      recentClients.map((client) => (
+                        <div
+                          key={client.id}
+                          className="flex items-center p-3 border rounded-md hover:bg-gray-50 cursor-pointer"
+                          onClick={() => navigate(`/clients/${client.id}`)}
+                        >
+                          <img
+                            src={client.avatar || "https://i.pravatar.cc/150"}
+                            alt={client.name}
+                            className="h-10 w-10 rounded-full mr-3"
+                          />
+                          <div>
+                            <h3 className="font-medium">{client.name}</h3>
+                            <p className="text-sm text-gray-500">{client.email}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-gray-500">No hay clientes</p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-center pt-2">
+                      <Button variant="outline" onClick={handleAddClient}>
+                        <Plus className="h-4 w-4 mr-1" /> Añadir Cliente
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
