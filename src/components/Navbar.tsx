@@ -2,6 +2,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Dumbbell, Users, ClipboardList, Home, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import UserMenu from "@/components/UserMenu";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -41,6 +42,10 @@ const Navbar = () => {
                 </button>
               ))}
             </div>
+          </div>
+          
+          <div className="flex items-center">
+            <UserMenu />
           </div>
         </div>
       </div>
