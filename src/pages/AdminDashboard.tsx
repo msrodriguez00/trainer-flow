@@ -42,7 +42,6 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
 
-  // Redirigir si no es administrador
   useEffect(() => {
     if (!isLoading && !isAdmin) {
       toast({
@@ -65,7 +64,6 @@ const AdminDashboard = () => {
     try {
       console.log("Iniciando fetchUsers...");
       
-      // Obtener perfiles de usuarios
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*");
@@ -77,11 +75,8 @@ const AdminDashboard = () => {
 
       console.log("Perfiles obtenidos:", profiles?.length || 0);
 
-      // En lugar de obtener los administradores directamente de la tabla admin_users
-      // vamos a usar la función check_if_admin para cada usuario
       const usersWithAdminStatus = await Promise.all(
         (profiles || []).map(async (profile) => {
-          // Comprobar si el usuario es administrador usando la función segura
           const { data: isAdminUser, error: adminCheckError } = await supabase
             .rpc('check_if_admin', { user_id: profile.id });
             
@@ -121,9 +116,11 @@ const AdminDashboard = () => {
         .update({ role: newRole })
         .eq("id", userId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating role:", error);
+        throw error;
+      }
 
-      // Actualizar la lista de usuarios
       setUsers(users.map(user => 
         user.id === userId ? { ...user, role: newRole } : user
       ));
@@ -145,7 +142,6 @@ const AdminDashboard = () => {
   const toggleAdminStatus = async (userId: string, currentIsAdmin: boolean) => {
     try {
       if (currentIsAdmin) {
-        // Quitar administrador
         const { error } = await supabase
           .from("admin_users")
           .delete()
@@ -153,7 +149,6 @@ const AdminDashboard = () => {
 
         if (error) throw error;
       } else {
-        // Hacer administrador
         const { error } = await supabase
           .from("admin_users")
           .insert({ id: userId });
@@ -161,7 +156,6 @@ const AdminDashboard = () => {
         if (error) throw error;
       }
 
-      // Actualizar la lista de usuarios
       setUsers(users.map(user => 
         user.id === userId ? { ...user, isAdmin: !currentIsAdmin } : user
       ));
