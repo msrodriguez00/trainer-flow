@@ -15,10 +15,11 @@ import Profile from "./pages/Profile";
 import Exercises from "./pages/Exercises";
 import ExerciseLibrary from "./pages/ExerciseLibrary";
 import Clients from "./pages/Clients";
+import ClientInvite from "./pages/ClientInvite";
 import Plans from "./pages/Plans";
 import ClientDashboard from "./pages/ClientDashboard"; 
 import AdminDashboard from "./pages/AdminDashboard";
-import TrainerDashboard from "./pages/TrainerDashboard"; // Importamos el dashboard del entrenador
+import TrainerDashboard from "./pages/TrainerDashboard";
 import NotFound from "./pages/NotFound";
 import NewPlanForm from "./components/NewPlanForm";
 import Navbar from "./components/Navbar";
@@ -128,6 +129,11 @@ const App = () => (
             <Route path="/clients" element={
               <ProtectedRoute trainerOnly>
                 <Clients />
+              </ProtectedRoute>
+            } />
+            <Route path="/client-invite" element={
+              <ProtectedRoute trainerOnly>
+                <ClientInvite />
               </ProtectedRoute>
             } />
             <Route path="/plans" element={

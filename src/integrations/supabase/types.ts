@@ -24,6 +24,36 @@ export type Database = {
         }
         Relationships: []
       }
+      client_invitations: {
+        Row: {
+          accepted: boolean
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          token: string
+          trainer_id: string
+        }
+        Insert: {
+          accepted?: boolean
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          token: string
+          trainer_id: string
+        }
+        Update: {
+          accepted?: boolean
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          trainer_id?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           avatar: string | null
@@ -32,6 +62,7 @@ export type Database = {
           id: string
           name: string
           trainer_id: string
+          trainers: string[] | null
           user_id: string | null
         }
         Insert: {
@@ -41,6 +72,7 @@ export type Database = {
           id?: string
           name: string
           trainer_id: string
+          trainers?: string[] | null
           user_id?: string | null
         }
         Update: {
@@ -50,6 +82,7 @@ export type Database = {
           id?: string
           name?: string
           trainer_id?: string
+          trainers?: string[] | null
           user_id?: string | null
         }
         Relationships: []
@@ -228,6 +261,7 @@ export type Database = {
           created_at: string
           id: string
           name: string | null
+          registration_type: string | null
           role: string | null
           tier: string | null
           updated_at: string
@@ -237,6 +271,7 @@ export type Database = {
           created_at?: string
           id: string
           name?: string | null
+          registration_type?: string | null
           role?: string | null
           tier?: string | null
           updated_at?: string
@@ -246,6 +281,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string | null
+          registration_type?: string | null
           role?: string | null
           tier?: string | null
           updated_at?: string

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -9,16 +9,92 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dumbbell } from "lucide-react";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isInvitation, setIsInvitation] = useState(false);
+  const [invitationToken, setInvitationToken] = useState<string | null>(null);
+  const [invitationEmail, setInvitationEmail] = useState<string | null>(null);
+  const [invitationData, setInvitationData] = useState<any | null>(null);
+  const [trainers, setTrainers] = useState<{id: string, name: string}[]>([]);
+  const [selectedTrainer, setSelectedTrainer] = useState<string | null>(null);
+  const [defaultTab, setDefaultTab] = useState("login");
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { user, isLoading } = useAuth();
+  
+  // Check if this is an invitation URL
+  useEffect(() => {
+    const token = searchParams.get("token");
+    const email = searchParams.get("email");
+    
+    if (token && email) {
+      setIsInvitation(true);
+      setInvitationToken(token);
+      setInvitationEmail(email);
+      setEmail(email);
+      setDefaultTab("register"); // Set to register tab for clients
+      
+      // Fetch invitation data
+      const fetchInvitationData = async () => {
+        try {
+          const { data, error } = await supabase
+            .from("client_invitations")
+            .select("*, profiles!client_invitations_trainer_id_fkey(name)")
+            .eq("token", token)
+            .eq("email", email)
+            .single();
+          
+          if (error) throw error;
+          
+          if (data) {
+            setInvitationData(data);
+            
+            // Check if the user already exists
+            const { data: clients } = await supabase
+              .from("clients")
+              .select("trainers")
+              .eq("email", email);
+              
+            if (clients && clients.length > 0) {
+              // Client exists, get their trainers
+              const trainerIds = clients[0].trainers || [];
+              if (trainerIds.length > 0) {
+                const { data: trainerProfiles } = await supabase
+                  .from("profiles")
+                  .select("id, name")
+                  .in("id", trainerIds);
+                  
+                if (trainerProfiles) {
+                  setTrainers(trainerProfiles);
+                  // Add the inviting trainer if not already in the list
+                  if (!trainerIds.includes(data.trainer_id)) {
+                    setTrainers(prev => [...prev, {
+                      id: data.trainer_id,
+                      name: data.profiles?.name || "Entrenador"
+                    }]);
+                  }
+                  setSelectedTrainer(data.trainer_id);
+                  setDefaultTab("login"); // Set to login tab since client exists
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching invitation:", error);
+        }
+      };
+      
+      fetchInvitationData();
+    }
+  }, [searchParams]);
   
   // Redirect to home if already logged in
   useEffect(() => {
@@ -51,6 +127,12 @@ const Auth = () => {
         description: "Bienvenido de nuevo.",
       });
       
+      // If it's an invitation login and a trainer is selected, associate the client with the trainer
+      if (isInvitation && selectedTrainer && invitationToken) {
+        // This will be handled on the profile setup after logging in
+        // We'll update the invitation status in the onAuthStateChange handler
+      }
+      
       const from = location.state?.from?.pathname || "/";
       navigate(from, { replace: true });
     }
@@ -65,9 +147,10 @@ const Auth = () => {
       password,
       options: {
         data: {
-          name: email.split('@')[0],
-          role: 'trainer',  // Set default role to trainer
-          tier: 'base'      // Set default tier to base
+          name: name || email.split('@')[0],
+          role: isInvitation ? 'client' : 'trainer',  // Set role based on invitation status
+          tier: 'base',      // Set default tier to base
+          registration_type: isInvitation ? 'invitation' : 'direct',
         }
       }
     });
@@ -81,10 +164,38 @@ const Auth = () => {
         description: error.message,
       });
     } else {
-      toast({
-        title: "Registro exitoso",
-        description: "Por favor verifica tu correo electrónico para confirmar tu cuenta.",
-      });
+      // If this is a client accepting an invitation
+      if (isInvitation && invitationToken && invitationData) {
+        // In a real app, you'd want to handle this in a webhook or trigger
+        // For now, we'll handle it on successful registration
+        try {
+          // Create client entry
+          await supabase.from("clients").insert({
+            email,
+            name: name || email.split('@')[0],
+            trainer_id: invitationData.trainer_id,
+            trainers: [invitationData.trainer_id]
+          });
+          
+          // Mark invitation as accepted
+          await supabase
+            .from("client_invitations")
+            .update({ accepted: true })
+            .eq("id", invitationData.id);
+            
+          toast({
+            title: "Registro exitoso",
+            description: "Tu cuenta ha sido creada y vinculada a tu entrenador.",
+          });
+        } catch (err) {
+          console.error("Error handling invitation acceptance:", err);
+        }
+      } else {
+        toast({
+          title: "Registro exitoso",
+          description: "Por favor verifica tu correo electrónico para confirmar tu cuenta.",
+        });
+      }
     }
   };
 
@@ -99,15 +210,22 @@ const Auth = () => {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Dumbbell className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">ElevateFit Entrenadores</CardTitle>
+          <CardTitle className="text-2xl">
+            {isInvitation ? "ElevateFit Clientes" : "ElevateFit Entrenadores"}
+          </CardTitle>
           <CardDescription>
-            Plataforma exclusiva para entrenadores personales
+            {isInvitation 
+              ? `Invitado por ${invitationData?.profiles?.name || "un entrenador"}`
+              : "Plataforma exclusiva para entrenadores personales"
+            }
           </CardDescription>
         </CardHeader>
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs defaultValue={defaultTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
-            <TabsTrigger value="register">Registrarse como entrenador</TabsTrigger>
+            <TabsTrigger value="register">
+              {isInvitation ? "Registrarse como cliente" : "Registrarse como entrenador"}
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="login">
             <form onSubmit={handleSignIn}>
@@ -120,6 +238,7 @@ const Auth = () => {
                     placeholder="tu@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isInvitation && invitationEmail !== null}
                     required
                   />
                 </div>
@@ -133,6 +252,30 @@ const Auth = () => {
                     required
                   />
                 </div>
+                
+                {isInvitation && trainers.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="trainer">Entrenador</Label>
+                    <Select 
+                      value={selectedTrainer || undefined} 
+                      onValueChange={setSelectedTrainer}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona tu entrenador" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {trainers.map(trainer => (
+                          <SelectItem key={trainer.id} value={trainer.id}>
+                            {trainer.name || "Entrenador"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Selecciona con cuál entrenador quieres iniciar sesión
+                    </p>
+                  </div>
+                )}
               </CardContent>
               <CardFooter>
                 <Button className="w-full" type="submit" disabled={loading}>
@@ -152,6 +295,18 @@ const Auth = () => {
                     placeholder="tu@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isInvitation && invitationEmail !== null}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nombre</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Tu nombre"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     required
                   />
                 </div>
@@ -167,14 +322,16 @@ const Auth = () => {
                 </div>
                 <div className="pt-2">
                   <p className="text-sm text-muted-foreground">
-                    Al registrarse, obtendrás acceso como entrenador con plan básico.
-                    Podrás actualizar a planes superiores más tarde.
+                    {isInvitation
+                      ? "Al registrarte, estarás vinculado con el entrenador que te invitó."
+                      : "Al registrarse, obtendrás acceso como entrenador con plan básico. Podrás actualizar a planes superiores más tarde."
+                    }
                   </p>
                 </div>
               </CardContent>
               <CardFooter>
                 <Button className="w-full" type="submit" disabled={loading}>
-                  {loading ? "Procesando..." : "Registrarse como entrenador"}
+                  {loading ? "Procesando..." : (isInvitation ? "Registrarse como cliente" : "Registrarse como entrenador")}
                 </Button>
               </CardFooter>
             </form>

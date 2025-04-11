@@ -1,21 +1,26 @@
 
 import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Client } from "@/types";
 import ClientCard from "@/components/ClientCard";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import InviteClientForm from "@/components/InviteClientForm";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const Clients = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -54,10 +59,7 @@ const Clients = () => {
   );
 
   const handleAddClient = () => {
-    toast({
-      title: "Próximamente",
-      description: "La función de añadir cliente estará disponible pronto",
-    });
+    setInviteDialogOpen(true);
   };
 
   const handleEditClient = (client: Client) => {
@@ -92,6 +94,14 @@ const Clients = () => {
     }
   };
 
+  const handleInviteSuccess = () => {
+    setInviteDialogOpen(false);
+    toast({
+      title: "Invitación enviada",
+      description: "La invitación ha sido enviada correctamente",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -99,9 +109,28 @@ const Clients = () => {
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-4 sm:mb-0">Clientes</h1>
-          <Button onClick={handleAddClient}>
-            <Plus className="mr-2 h-4 w-4" /> Añadir Cliente
-          </Button>
+          <div className="flex space-x-2">
+            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleAddClient}>
+                  <UserPlus className="mr-2 h-4 w-4" /> Invitar Cliente
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Invitar nuevo cliente</DialogTitle>
+                  <DialogDescription>
+                    Envía una invitación para que un cliente se una a tu plataforma.
+                  </DialogDescription>
+                </DialogHeader>
+                <InviteClientForm onSuccess={handleInviteSuccess} />
+              </DialogContent>
+            </Dialog>
+            
+            <Button variant="outline" onClick={() => navigate("/client-invite")}>
+              <Plus className="mr-2 h-4 w-4" /> Ver invitaciones
+            </Button>
+          </div>
         </div>
 
         <div className="mb-6 relative">
@@ -119,7 +148,7 @@ const Clients = () => {
             <p>Cargando clientes...</p>
           </div>
         ) : filteredClients.length > 0 ? (
-          <div className="client-grid">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {filteredClients.map((client) => (
               <ClientCard
                 key={client.id}
@@ -139,14 +168,14 @@ const Clients = () => {
             <p className="text-gray-500 mt-1">
               {searchTerm
                 ? "Intenta con otra búsqueda"
-                : "¡Añade tu primer cliente para comenzar!"}
+                : "¡Invita a tu primer cliente para comenzar!"}
             </p>
             {!searchTerm && (
               <Button
                 className="mt-4"
                 onClick={handleAddClient}
               >
-                <Plus className="mr-2 h-4 w-4" /> Añadir cliente
+                <UserPlus className="mr-2 h-4 w-4" /> Invitar cliente
               </Button>
             )}
           </div>
