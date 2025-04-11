@@ -4,11 +4,13 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dumbbell, Users, ClipboardList, Plus, BookOpen } from "lucide-react";
+import { Dumbbell, Users, ClipboardList, Plus, BookOpen, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Client, Plan } from "@/types";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import InviteClientForm from "@/components/InviteClientForm";
 
 const TrainerDashboard = () => {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ const TrainerDashboard = () => {
   });
   const [recentPlans, setRecentPlans] = useState<Plan[]>([]);
   const [recentClients, setRecentClients] = useState<Client[]>([]);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   
   useEffect(() => {
     if (user) {
@@ -142,9 +145,16 @@ const TrainerDashboard = () => {
   };
 
   const handleAddClient = () => {
+    setInviteDialogOpen(true);
+  };
+  
+  const handleInviteSuccess = () => {
+    setInviteDialogOpen(false);
+    fetchRecentClients();
+    fetchStats();
     toast({
-      title: "Próximamente",
-      description: "Función de añadir cliente estará disponible pronto",
+      title: "Invitación enviada",
+      description: "La invitación ha sido enviada correctamente",
     });
   };
 
@@ -310,7 +320,7 @@ const TrainerDashboard = () => {
 
                     <div className="flex justify-center pt-2">
                       <Button variant="outline" onClick={handleAddClient}>
-                        <Plus className="h-4 w-4 mr-1" /> Añadir Cliente
+                        <UserPlus className="h-4 w-4 mr-1" /> Añadir Cliente
                       </Button>
                     </div>
                   </div>
@@ -353,7 +363,7 @@ const TrainerDashboard = () => {
                     variant="outline"
                     className="w-full justify-start"
                   >
-                    <Users className="mr-2 h-4 w-4" />
+                    <UserPlus className="mr-2 h-4 w-4" />
                     Añadir cliente
                   </Button>
                 </div>
@@ -362,6 +372,19 @@ const TrainerDashboard = () => {
           </div>
         </div>
       </main>
+      
+      {/* Add Client Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invitar nuevo cliente</DialogTitle>
+            <DialogDescription>
+              Envía una invitación para que un cliente se una a tu plataforma.
+            </DialogDescription>
+          </DialogHeader>
+          <InviteClientForm onSuccess={handleInviteSuccess} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

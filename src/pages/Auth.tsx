@@ -3,83 +3,90 @@ import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dumbbell } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const Auth = () => {
+  const [type, setType] = useState<"sign-in" | "sign-up">("sign-in");
+  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [isInvitation, setIsInvitation] = useState(false);
-  const [invitationToken, setInvitationToken] = useState<string | null>(null);
-  const [invitationEmail, setInvitationEmail] = useState<string | null>(null);
-  const [invitationData, setInvitationData] = useState<any | null>(null);
-  const [trainers, setTrainers] = useState<{id: string, name: string}[]>([]);
+  const [trainers, setTrainers] = useState<{ id: string; name: string }[]>([]);
   const [selectedTrainer, setSelectedTrainer] = useState<string | null>(null);
-  const [defaultTab, setDefaultTab] = useState("login");
-  const { toast } = useToast();
+  const [invitationData, setInvitationData] = useState<any>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user, isLoading } = useAuth();
-  
+  const { signIn, signUp } = useAuth();
+  const { toast } = useToast();
+
   useEffect(() => {
     const token = searchParams.get("token");
     const email = searchParams.get("email");
     
     if (token && email) {
-      setIsInvitation(true);
-      setInvitationToken(token);
-      setInvitationEmail(email);
+      setType("sign-up");
       setEmail(email);
-      setDefaultTab("register"); // Set to register tab for clients
       
       const fetchInvitationData = async () => {
         try {
+          // Fix the relation query to correctly fetch trainer name
           const { data, error } = await supabase
             .from("client_invitations")
-            .select("*, profiles:trainer_id(name)")
+            .select("*, trainer:trainer_id(name)")
             .eq("token", token)
             .eq("email", email)
             .single();
-          
+            
           if (error) throw error;
           
           if (data) {
             setInvitationData(data);
             
-            const { data: clients } = await supabase
+            // Check if client already exists
+            const { data: existingClients, error: existingClientsError } = await supabase
               .from("clients")
-              .select("trainers")
+              .select("*")
               .eq("email", email);
               
-            if (clients && clients.length > 0) {
-              const trainerIds = clients[0].trainers || [];
-              if (trainerIds.length > 0) {
-                const { data: trainerProfiles } = await supabase
-                  .from("profiles")
-                  .select("id, name")
-                  .in("id", trainerIds);
-                  
+            if (existingClientsError) throw existingClientsError;
+            
+            if (existingClients && existingClients.length > 0) {
+              toast({
+                title: "Cliente ya registrado",
+                description: "Ya estás registrado en el sistema. Por favor, inicia sesión.",
+              });
+              navigate("/sign-in");
+              return;
+            }
+            
+            // Fetch trainer profiles to display in the select
+            const { data: trainerProfiles, error: trainerProfilesError } = await supabase
+              .from("profiles")
+              .select("id, name")
+              .in("id", [data.trainer_id]);
+              
+            if (trainerProfilesError) throw trainerProfilesError;
+            
+            const trainerIds = trainers.map(trainer => trainer.id);
+                
                 if (trainerProfiles) {
                   setTrainers(trainerProfiles);
                   if (!trainerIds.includes(data.trainer_id)) {
                     setTrainers(prev => [...prev, {
                       id: data.trainer_id,
-                      name: data.profiles?.name || "Entrenador"
+                      name: data.trainer?.name || "Entrenador"
                     }]);
                   }
-                  setSelectedTrainer(data.trainer_id);
-                  setDefaultTab("login"); // Set to login tab since client exists
                 }
-              }
-            }
+              
+            setSelectedTrainer(data.trainer_id);
           }
         } catch (error) {
           console.error("Error fetching invitation:", error);
@@ -90,240 +97,200 @@ const Auth = () => {
     }
   }, [searchParams]);
   
-  useEffect(() => {
-    if (user && !isLoading) {
-      const from = location.state?.from?.pathname || "/";
-      navigate(from, { replace: true });
-    }
-  }, [user, isLoading, navigate, location]);
-
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    setLoading(false);
-
-    if (error) {
+    try {
+      await signIn({ email, password });
+      toast({
+        title: "Inicio de sesión exitoso",
+        description: "¡Bienvenido de nuevo!",
+      });
+      navigate("/dashboard");
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error al iniciar sesión",
         description: error.message,
       });
-    } else {
-      toast({
-        title: "Inicio de sesión exitoso",
-        description: "Bienvenido de nuevo.",
-      });
-      
-      if (isInvitation && selectedTrainer && invitationToken) {
-        // This will be handled on the profile setup after logging in
-        // We'll update the invitation status in the onAuthStateChange handler
-      }
-      
-      const from = location.state?.from?.pathname || "/";
-      navigate(from, { replace: true });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name: name || email.split('@')[0],
-          role: isInvitation ? 'client' : 'trainer',  // Set role based on invitation status
-          tier: 'base',      // Set default tier to base
-          registration_type: isInvitation ? 'invitation' : 'direct',
-        }
+    try {
+      if (!selectedTrainer && trainers.length > 0) {
+        throw new Error("Por favor, selecciona un entrenador.");
       }
-    });
-
-    setLoading(false);
-
-    if (error) {
+      
+      await signUp({ email, password, name, trainerId: selectedTrainer || invitationData?.trainer_id });
+      
+      // Mark invitation as accepted
+      if (invitationData) {
+        const { error: acceptError } = await supabase
+          .from("client_invitations")
+          .update({ accepted: true })
+          .eq("token", invitationData.token);
+          
+        if (acceptError) throw acceptError;
+      }
+      
+      toast({
+        title: "Registro exitoso",
+        description: "¡Te has registrado correctamente!",
+      });
+      navigate("/dashboard");
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error al registrarse",
         description: error.message,
       });
-    } else {
-      if (isInvitation && invitationToken && invitationData) {
-        try {
-          await supabase.from("clients").insert({
-            email,
-            name: name || email.split('@')[0],
-            trainer_id: invitationData.trainer_id,
-            trainers: [invitationData.trainer_id]
-          });
-          
-          await supabase
-            .from("client_invitations")
-            .update({ accepted: true })
-            .eq("id", invitationData.id);
-            
-          toast({
-            title: "Registro exitoso",
-            description: "Tu cuenta ha sido creada y vinculada a tu entrenador.",
-          });
-        } catch (err) {
-          console.error("Error handling invitation acceptance:", err);
-        }
-      } else {
-        toast({
-          title: "Registro exitoso",
-          description: "Por favor verifica tu correo electrónico para confirmar tu cuenta.",
-        });
-      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Cargando...</div>;
-  }
-
   return (
-    <div className="flex min-h-screen bg-gray-100 items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Dumbbell className="h-8 w-8 text-primary" />
-          </div>
+    <div className="grid h-screen place-items-center bg-gray-100">
+      <Card className="w-[400px]">
+        <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">
-            {isInvitation ? "ElevateFit Clientes" : "ElevateFit Entrenadores"}
+            {type === "sign-in" ? "Iniciar sesión" : "Crear una cuenta"}
           </CardTitle>
           <CardDescription>
-            {isInvitation 
-              ? `Invitado por ${invitationData?.profiles?.name || "un entrenador"}`
-              : "Plataforma exclusiva para entrenadores personales"
-            }
+            {type === "sign-in"
+              ? "Inicia sesión con tu correo electrónico y contraseña"
+              : "Crea una cuenta para acceder a la plataforma"}
           </CardDescription>
         </CardHeader>
-        <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
-            <TabsTrigger value="register">
-              {isInvitation ? "Registrarse como cliente" : "Registrarse como entrenador"}
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="login">
-            <form onSubmit={handleSignIn}>
-              <CardContent className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={isInvitation && invitationEmail !== null}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Contraseña</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                {isInvitation && trainers.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="trainer">Entrenador</Label>
-                    <Select 
-                      value={selectedTrainer || undefined} 
-                      onValueChange={setSelectedTrainer}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona tu entrenador" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {trainers.map(trainer => (
-                          <SelectItem key={trainer.id} value={trainer.id}>
-                            {trainer.name || "Entrenador"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                      Selecciona con cuál entrenador quieres iniciar sesión
-                    </p>
+        <CardContent className="grid gap-4">
+          <Tabs defaultValue={type} className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="sign-in" onClick={() => setType("sign-in")}>
+                Iniciar sesión
+              </TabsTrigger>
+              <TabsTrigger value="sign-up" onClick={() => setType("sign-up")}>
+                Crear cuenta
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="sign-in">
+              <form onSubmit={handleSignIn}>
+                <div className="grid gap-2">
+                  <div className="grid gap-1">
+                    <Label htmlFor="email">Correo electrónico</Label>
+                    <Input
+                      id="email"
+                      placeholder="correo@ejemplo.com"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
                   </div>
-                )}
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full" type="submit" disabled={loading}>
-                  {loading ? "Procesando..." : "Iniciar sesión"}
-                </Button>
-              </CardFooter>
-            </form>
-          </TabsContent>
-          <TabsContent value="register">
-            <form onSubmit={handleSignUp}>
-              <CardContent className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
-                  <Input
-                    id="register-email"
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={isInvitation && invitationEmail !== null}
-                    required
-                  />
+                  <div className="grid gap-1">
+                    <Label htmlFor="password">Contraseña</Label>
+                    <Input
+                      id="password"
+                      placeholder="Contraseña"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Iniciando sesión...
+                      </>
+                    ) : (
+                      "Iniciar sesión"
+                    )}
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nombre</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Tu nombre"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
+              </form>
+            </TabsContent>
+            <TabsContent value="sign-up">
+              <form onSubmit={handleSignUp}>
+                <div className="grid gap-2">
+                  <div className="grid gap-1">
+                    <Label htmlFor="name">Nombre completo</Label>
+                    <Input
+                      id="name"
+                      placeholder="Nombre completo"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="email">Correo electrónico</Label>
+                    <Input
+                      id="email"
+                      placeholder="correo@ejemplo.com"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      disabled={!!invitationData}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="password">Contraseña</Label>
+                    <Input
+                      id="password"
+                      placeholder="Contraseña"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  {trainers.length > 0 && (
+                    <div className="grid gap-1">
+                      <Label htmlFor="trainer">Entrenador</Label>
+                      <Select onValueChange={setSelectedTrainer}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecciona un entrenador" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {trainers.map((trainer) => (
+                            <SelectItem key={trainer.id} value={trainer.id}>
+                              {trainer.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <Button type="submit" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creando cuenta...
+                      </>
+                    ) : (
+                      "Crear cuenta"
+                    )}
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Contraseña</Label>
-                  <Input
-                    id="register-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="pt-2">
-                  <p className="text-sm text-muted-foreground">
-                    {isInvitation
-                      ? "Al registrarte, estarás vinculado con el entrenador que te invitó."
-                      : "Al registrarse, obtendrás acceso como entrenador con plan básico. Podrás actualizar a planes superiores más tarde."
-                    }
-                  </p>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full" type="submit" disabled={loading}>
-                  {loading ? "Procesando..." : (isInvitation ? "Registrarse como cliente" : "Registrarse como entrenador")}
-                </Button>
-              </CardFooter>
-            </form>
-          </TabsContent>
-        </Tabs>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          {location.state?.from && (
+            <Button variant="ghost" onClick={() => navigate(location.state.from)}>
+              Volver
+            </Button>
+          )}
+        </CardFooter>
       </Card>
     </div>
   );
