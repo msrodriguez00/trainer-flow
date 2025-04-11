@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -112,16 +111,23 @@ const AdminDashboard = () => {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
-      // Use the security definer function we created to update the role
-      const { data, error } = await supabase
-        .rpc('update_user_role', { 
-          user_id: userId, 
-          new_role: newRole 
-        });
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/update_user_role`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': supabase.supabaseKey,
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          new_role: newRole
+        }),
+      });
 
-      if (error) {
-        console.error("Error updating role:", error);
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error updating role:", errorData);
+        throw new Error(errorData.message || "Error updating role");
       }
 
       setUsers(users.map(user => 
@@ -356,17 +362,6 @@ const AdminDashboard = () => {
       </main>
     </div>
   );
-};
-
-const getInitials = (name: string | null, email: string) => {
-  if (name) {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  }
-  return email.substring(0, 2).toUpperCase();
 };
 
 export default AdminDashboard;
