@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { mockPlans, mockClients, mockExercises } from "@/data/mockData";
 import { Plus, Search, MoreHorizontal, ClipboardList } from "lucide-react";
-import { Plan } from "@/types";
+import { Plan, Client } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -33,11 +34,82 @@ const formatDate = (dateString: string) => {
 const Plans = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [plans, setPlans] = useState<Plan[]>(mockPlans);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchPlans();
+      fetchClients();
+    }
+  }, [user]);
+
+  const fetchPlans = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("plans")
+        .select(`
+          id,
+          name,
+          client_id,
+          created_at,
+          plan_exercises:plan_exercises(*)
+        `)
+        .eq("trainer_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const formattedPlans: Plan[] = data.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        clientId: item.client_id,
+        createdAt: item.created_at,
+        exercises: item.plan_exercises.map((ex: any) => ({
+          exerciseId: ex.exercise_id,
+          level: ex.level,
+          evaluations: []
+        }))
+      }));
+
+      setPlans(formattedPlans);
+    } catch (error) {
+      console.error("Error fetching plans:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los planes.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchClients = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("trainer_id", user.id);
+
+      if (error) throw error;
+
+      setClients(data || []);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+    }
+  };
 
   const filteredPlans = plans.filter((plan) => {
-    const client = mockClients.find((c) => c.id === plan.clientId);
+    const client = clients.find((c) => c.id === plan.clientId);
     return (
       plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (client &&
@@ -49,13 +121,29 @@ const Plans = () => {
     navigate("/plans/new");
   };
 
-  const handleDelete = (id: string) => {
-    setPlans(plans.filter((plan) => plan.id !== id));
-    toast({
-      title: "Plan eliminado",
-      description: "Se ha eliminado el plan correctamente",
-      variant: "destructive",
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("plans")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setPlans(plans.filter((plan) => plan.id !== id));
+      toast({
+        title: "Plan eliminado",
+        description: "Se ha eliminado el plan correctamente",
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("Error deleting plan:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el plan.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -80,10 +168,14 @@ const Plans = () => {
           />
         </div>
 
-        {filteredPlans.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-10">
+            <p>Cargando planes...</p>
+          </div>
+        ) : filteredPlans.length > 0 ? (
           <div className="space-y-4">
             {filteredPlans.map((plan) => {
-              const client = mockClients.find((c) => c.id === plan.clientId);
+              const client = clients.find((c) => c.id === plan.clientId);
               
               return (
                 <Card 
@@ -119,7 +211,7 @@ const Plans = () => {
                       {client && (
                         <>
                           <img
-                            src={client.avatar}
+                            src={client.avatar || "https://i.pravatar.cc/150"}
                             alt={client.name}
                             className="h-8 w-8 rounded-full mr-2"
                           />

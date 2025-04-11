@@ -14,7 +14,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Trash, Plus } from "lucide-react";
-import { mockExercises, mockClients } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface NewPlanFormProps {
   initialClientId?: string;
@@ -32,11 +34,23 @@ interface ExerciseSelection {
 
 const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [name, setName] = useState("");
   const [clientId, setClientId] = useState(initialClientId || "");
   const [selectedExercises, setSelectedExercises] = useState<ExerciseSelection[]>([
     { exerciseId: "", level: 1 },
   ]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchClients();
+      fetchExercises();
+    }
+  }, [user]);
 
   // Set initial client ID if provided via props
   useEffect(() => {
@@ -44,6 +58,76 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
       setClientId(initialClientId);
     }
   }, [initialClientId]);
+
+  const fetchClients = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("trainer_id", user.id)
+        .order("name");
+
+      if (error) throw error;
+
+      setClients(data || []);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los clientes.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchExercises = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("exercises")
+        .select(`
+          id,
+          name,
+          categories,
+          exercise_levels:exercise_levels(
+            id,
+            level,
+            video,
+            repetitions,
+            weight
+          )
+        `)
+        .order("name");
+
+      if (error) throw error;
+
+      const formattedExercises: Exercise[] = data.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        categories: item.categories,
+        levels: item.exercise_levels.map((level: any) => ({
+          level: level.level,
+          video: level.video,
+          repetitions: level.repetitions,
+          weight: level.weight
+        }))
+      }));
+
+      setExercises(formattedExercises);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching exercises:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los ejercicios.",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  };
 
   const handleAddExercise = () => {
     setSelectedExercises([...selectedExercises, { exerciseId: "", level: 1 }]);
@@ -69,9 +153,10 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
     setSelectedExercises(updated);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) return;
     if (!name || !clientId) return;
 
     // Filter out any incomplete exercise selections
@@ -81,21 +166,62 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
 
     if (validExercises.length === 0) return;
 
-    onSubmit({
-      name,
-      clientId,
-      exercises: validExercises.map((ex) => ({
-        ...ex,
-        evaluations: [],
-      })),
-    });
+    try {
+      // First create the plan
+      const { data: planData, error: planError } = await supabase
+        .from("plans")
+        .insert({
+          name,
+          client_id: clientId,
+          trainer_id: user.id
+        })
+        .select()
+        .single();
+
+      if (planError) throw planError;
+
+      // Then create plan exercises
+      const planExercises = validExercises.map(ex => ({
+        plan_id: planData.id,
+        exercise_id: ex.exerciseId,
+        level: ex.level
+      }));
+
+      const { error: exError } = await supabase
+        .from("plan_exercises")
+        .insert(planExercises);
+
+      if (exError) throw exError;
+
+      // Call the onSubmit prop to notify parent
+      onSubmit({
+        name,
+        clientId,
+        exercises: validExercises.map((ex) => ({
+          ...ex,
+          evaluations: [],
+        })),
+      });
+
+    } catch (error) {
+      console.error("Error creating plan:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo crear el plan.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getAvailableLevels = (exerciseId: string): number[] => {
     if (!exerciseId) return [1];
-    const exercise = mockExercises.find((ex) => ex.id === exerciseId);
+    const exercise = exercises.find((ex) => ex.id === exerciseId);
     return exercise ? exercise.levels.map((l) => l.level) : [1];
   };
+
+  if (loading) {
+    return <div className="text-center py-10">Cargando...</div>;
+  }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm max-w-4xl mx-auto">
@@ -119,7 +245,7 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
                 <SelectValue placeholder="Seleccionar cliente" />
               </SelectTrigger>
               <SelectContent>
-                {mockClients.map((client) => (
+                {clients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.name}
                   </SelectItem>
@@ -145,7 +271,7 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
 
           <div className="space-y-4">
             {selectedExercises.map((selection, index) => {
-              const exercise = mockExercises.find(
+              const exercise = exercises.find(
                 (ex) => ex.id === selection.exerciseId
               );
               
@@ -164,7 +290,7 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
                             <SelectValue placeholder="Seleccionar ejercicio" />
                           </SelectTrigger>
                           <SelectContent>
-                            {mockExercises.map((ex) => (
+                            {exercises.map((ex) => (
                               <SelectItem key={ex.id} value={ex.id}>
                                 {ex.name}
                               </SelectItem>

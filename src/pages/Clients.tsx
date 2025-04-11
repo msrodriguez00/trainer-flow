@@ -1,24 +1,64 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { mockClients } from "@/data/mockData";
 import { Client } from "@/types";
 import ClientCard from "@/components/ClientCard";
 import { Plus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const Clients = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [clients, setClients] = useState<Client[]>(mockClients);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchClients();
+  }, [user]);
+
+  const fetchClients = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("trainer_id", user.id)
+        .order("name");
+
+      if (error) throw error;
+
+      setClients(data || []);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los clientes.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredClients = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleAddClient = () => {
+    toast({
+      title: "Próximamente",
+      description: "La función de añadir cliente estará disponible pronto",
+    });
+  };
 
   const handleEditClient = (client: Client) => {
     toast({
@@ -27,13 +67,29 @@ const Clients = () => {
     });
   };
 
-  const handleDeleteClient = (id: string) => {
-    setClients(clients.filter((client) => client.id !== id));
-    toast({
-      title: "Cliente eliminado",
-      description: "Se ha eliminado el cliente correctamente",
-      variant: "destructive",
-    });
+  const handleDeleteClient = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setClients(clients.filter((client) => client.id !== id));
+      toast({
+        title: "Cliente eliminado",
+        description: "Se ha eliminado el cliente correctamente",
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el cliente.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -43,12 +99,7 @@ const Clients = () => {
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-4 sm:mb-0">Clientes</h1>
-          <Button onClick={() => {
-            toast({
-              title: "Próximamente",
-              description: "La función de añadir cliente estará disponible pronto",
-            });
-          }}>
+          <Button onClick={handleAddClient}>
             <Plus className="mr-2 h-4 w-4" /> Añadir Cliente
           </Button>
         </div>
@@ -63,7 +114,11 @@ const Clients = () => {
           />
         </div>
 
-        {filteredClients.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-10">
+            <p>Cargando clientes...</p>
+          </div>
+        ) : filteredClients.length > 0 ? (
           <div className="client-grid">
             {filteredClients.map((client) => (
               <ClientCard
@@ -89,12 +144,7 @@ const Clients = () => {
             {!searchTerm && (
               <Button
                 className="mt-4"
-                onClick={() => {
-                  toast({
-                    title: "Próximamente",
-                    description: "La función de añadir cliente estará disponible pronto",
-                  });
-                }}
+                onClick={handleAddClient}
               >
                 <Plus className="mr-2 h-4 w-4" /> Añadir cliente
               </Button>
