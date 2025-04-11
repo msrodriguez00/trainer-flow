@@ -3,18 +3,28 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Dumbbell, Users, ClipboardList, Home, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UserMenu from "@/components/UserMenu";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isClient, isAdmin } = useAuth();
   
+  // Filtrar los elementos de navegación según el rol del usuario
   const navItems = [
-    { path: "/", icon: Home, label: "Dashboard" },
-    { path: "/exercises", icon: Dumbbell, label: "Ejercicios" },
-    { path: "/library", icon: BookOpen, label: "Biblioteca" },
-    { path: "/clients", icon: Users, label: "Clientes" },
-    { path: "/plans", icon: ClipboardList, label: "Planes" },
+    { path: "/", icon: Home, label: "Dashboard", showFor: "all" },
+    { path: "/exercises", icon: Dumbbell, label: "Ejercicios", showFor: "trainer" },
+    { path: "/library", icon: BookOpen, label: "Biblioteca", showFor: "trainer" },
+    { path: "/clients", icon: Users, label: "Clientes", showFor: "trainer" },
+    { path: "/plans", icon: ClipboardList, label: "Planes", showFor: "all" },
   ];
+
+  // Filtrar los elementos de navegación según el rol del usuario
+  const filteredNavItems = navItems.filter(item => {
+    if (item.showFor === "all") return true;
+    if (item.showFor === "trainer" && !isClient) return true;
+    return false;
+  });
 
   return (
     <nav className="bg-white shadow-sm">
@@ -26,7 +36,7 @@ const Navbar = () => {
               <span className="ml-2 text-xl font-bold text-gray-800">ElevateFit</span>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
@@ -53,7 +63,7 @@ const Navbar = () => {
       {/* Mobile navigation */}
       <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
         <div className="flex justify-around">
-          {navItems.map((item) => (
+          {filteredNavItems.map((item) => (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
