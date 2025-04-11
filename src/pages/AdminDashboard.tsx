@@ -78,7 +78,7 @@ const AdminDashboard = () => {
 
       console.log("Perfiles obtenidos:", profiles?.length || 0);
 
-      // Obtener admins
+      // Obtener admins usando la nueva función check_if_admin
       const { data: admins, error: adminsError } = await supabase
         .from("admin_users")
         .select("id");
