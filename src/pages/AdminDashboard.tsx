@@ -26,6 +26,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Shield, MoreHorizontal, UserCog } from "lucide-react";
 
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "@/integrations/supabase/client";
+
 type User = {
   id: string;
   email: string;
@@ -111,12 +113,12 @@ const AdminDashboard = () => {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/update_user_role`, {
+      const response = await fetch(`https://bhmnazydmfklmhsunafx.supabase.co/rest/v1/rpc/update_user_role`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
-          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJobW5henlkbWZrbG1oc3VuYWZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzOTk0ODIsImV4cCI6MjA1OTk3NTQ4Mn0.s07hjV8EueBVLSZHyOYBqYfLbvQCoKAoRNfrDcJS5u4`,
+          'apikey': `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJobW5henlkbWZrbG1oc3VuYWZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzOTk0ODIsImV4cCI6MjA1OTk3NTQ4Mn0.s07hjV8EueBVLSZHyOYBqYfLbvQCoKAoRNfrDcJS5u4`,
         },
         body: JSON.stringify({
           user_id: userId,
