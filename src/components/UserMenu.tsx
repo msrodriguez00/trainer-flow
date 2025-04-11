@@ -54,7 +54,7 @@ const UserMenu = () => {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar>
-            <AvatarImage src={profile?.avatar_url} alt={profile?.name || user?.email} />
+            <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.name || user?.email} />
             <AvatarFallback>{getInitials()}</AvatarFallback>
           </Avatar>
         </Button>

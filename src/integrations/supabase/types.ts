@@ -9,6 +9,201 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      clients: {
+        Row: {
+          avatar: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          trainer_id: string
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          trainer_id: string
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          trainer_id?: string
+        }
+        Relationships: []
+      }
+      evaluations: {
+        Row: {
+          comment: string | null
+          date: string
+          exercise_rating: number | null
+          id: string
+          plan_exercise_id: string
+          repetitions_rating: number | null
+          time_rating: number | null
+          weight_rating: number | null
+        }
+        Insert: {
+          comment?: string | null
+          date?: string
+          exercise_rating?: number | null
+          id?: string
+          plan_exercise_id: string
+          repetitions_rating?: number | null
+          time_rating?: number | null
+          weight_rating?: number | null
+        }
+        Update: {
+          comment?: string | null
+          date?: string
+          exercise_rating?: number | null
+          id?: string
+          plan_exercise_id?: string
+          repetitions_rating?: number | null
+          time_rating?: number | null
+          weight_rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_plan_exercise_id_fkey"
+            columns: ["plan_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "plan_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_levels: {
+        Row: {
+          exercise_id: string
+          id: string
+          level: number
+          repetitions: number
+          video: string
+          weight: number
+        }
+        Insert: {
+          exercise_id: string
+          id?: string
+          level: number
+          repetitions: number
+          video: string
+          weight: number
+        }
+        Update: {
+          exercise_id?: string
+          id?: string
+          level?: number
+          repetitions?: number
+          video?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_levels_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercises: {
+        Row: {
+          categories: string[]
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          categories: string[]
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          categories?: string[]
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      plan_exercises: {
+        Row: {
+          exercise_id: string
+          id: string
+          level: number
+          plan_id: string
+        }
+        Insert: {
+          exercise_id: string
+          id?: string
+          level: number
+          plan_id: string
+        }
+        Update: {
+          exercise_id?: string
+          id?: string
+          level?: number
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_exercises_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          name: string
+          trainer_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          name: string
+          trainer_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
