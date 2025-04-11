@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -78,35 +77,33 @@ const AdminDashboard = () => {
 
       console.log("Perfiles obtenidos:", profiles?.length || 0);
 
-      // Obtener admins usando la nueva función check_if_admin
-      const { data: admins, error: adminsError } = await supabase
-        .from("admin_users")
-        .select("id");
+      // En lugar de obtener los administradores directamente de la tabla admin_users
+      // vamos a usar la función check_if_admin para cada usuario
+      const usersWithAdminStatus = await Promise.all(
+        (profiles || []).map(async (profile) => {
+          // Comprobar si el usuario es administrador usando la función segura
+          const { data: isAdminUser, error: adminCheckError } = await supabase
+            .rpc('check_if_admin', { user_id: profile.id });
+            
+          if (adminCheckError) {
+            console.error(`Error checking admin status for user ${profile.id}:`, adminCheckError);
+          }
 
-      if (adminsError) {
-        console.error("Error al obtener administradores:", adminsError);
-        throw adminsError;
-      }
+          return {
+            id: profile.id,
+            email: profile.id,
+            name: profile.name,
+            avatar_url: profile.avatar_url,
+            role: profile.role,
+            isAdmin: !!isAdminUser
+          };
+        })
+      );
 
-      console.log("Administradores obtenidos:", admins?.length || 0);
-
-      // Crear un conjunto de IDs de administradores para verificación rápida
-      const adminIds = new Set(admins?.map(admin => admin.id) || []);
-
-      // Combinar datos - asegurarse de que todos los campos requeridos estén presentes
-      const usersData: User[] = profiles?.map(profile => ({
-        id: profile.id,
-        email: profile.id, // Usamos el id como email temporalmente
-        name: profile.name,
-        avatar_url: profile.avatar_url,
-        role: profile.role,
-        isAdmin: adminIds.has(profile.id)
-      })) || [];
-
-      console.log("Usuarios procesados:", usersData.length);
-      setUsers(usersData);
+      console.log("Usuarios procesados con estado de admin:", usersWithAdminStatus.length);
+      setUsers(usersWithAdminStatus);
     } catch (error) {
-      console.error("Error fetchingplo usuarios:", error);
+      console.error("Error fetching usuarios:", error);
       toast({
         title: "Error",
         description: "No se pudieron cargar los usuarios",
