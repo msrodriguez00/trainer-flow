@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import Index from "./pages/Index";
 import Exercises from "./pages/Exercises";
+import ExerciseLibrary from "./pages/ExerciseLibrary";
 import Clients from "./pages/Clients";
 import Plans from "./pages/Plans";
 import NotFound from "./pages/NotFound";
@@ -61,6 +62,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/exercises" element={<Exercises />} />
+          <Route path="/library" element={<ExerciseLibrary />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/plans" element={<Plans />} />
           <Route path="/plans/new" element={<NewPlanPage />} />

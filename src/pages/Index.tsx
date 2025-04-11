@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dumbbell, Users, ClipboardList, Plus } from "lucide-react";
+import { Dumbbell, Users, ClipboardList, Plus, BookOpen } from "lucide-react";
 import { mockExercises, mockClients, mockPlans } from "@/data/mockData";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,6 +23,10 @@ const Index = () => {
 
   const handleCreateExercise = () => {
     navigate("/exercises/new");
+  };
+
+  const handleGoToLibrary = () => {
+    navigate("/library");
   };
 
   const handleAddClient = () => {
@@ -48,7 +52,7 @@ const Index = () => {
         </div>
 
         {/* Stats cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-5 mb-8">
           <Card>
             <CardContent className="p-6 flex items-center justify-between">
               <div>
@@ -81,6 +85,20 @@ const Index = () => {
               </div>
               <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
                 <ClipboardList className="h-6 w-6 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Biblioteca</p>
+                <Button variant="link" className="p-0 h-auto text-primary" onClick={handleGoToLibrary}>
+                  Ver biblioteca
+                </Button>
+              </div>
+              <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
+                <BookOpen className="h-6 w-6 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -200,6 +218,14 @@ const Index = () => {
                   >
                     <Dumbbell className="mr-2 h-4 w-4" />
                     Añadir ejercicio nuevo
+                  </Button>
+                  <Button
+                    onClick={handleGoToLibrary}
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Explorar biblioteca de ejercicios
                   </Button>
                   <Button
                     onClick={handleCreatePlan}

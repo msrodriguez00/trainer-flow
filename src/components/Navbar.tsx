@@ -1,6 +1,6 @@
 
 import { useNavigate, useLocation } from "react-router-dom";
-import { Dumbbell, Users, ClipboardList, Home } from "lucide-react";
+import { Dumbbell, Users, ClipboardList, Home, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Navbar = () => {
@@ -10,6 +10,7 @@ const Navbar = () => {
   const navItems = [
     { path: "/", icon: Home, label: "Dashboard" },
     { path: "/exercises", icon: Dumbbell, label: "Ejercicios" },
+    { path: "/library", icon: BookOpen, label: "Biblioteca" },
     { path: "/clients", icon: Users, label: "Clientes" },
     { path: "/plans", icon: ClipboardList, label: "Planes" },
   ];
