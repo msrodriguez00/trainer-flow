@@ -86,11 +86,16 @@ const AdminDashboard = () => {
       const adminIds = new Set(admins.map(admin => admin.id));
 
       // Combinar datos
-      const usersData = profiles.map(profile => ({
+      const usersData: User[] = profiles.map(profile => ({
         ...profile,
+        email: profile.id, // Usamos el id como email temporalmente
         isAdmin: adminIds.has(profile.id)
       }));
 
+      // Para cada usuario, intentar obtener su correo electrónico real
+      // Nota: Esto no funciona directamente debido a restricciones de RLS en auth.users
+      // Por eso usamos una solución temporal donde el id sirve como email
+      
       setUsers(usersData);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -218,7 +223,7 @@ const AdminDashboard = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Usuario</TableHead>
-                        <TableHead>Correo</TableHead>
+                        <TableHead>ID</TableHead>
                         <TableHead>Rol</TableHead>
                         <TableHead>Admin</TableHead>
                         <TableHead className="w-[80px]">Acciones</TableHead>
@@ -231,12 +236,12 @@ const AdminDashboard = () => {
                             <Avatar className="h-8 w-8">
                               <AvatarImage src={user.avatar_url || undefined} />
                               <AvatarFallback>
-                                {getInitials(user.name, user.email || "")}
+                                {getInitials(user.name, user.id)}
                               </AvatarFallback>
                             </Avatar>
                             <span>{user.name || "Sin nombre"}</span>
                           </TableCell>
-                          <TableCell>{user.email}</TableCell>
+                          <TableCell>{user.id}</TableCell>
                           <TableCell>
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                               user.role === 'trainer'
