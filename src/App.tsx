@@ -16,7 +16,8 @@ import Exercises from "./pages/Exercises";
 import ExerciseLibrary from "./pages/ExerciseLibrary";
 import Clients from "./pages/Clients";
 import Plans from "./pages/Plans";
-import ClientDashboard from "./pages/ClientDashboard"; // Importamos la nueva página
+import ClientDashboard from "./pages/ClientDashboard"; 
+import AdminDashboard from "./pages/AdminDashboard"; // Importamos el panel de administrador
 import NotFound from "./pages/NotFound";
 import NewPlanForm from "./components/NewPlanForm";
 import Navbar from "./components/Navbar";
@@ -24,9 +25,9 @@ import Navbar from "./components/Navbar";
 const queryClient = new QueryClient();
 
 // Mejorada la protección de rutas, que redirige a la página adecuada según el tipo de usuario
-const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false }: 
-  { children: React.ReactNode, clientOnly?: boolean, trainerOnly?: boolean }) => {
-  const { user, isLoading, isClient, isTrainer } = useAuth();
+const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false, adminOnly = false }: 
+  { children: React.ReactNode, clientOnly?: boolean, trainerOnly?: boolean, adminOnly?: boolean }) => {
+  const { user, isLoading, isClient, isTrainer, isAdmin } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -37,13 +38,18 @@ const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false }:
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
+  // Redirigir si la ruta requiere ser administrador
+  if (adminOnly && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
   // Redirigir a los clientes a su dashboard
-  if (trainerOnly && !isTrainer) {
+  if (trainerOnly && !isTrainer && !isAdmin) {
     return <Navigate to="/client-dashboard" replace />;
   }
 
   // Redirigir a los entrenadores al dashboard principal
-  if (clientOnly && !isClient) {
+  if (clientOnly && !isClient && !isAdmin) {
     return <Navigate to="/" replace />;
   }
 
@@ -128,10 +134,15 @@ const App = () => (
                 <NewPlanPage />
               </ProtectedRoute>
             } />
-            {/* Nueva ruta para el dashboard de clientes */}
             <Route path="/client-dashboard" element={
               <ProtectedRoute clientOnly>
                 <ClientDashboard />
+              </ProtectedRoute>
+            } />
+            {/* Nueva ruta para el panel de administración */}
+            <Route path="/admin" element={
+              <ProtectedRoute adminOnly>
+                <AdminDashboard />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

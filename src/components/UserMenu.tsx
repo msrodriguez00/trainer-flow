@@ -12,10 +12,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Home } from "lucide-react";
+import { LogOut, User, Home, Shield } from "lucide-react";
 
 const UserMenu = () => {
-  const { user, profile, signOut, isClient } = useAuth();
+  const { user, profile, signOut, isClient, isTrainer, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -35,6 +35,12 @@ const UserMenu = () => {
     } else {
       navigate("/"); // Para entrenadores
     }
+    setIsOpen(false);
+  };
+
+  // Ir al panel de administración
+  const handleAdminPanel = () => {
+    navigate("/admin");
     setIsOpen(false);
   };
 
@@ -72,15 +78,21 @@ const UserMenu = () => {
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>
           {profile?.name || user?.email}
-          {profile?.role && (
-            <p className="text-xs text-gray-500">{profile.role === 'client' ? 'Cliente' : 'Entrenador'}</p>
-          )}
+          <p className="text-xs text-gray-500">
+            {isAdmin ? 'Administrador' : profile?.role === 'client' ? 'Cliente' : 'Entrenador'}
+          </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleDashboard}>
           <Home className="mr-2 h-4 w-4" />
           <span>Dashboard</span>
         </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem onClick={handleAdminPanel}>
+            <Shield className="mr-2 h-4 w-4" />
+            <span>Panel de Admin</span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={() => navigate("/profile")}>
           <User className="mr-2 h-4 w-4" />
           <span>Perfil</span>

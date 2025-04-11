@@ -16,8 +16,9 @@ type AuthContextType = {
   profile: Profile | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
-  isClient: boolean;  // Nueva propiedad para verificar si el usuario es cliente
-  isTrainer: boolean; // Nueva propiedad para verificar si el usuario es entrenador
+  isClient: boolean;  // Propiedad para verificar si el usuario es cliente
+  isTrainer: boolean; // Propiedad para verificar si el usuario es entrenador
+  isAdmin: boolean;   // Nueva propiedad para verificar si el usuario es administrador
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -40,9 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (newSession?.user) {
           setTimeout(() => {
             fetchProfile(newSession.user.id);
+            checkIfAdmin(newSession.user.id);
           }, 0);
         } else {
           setProfile(null);
+          setIsAdmin(false);
         }
       }
     );
@@ -54,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (currentSession?.user) {
         fetchProfile(currentSession.user.id);
+        checkIfAdmin(currentSession.user.id);
       }
       
       setIsLoading(false);
@@ -83,6 +88,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const checkIfAdmin = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
+      
+      if (error) {
+        console.error("Error checking admin status:", error);
+        return;
+      }
+      
+      setIsAdmin(!!data);
+    } catch (error) {
+      console.error("Error in checkIfAdmin:", error);
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -98,7 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     signOut,
     isClient,
-    isTrainer
+    isTrainer,
+    isAdmin
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
