@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import { LogOut, User, Home, Shield } from "lucide-react";
 
 const UserMenu = () => {
@@ -69,6 +70,23 @@ const UserMenu = () => {
     return user.email?.substring(0, 2).toUpperCase() || "U";
   };
 
+  // Obtener el nivel del entrenador formateado
+  const getTrainerTierBadge = () => {
+    if (!isTrainer || !profile?.tier) return null;
+    
+    const tierVariant = {
+      'base': 'default',
+      'light': 'secondary',
+      'pro': 'destructive'
+    }[profile.tier] as 'default' | 'secondary' | 'destructive';
+    
+    return (
+      <Badge variant={tierVariant} className="ml-2">
+        {profile.tier.charAt(0).toUpperCase() + profile.tier.slice(1)}
+      </Badge>
+    );
+  };
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -80,11 +98,15 @@ const UserMenu = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>
-          {profile?.name || user?.email}
-          <p className="text-xs text-gray-500">
-            {isAdmin ? 'Administrador' : isTrainer ? 'Entrenador' : 'Cliente'}
-          </p>
+        <DropdownMenuLabel className="flex items-center">
+          <div>
+            {profile?.name || user?.email}
+            <p className="text-xs text-gray-500">
+              {isAdmin ? 'Administrador' : isTrainer ? 'Entrenador' : 'Cliente'}
+              {isTrainer && ` - ${profile?.tier?.charAt(0).toUpperCase()}${profile?.tier?.slice(1) || 'Base'}`}
+            </p>
+          </div>
+          {getTrainerTierBadge()}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleDashboard}>

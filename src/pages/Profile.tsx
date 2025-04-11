@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const Profile = () => {
-  const { user, profile, isLoading } = useAuth();
+  const { user, profile, isLoading, isTrainer } = useAuth();
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -61,6 +62,22 @@ const Profile = () => {
     }
   };
 
+  const getTrainerTierBadge = () => {
+    if (!isTrainer || !profile?.tier) return null;
+    
+    const tierVariant = {
+      'base': 'default',
+      'light': 'secondary',
+      'pro': 'destructive'
+    }[profile.tier] as 'default' | 'secondary' | 'destructive';
+    
+    return (
+      <Badge variant={tierVariant} className="ml-2">
+        {profile.tier.charAt(0).toUpperCase() + profile.tier.slice(1)}
+      </Badge>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -77,7 +94,10 @@ const Profile = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Información Personal</CardTitle>
+            <div className="flex items-center">
+              <CardTitle>Información Personal</CardTitle>
+              {isTrainer && getTrainerTierBadge()}
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleUpdateProfile} className="space-y-6">
@@ -104,6 +124,21 @@ const Profile = () => {
                   placeholder="Tu nombre"
                 />
               </div>
+
+              {isTrainer && (
+                <div className="space-y-2">
+                  <Label htmlFor="tier">Nivel de entrenador</Label>
+                  <Input
+                    id="tier"
+                    type="text"
+                    value={profile?.tier?.charAt(0).toUpperCase() + (profile?.tier?.slice(1) || 'Base')}
+                    disabled
+                  />
+                  <p className="text-sm text-gray-500">
+                    Solo los administradores pueden cambiar tu nivel de entrenador.
+                  </p>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Label htmlFor="avatar">URL de Avatar</Label>

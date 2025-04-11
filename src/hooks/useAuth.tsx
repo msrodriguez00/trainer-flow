@@ -8,6 +8,7 @@ type Profile = {
   name: string | null;
   avatar_url: string | null;
   role: string | null;
+  tier: string | null;
 };
 
 type AuthContextType = {

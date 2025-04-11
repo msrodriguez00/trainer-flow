@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isClient, isAdmin, isTrainer } = useAuth();
+  const { isClient, isAdmin, isTrainer, profile } = useAuth();
   
   // Filtrar los elementos de navegación según el rol del usuario
   const navItems = [
@@ -39,6 +39,16 @@ const Navbar = () => {
             <div className="flex-shrink-0 flex items-center">
               <Dumbbell className="h-8 w-8 text-primary" />
               <span className="ml-2 text-xl font-bold text-gray-800">ElevateFit</span>
+              {isTrainer && profile?.tier && (
+                <span className={cn(
+                  "ml-2 text-xs px-2 py-1 rounded-full",
+                  profile.tier === "pro" ? "bg-red-100 text-red-800" : 
+                  profile.tier === "light" ? "bg-blue-100 text-blue-800" : 
+                  "bg-gray-100 text-gray-800"
+                )}>
+                  {profile.tier.charAt(0).toUpperCase() + profile.tier.slice(1)}
+                </span>
+              )}
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               {filteredNavItems.map((item) => (
