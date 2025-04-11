@@ -1,0 +1,166 @@
+
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Navbar from "@/components/Navbar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { mockPlans, mockClients, mockExercises } from "@/data/mockData";
+import { Plus, Search, MoreHorizontal, ClipboardList } from "lucide-react";
+import { Plan } from "@/types";
+import { useToast } from "@/hooks/use-toast";
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat("es-ES", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+};
+
+const Plans = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [plans, setPlans] = useState<Plan[]>(mockPlans);
+
+  const filteredPlans = plans.filter((plan) => {
+    const client = mockClients.find((c) => c.id === plan.clientId);
+    return (
+      plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (client &&
+        client.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  });
+
+  const handleCreatePlan = () => {
+    navigate("/plans/new");
+  };
+
+  const handleDelete = (id: string) => {
+    setPlans(plans.filter((plan) => plan.id !== id));
+    toast({
+      title: "Plan eliminado",
+      description: "Se ha eliminado el plan correctamente",
+      variant: "destructive",
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      
+      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4 sm:mb-0">Planes</h1>
+          <Button onClick={handleCreatePlan}>
+            <Plus className="mr-2 h-4 w-4" /> Crear Plan
+          </Button>
+        </div>
+
+        <div className="mb-6 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
+          <Input
+            placeholder="Buscar planes por nombre o cliente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {filteredPlans.length > 0 ? (
+          <div className="space-y-4">
+            {filteredPlans.map((plan) => {
+              const client = mockClients.find((c) => c.id === plan.clientId);
+              
+              return (
+                <Card 
+                  key={plan.id}
+                  className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/plans/${plan.id}`)}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg">{plan.name}</CardTitle>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            className="text-red-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(plan.id);
+                            }}
+                          >
+                            Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center mb-3">
+                      {client && (
+                        <>
+                          <img
+                            src={client.avatar}
+                            alt={client.name}
+                            className="h-8 w-8 rounded-full mr-2"
+                          />
+                          <span className="text-gray-700">{client.name}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <ClipboardList className="h-4 w-4" />
+                        <span>{plan.exercises.length} ejercicios</span>
+                      </div>
+                      <div>Creado: {formatDate(plan.createdAt)}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-20">
+            <h3 className="text-lg font-medium text-gray-900">
+              {searchTerm
+                ? "No se encontraron planes"
+                : "No hay planes aún"}
+            </h3>
+            <p className="text-gray-500 mt-1">
+              {searchTerm
+                ? "Intenta con otra búsqueda"
+                : "¡Crea tu primer plan para comenzar!"}
+            </p>
+            {!searchTerm && (
+              <Button className="mt-4" onClick={handleCreatePlan}>
+                <Plus className="mr-2 h-4 w-4" /> Crear primer plan
+              </Button>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default Plans;
