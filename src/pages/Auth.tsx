@@ -66,6 +66,8 @@ const Auth = () => {
       options: {
         data: {
           name: email.split('@')[0],
+          role: 'trainer',  // Set default role to trainer
+          tier: 'base'      // Set default tier to base
         }
       }
     });
@@ -97,15 +99,15 @@ const Auth = () => {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Dumbbell className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">ElevateFit</CardTitle>
+          <CardTitle className="text-2xl">ElevateFit Entrenadores</CardTitle>
           <CardDescription>
-            La plataforma para entrenadores personales
+            Plataforma exclusiva para entrenadores personales
           </CardDescription>
         </CardHeader>
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
-            <TabsTrigger value="register">Registrarse</TabsTrigger>
+            <TabsTrigger value="register">Registrarse como entrenador</TabsTrigger>
           </TabsList>
           <TabsContent value="login">
             <form onSubmit={handleSignIn}>
@@ -163,10 +165,16 @@ const Auth = () => {
                     required
                   />
                 </div>
+                <div className="pt-2">
+                  <p className="text-sm text-muted-foreground">
+                    Al registrarse, obtendrás acceso como entrenador con plan básico.
+                    Podrás actualizar a planes superiores más tarde.
+                  </p>
+                </div>
               </CardContent>
               <CardFooter>
                 <Button className="w-full" type="submit" disabled={loading}>
-                  {loading ? "Procesando..." : "Registrarse"}
+                  {loading ? "Procesando..." : "Registrarse como entrenador"}
                 </Button>
               </CardFooter>
             </form>
