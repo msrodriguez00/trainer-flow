@@ -37,7 +37,7 @@ const InviteClientForm = ({ onSuccess }: InviteClientFormProps) => {
       const expires_at = new Date();
       expires_at.setDate(expires_at.getDate() + 7); // Expires in 7 days
 
-      // Create invitation record
+      // Create invitation record with explicit relationship
       const { error: inviteError } = await supabase
         .from("client_invitations")
         .insert({

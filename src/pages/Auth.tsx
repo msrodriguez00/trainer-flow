@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +29,6 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const { user, isLoading } = useAuth();
   
-  // Check if this is an invitation URL
   useEffect(() => {
     const token = searchParams.get("token");
     const email = searchParams.get("email");
@@ -42,12 +40,11 @@ const Auth = () => {
       setEmail(email);
       setDefaultTab("register"); // Set to register tab for clients
       
-      // Fetch invitation data
       const fetchInvitationData = async () => {
         try {
           const { data, error } = await supabase
             .from("client_invitations")
-            .select("*, profiles!client_invitations_trainer_id_fkey(name)")
+            .select("*, profiles:trainer_id(name)")
             .eq("token", token)
             .eq("email", email)
             .single();
@@ -57,14 +54,12 @@ const Auth = () => {
           if (data) {
             setInvitationData(data);
             
-            // Check if the user already exists
             const { data: clients } = await supabase
               .from("clients")
               .select("trainers")
               .eq("email", email);
               
             if (clients && clients.length > 0) {
-              // Client exists, get their trainers
               const trainerIds = clients[0].trainers || [];
               if (trainerIds.length > 0) {
                 const { data: trainerProfiles } = await supabase
@@ -74,7 +69,6 @@ const Auth = () => {
                   
                 if (trainerProfiles) {
                   setTrainers(trainerProfiles);
-                  // Add the inviting trainer if not already in the list
                   if (!trainerIds.includes(data.trainer_id)) {
                     setTrainers(prev => [...prev, {
                       id: data.trainer_id,
@@ -96,7 +90,6 @@ const Auth = () => {
     }
   }, [searchParams]);
   
-  // Redirect to home if already logged in
   useEffect(() => {
     if (user && !isLoading) {
       const from = location.state?.from?.pathname || "/";
@@ -127,7 +120,6 @@ const Auth = () => {
         description: "Bienvenido de nuevo.",
       });
       
-      // If it's an invitation login and a trainer is selected, associate the client with the trainer
       if (isInvitation && selectedTrainer && invitationToken) {
         // This will be handled on the profile setup after logging in
         // We'll update the invitation status in the onAuthStateChange handler
@@ -164,12 +156,8 @@ const Auth = () => {
         description: error.message,
       });
     } else {
-      // If this is a client accepting an invitation
       if (isInvitation && invitationToken && invitationData) {
-        // In a real app, you'd want to handle this in a webhook or trigger
-        // For now, we'll handle it on successful registration
         try {
-          // Create client entry
           await supabase.from("clients").insert({
             email,
             name: name || email.split('@')[0],
@@ -177,7 +165,6 @@ const Auth = () => {
             trainers: [invitationData.trainer_id]
           });
           
-          // Mark invitation as accepted
           await supabase
             .from("client_invitations")
             .update({ accepted: true })
