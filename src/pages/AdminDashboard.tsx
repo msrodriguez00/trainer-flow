@@ -64,14 +64,19 @@ const AdminDashboard = () => {
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
+      console.log("Iniciando fetchUsers...");
+      
       // Obtener perfiles de usuarios
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*");
 
       if (profilesError) {
+        console.error("Error al obtener perfiles:", profilesError);
         throw profilesError;
       }
+
+      console.log("Perfiles obtenidos:", profiles?.length || 0);
 
       // Obtener admins
       const { data: admins, error: adminsError } = await supabase
@@ -79,26 +84,29 @@ const AdminDashboard = () => {
         .select("id");
 
       if (adminsError) {
+        console.error("Error al obtener administradores:", adminsError);
         throw adminsError;
       }
 
+      console.log("Administradores obtenidos:", admins?.length || 0);
+
       // Crear un conjunto de IDs de administradores para verificación rápida
-      const adminIds = new Set(admins.map(admin => admin.id));
+      const adminIds = new Set(admins?.map(admin => admin.id) || []);
 
-      // Combinar datos
-      const usersData: User[] = profiles.map(profile => ({
-        ...profile,
+      // Combinar datos - asegurarse de que todos los campos requeridos estén presentes
+      const usersData: User[] = profiles?.map(profile => ({
+        id: profile.id,
         email: profile.id, // Usamos el id como email temporalmente
+        name: profile.name,
+        avatar_url: profile.avatar_url,
+        role: profile.role,
         isAdmin: adminIds.has(profile.id)
-      }));
+      })) || [];
 
-      // Para cada usuario, intentar obtener su correo electrónico real
-      // Nota: Esto no funciona directamente debido a restricciones de RLS en auth.users
-      // Por eso usamos una solución temporal donde el id sirve como email
-      
+      console.log("Usuarios procesados:", usersData.length);
       setUsers(usersData);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetchingplo usuarios:", error);
       toast({
         title: "Error",
         description: "No se pudieron cargar los usuarios",
@@ -218,6 +226,8 @@ const AdminDashboard = () => {
               <CardContent>
                 {loadingUsers ? (
                   <div className="text-center py-6">Cargando usuarios...</div>
+                ) : users.length === 0 ? (
+                  <div className="text-center py-6">No se encontraron usuarios</div>
                 ) : (
                   <Table>
                     <TableHeader>

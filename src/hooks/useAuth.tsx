@@ -53,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      console.log("Checking for existing session:", currentSession?.user?.id);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log("Fetching profile for:", userId);
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -82,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      console.log("Profile fetched:", data);
       setProfile(data);
     } catch (error) {
       console.error("Error in fetchProfile:", error);
@@ -90,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkIfAdmin = async (userId: string) => {
     try {
+      console.log("Checking admin status for:", userId);
       const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
       
       if (error) {
@@ -97,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
+      console.log("Admin status:", data);
       setIsAdmin(!!data);
     } catch (error) {
       console.error("Error in checkIfAdmin:", error);
