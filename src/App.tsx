@@ -17,7 +17,8 @@ import ExerciseLibrary from "./pages/ExerciseLibrary";
 import Clients from "./pages/Clients";
 import Plans from "./pages/Plans";
 import ClientDashboard from "./pages/ClientDashboard"; 
-import AdminDashboard from "./pages/AdminDashboard"; // Importamos el panel de administrador
+import AdminDashboard from "./pages/AdminDashboard";
+import TrainerDashboard from "./pages/TrainerDashboard"; // Importamos el dashboard del entrenador
 import NotFound from "./pages/NotFound";
 import NewPlanForm from "./components/NewPlanForm";
 import Navbar from "./components/Navbar";
@@ -100,8 +101,13 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={
+              <ProtectedRoute>
+                <IndexRedirect />
+              </ProtectedRoute>
+            } />
+            <Route path="/trainer-dashboard" element={
               <ProtectedRoute trainerOnly>
-                <Index />
+                <TrainerDashboard />
               </ProtectedRoute>
             } />
             <Route path="/profile" element={
@@ -139,7 +145,6 @@ const App = () => (
                 <ClientDashboard />
               </ProtectedRoute>
             } />
-            {/* Nueva ruta para el panel de administración */}
             <Route path="/admin" element={
               <ProtectedRoute adminOnly>
                 <AdminDashboard />
@@ -153,5 +158,25 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
+
+// Componente para redirigir a los usuarios según su rol
+const IndexRedirect = () => {
+  const { isClient, isTrainer, isAdmin } = useAuth();
+  
+  if (isAdmin) {
+    return <Navigate to="/admin" replace />;
+  }
+  
+  if (isTrainer) {
+    return <Navigate to="/trainer-dashboard" replace />;
+  }
+  
+  if (isClient) {
+    return <Navigate to="/client-dashboard" replace />;
+  }
+  
+  // Si no tiene un rol específico, mostrar el dashboard principal
+  return <Index />;
+};
 
 export default App;

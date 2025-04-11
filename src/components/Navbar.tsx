@@ -8,11 +8,16 @@ import { useAuth } from "@/hooks/useAuth";
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isClient, isAdmin } = useAuth();
+  const { isClient, isAdmin, isTrainer } = useAuth();
   
   // Filtrar los elementos de navegación según el rol del usuario
   const navItems = [
-    { path: "/", icon: Home, label: "Dashboard", showFor: "all" },
+    { 
+      path: isClient ? "/client-dashboard" : isTrainer ? "/trainer-dashboard" : isAdmin ? "/admin" : "/", 
+      icon: Home, 
+      label: "Dashboard", 
+      showFor: "all" 
+    },
     { path: "/exercises", icon: Dumbbell, label: "Ejercicios", showFor: "trainer" },
     { path: "/library", icon: BookOpen, label: "Biblioteca", showFor: "trainer" },
     { path: "/clients", icon: Users, label: "Clientes", showFor: "trainer" },
@@ -22,7 +27,7 @@ const Navbar = () => {
   // Filtrar los elementos de navegación según el rol del usuario
   const filteredNavItems = navItems.filter(item => {
     if (item.showFor === "all") return true;
-    if (item.showFor === "trainer" && !isClient) return true;
+    if (item.showFor === "trainer" && (isTrainer || isAdmin)) return true;
     return false;
   });
 

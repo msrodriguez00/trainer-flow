@@ -32,8 +32,12 @@ const UserMenu = () => {
   const handleDashboard = () => {
     if (isClient) {
       navigate("/client-dashboard");
+    } else if (isTrainer) {
+      navigate("/trainer-dashboard");
+    } else if (isAdmin) {
+      navigate("/admin");
     } else {
-      navigate("/"); // Para entrenadores
+      navigate("/");
     }
     setIsOpen(false);
   };
@@ -79,7 +83,7 @@ const UserMenu = () => {
         <DropdownMenuLabel>
           {profile?.name || user?.email}
           <p className="text-xs text-gray-500">
-            {isAdmin ? 'Administrador' : profile?.role === 'client' ? 'Cliente' : 'Entrenador'}
+            {isAdmin ? 'Administrador' : isTrainer ? 'Entrenador' : 'Cliente'}
           </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
