@@ -22,7 +22,7 @@ import Navbar from "./components/Navbar";
 
 const queryClient = new QueryClient();
 
-// Ruta protegida que verifica si el usuario está autenticado
+// Improved route protection that redirects unauthenticated users
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
@@ -80,17 +80,37 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Index />
+              </ProtectedRoute>
+            } />
             <Route path="/profile" element={
               <ProtectedRoute>
                 <Profile />
               </ProtectedRoute>
             } />
-            <Route path="/exercises" element={<Exercises />} />
-            <Route path="/library" element={<ExerciseLibrary />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/plans" element={<Plans />} />
+            <Route path="/exercises" element={
+              <ProtectedRoute>
+                <Exercises />
+              </ProtectedRoute>
+            } />
+            <Route path="/library" element={
+              <ProtectedRoute>
+                <ExerciseLibrary />
+              </ProtectedRoute>
+            } />
+            <Route path="/clients" element={
+              <ProtectedRoute>
+                <Clients />
+              </ProtectedRoute>
+            } />
+            <Route path="/plans" element={
+              <ProtectedRoute>
+                <Plans />
+              </ProtectedRoute>
+            } />
             <Route path="/plans/new" element={
               <ProtectedRoute>
                 <NewPlanPage />
