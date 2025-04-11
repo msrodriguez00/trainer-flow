@@ -12,10 +12,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Home } from "lucide-react";
 
 const UserMenu = () => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, isClient } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -26,6 +26,16 @@ const UserMenu = () => {
 
   const handleLogin = () => {
     navigate("/auth");
+  };
+
+  // Ir al dashboard apropiado según el tipo de usuario
+  const handleDashboard = () => {
+    if (isClient) {
+      navigate("/client-dashboard");
+    } else {
+      navigate("/"); // Para entrenadores
+    }
+    setIsOpen(false);
   };
 
   // Si no hay usuario, mostrar botón de login
@@ -62,8 +72,15 @@ const UserMenu = () => {
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>
           {profile?.name || user?.email}
+          {profile?.role && (
+            <p className="text-xs text-gray-500">{profile.role === 'client' ? 'Cliente' : 'Entrenador'}</p>
+          )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleDashboard}>
+          <Home className="mr-2 h-4 w-4" />
+          <span>Dashboard</span>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate("/profile")}>
           <User className="mr-2 h-4 w-4" />
           <span>Perfil</span>

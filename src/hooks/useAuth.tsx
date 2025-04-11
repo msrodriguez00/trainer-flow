@@ -16,6 +16,8 @@ type AuthContextType = {
   profile: Profile | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  isClient: boolean;  // Nueva propiedad para verificar si el usuario es cliente
+  isTrainer: boolean; // Nueva propiedad para verificar si el usuario es entrenador
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,6 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
   };
+  
+  // Determinar si el usuario es cliente o entrenador
+  const isClient = profile?.role === 'client';
+  const isTrainer = profile?.role === 'trainer';
 
   const value = {
     session,
@@ -91,6 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     isLoading,
     signOut,
+    isClient,
+    isTrainer
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

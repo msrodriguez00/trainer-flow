@@ -16,15 +16,17 @@ import Exercises from "./pages/Exercises";
 import ExerciseLibrary from "./pages/ExerciseLibrary";
 import Clients from "./pages/Clients";
 import Plans from "./pages/Plans";
+import ClientDashboard from "./pages/ClientDashboard"; // Importamos la nueva página
 import NotFound from "./pages/NotFound";
 import NewPlanForm from "./components/NewPlanForm";
 import Navbar from "./components/Navbar";
 
 const queryClient = new QueryClient();
 
-// Improved route protection that redirects unauthenticated users
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
+// Mejorada la protección de rutas, que redirige a la página adecuada según el tipo de usuario
+const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false }: 
+  { children: React.ReactNode, clientOnly?: boolean, trainerOnly?: boolean }) => {
+  const { user, isLoading, isClient, isTrainer } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -33,6 +35,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // Redirigir a los clientes a su dashboard
+  if (trainerOnly && !isTrainer) {
+    return <Navigate to="/client-dashboard" replace />;
+  }
+
+  // Redirigir a los entrenadores al dashboard principal
+  if (clientOnly && !isClient) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
@@ -82,7 +94,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={
-              <ProtectedRoute>
+              <ProtectedRoute trainerOnly>
                 <Index />
               </ProtectedRoute>
             } />
@@ -92,28 +104,34 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/exercises" element={
-              <ProtectedRoute>
+              <ProtectedRoute trainerOnly>
                 <Exercises />
               </ProtectedRoute>
             } />
             <Route path="/library" element={
-              <ProtectedRoute>
+              <ProtectedRoute trainerOnly>
                 <ExerciseLibrary />
               </ProtectedRoute>
             } />
             <Route path="/clients" element={
-              <ProtectedRoute>
+              <ProtectedRoute trainerOnly>
                 <Clients />
               </ProtectedRoute>
             } />
             <Route path="/plans" element={
-              <ProtectedRoute>
+              <ProtectedRoute trainerOnly>
                 <Plans />
               </ProtectedRoute>
             } />
             <Route path="/plans/new" element={
-              <ProtectedRoute>
+              <ProtectedRoute trainerOnly>
                 <NewPlanPage />
+              </ProtectedRoute>
+            } />
+            {/* Nueva ruta para el dashboard de clientes */}
+            <Route path="/client-dashboard" element={
+              <ProtectedRoute clientOnly>
+                <ClientDashboard />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

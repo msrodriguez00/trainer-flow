@@ -17,6 +17,7 @@ export type Database = {
           id: string
           name: string
           trainer_id: string
+          user_id: string | null
         }
         Insert: {
           avatar?: string | null
@@ -25,6 +26,7 @@ export type Database = {
           id?: string
           name: string
           trainer_id: string
+          user_id?: string | null
         }
         Update: {
           avatar?: string | null
@@ -33,6 +35,7 @@ export type Database = {
           id?: string
           name?: string
           trainer_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
