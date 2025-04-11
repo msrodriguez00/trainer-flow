@@ -4,14 +4,19 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { v4 as uuidv4 } from "uuid";
+
 import Index from "./pages/Index";
 import Exercises from "./pages/Exercises";
 import Clients from "./pages/Clients";
 import Plans from "./pages/Plans";
 import NotFound from "./pages/NotFound";
 import NewPlanForm from "./components/NewPlanForm";
-import { useToast } from "@/hooks/use-toast";
-import { v4 as uuidv4 } from "uuid";
+import Navbar from "./components/Navbar";
+
+const queryClient = new QueryClient();
 
 // Create new plans page
 const NewPlanPage = () => {
@@ -46,14 +51,6 @@ const NewPlanPage = () => {
     </div>
   );
 };
-
-import { useLocation, useNavigate } from "react-router-dom";
-import Navbar from "./components/Navbar";
-
-const queryClient = new QueryClient();
-
-// Add uuid as a dependency
-import { v4 as uuidv4 } from "uuid";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
