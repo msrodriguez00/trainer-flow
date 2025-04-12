@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { HexColorPicker } from "@/components/ui/color-picker";
+import { ColorPicker, ColorInput } from "@/components/ui/color-picker";
 import { Upload, Palette, Check } from "lucide-react";
 
 const Profile = () => {
@@ -22,7 +21,6 @@ const Profile = () => {
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
   
-  // Brand customization states
   const [logoUrl, setLogoUrl] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#9b87f5");
   const [secondaryColor, setSecondaryColor] = useState("#E5DEFF");
@@ -40,7 +38,6 @@ const Profile = () => {
       setName(profile.name || "");
       setAvatarUrl(profile.avatar_url || "");
       
-      // Load brand settings if trainer
       if (isTrainer && profile.brand_settings) {
         try {
           const brandSettings = JSON.parse(profile.brand_settings);
@@ -68,7 +65,6 @@ const Profile = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Add brand settings for trainers
       if (isTrainer) {
         updateData.brand_settings = JSON.stringify({
           logoUrl,
@@ -112,14 +108,12 @@ const Profile = () => {
     setUploadingLogo(true);
 
     try {
-      // Upload the logo
       const { error: uploadError } = await supabase.storage
         .from('trainer-assets')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Get the public URL
       const { data } = supabase.storage
         .from('trainer-assets')
         .getPublicUrl(filePath);
@@ -329,16 +323,16 @@ const Profile = () => {
                           <Label htmlFor="primaryColor">Color Primario</Label>
                           <div className="flex flex-col gap-2">
                             <div className="w-full h-24 rounded-md border overflow-hidden">
-                              <HexColorPicker
+                              <ColorPicker
                                 color={primaryColor}
                                 onChange={setPrimaryColor}
                                 className="w-full"
                               />
                             </div>
-                            <Input
+                            <ColorInput
                               id="primaryColor"
                               value={primaryColor}
-                              onChange={(e) => setPrimaryColor(e.target.value)}
+                              onChange={setPrimaryColor}
                               className="font-mono"
                             />
                             <div 
@@ -352,13 +346,13 @@ const Profile = () => {
                           <Label htmlFor="secondaryColor">Color Secundario</Label>
                           <div className="flex flex-col gap-2">
                             <div className="w-full h-24 rounded-md border overflow-hidden">
-                              <HexColorPicker
+                              <ColorPicker
                                 color={secondaryColor}
                                 onChange={setSecondaryColor}
                                 className="w-full"
                               />
                             </div>
-                            <Input
+                            <ColorInput
                               id="secondaryColor"
                               value={secondaryColor}
                               onChange={(e) => setSecondaryColor(e.target.value)}
@@ -375,13 +369,13 @@ const Profile = () => {
                           <Label htmlFor="accentColor">Color de Acento</Label>
                           <div className="flex flex-col gap-2">
                             <div className="w-full h-24 rounded-md border overflow-hidden">
-                              <HexColorPicker
+                              <ColorPicker
                                 color={accentColor}
                                 onChange={setAccentColor}
                                 className="w-full"
                               />
                             </div>
-                            <Input
+                            <ColorInput
                               id="accentColor"
                               value={accentColor}
                               onChange={(e) => setAccentColor(e.target.value)}

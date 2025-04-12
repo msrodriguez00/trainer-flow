@@ -3,17 +3,18 @@ import React from "react";
 import { HexColorInput, HexColorPicker as ReactColorPicker } from "react-colorful";
 import { cn } from "@/lib/utils";
 
-export interface HexColorPickerProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ColorPickerProps {
   color: string;
   onChange: (color: string) => void;
+  className?: string;
 }
 
-export function HexColorPicker({ 
+export function ColorPicker({ 
   color, 
   onChange,
   className,
   ...props 
-}: HexColorPickerProps) {
+}: ColorPickerProps) {
   return (
     <div className={cn("color-picker", className)} {...props}>
       <ReactColorPicker color={color} onChange={onChange} />
@@ -21,21 +22,21 @@ export function HexColorPicker({
   );
 }
 
-export interface HexColorInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+export interface ColorInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   color: string;
   onChange: (color: string) => void;
   prefixed?: boolean;
   alpha?: boolean;
 }
 
-export function HexColorInput({
+export function ColorInput({
   color,
   onChange,
   prefixed = false,
   alpha = false,
   className,
   ...props
-}: HexColorInputProps) {
+}: ColorInputProps) {
   return (
     <HexColorInput
       color={color}
