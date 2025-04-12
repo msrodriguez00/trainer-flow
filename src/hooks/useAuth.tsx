@@ -148,16 +148,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkIfAdmin = async (userId: string) => {
     try {
       console.log("Checking admin status for:", userId);
-      // Use the new is_admin_user function instead of check_if_admin
-      const { data, error } = await supabase.rpc('is_admin_user', { user_id: userId });
+      // Use a direct query to admin_users table instead of using the function that might be causing recursion
+      const { data, error } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
       
       if (error) {
         console.error("Error checking admin status:", error);
         return;
       }
       
-      console.log("Admin status:", data);
-      setIsAdmin(!!data);
+      console.log("Admin status check result:", data);
+      setIsAdmin(data !== null);
     } catch (error) {
       console.error("Error in checkIfAdmin:", error);
     }
