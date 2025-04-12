@@ -331,7 +331,7 @@ const Profile = () => {
                             </div>
                             <ColorInput
                               id="primaryColor"
-                              value={primaryColor}
+                              color={primaryColor}
                               onChange={setPrimaryColor}
                               className="font-mono"
                             />
@@ -354,8 +354,8 @@ const Profile = () => {
                             </div>
                             <ColorInput
                               id="secondaryColor"
-                              value={secondaryColor}
-                              onChange={(e) => setSecondaryColor(e.target.value)}
+                              color={secondaryColor}
+                              onChange={setSecondaryColor}
                               className="font-mono"
                             />
                             <div 
@@ -377,8 +377,8 @@ const Profile = () => {
                             </div>
                             <ColorInput
                               id="accentColor"
-                              value={accentColor}
-                              onChange={(e) => setAccentColor(e.target.value)}
+                              color={accentColor}
+                              onChange={setAccentColor}
                               className="font-mono"
                             />
                             <div 
