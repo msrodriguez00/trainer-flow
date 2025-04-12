@@ -23,7 +23,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, profile, isClient, isTrainer, isAdmin } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -94,6 +94,24 @@ const Auth = () => {
     }
   }, [searchParams]);
   
+  useEffect(() => {
+    if (profile) {
+      redirectBasedOnRole();
+    }
+  }, [profile]);
+  
+  const redirectBasedOnRole = () => {
+    if (isAdmin) {
+      navigate("/admin");
+    } else if (isTrainer) {
+      navigate("/trainer-dashboard");
+    } else if (isClient) {
+      navigate("/client-dashboard");
+    } else {
+      navigate("/");
+    }
+  };
+  
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -103,7 +121,6 @@ const Auth = () => {
         title: "Inicio de sesión exitoso",
         description: "¡Bienvenido de nuevo!",
       });
-      navigate("/dashboard");
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -138,7 +155,6 @@ const Auth = () => {
         title: "Registro exitoso",
         description: "¡Te has registrado correctamente!",
       });
-      navigate("/dashboard");
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -149,6 +165,12 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (profile) {
+      redirectBasedOnRole();
+    }
+  }, []);
 
   return (
     <div className="grid h-screen place-items-center bg-gray-100">

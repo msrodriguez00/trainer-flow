@@ -26,7 +26,7 @@ import Navbar from "./components/Navbar";
 
 const queryClient = new QueryClient();
 
-// Mejorada la protección de rutas, que redirige a la página adecuada según el tipo de usuario
+// Improved route protection that redirects to the appropriate page based on user type
 const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false, adminOnly = false }: 
   { children: React.ReactNode, clientOnly?: boolean, trainerOnly?: boolean, adminOnly?: boolean }) => {
   const { user, isLoading, isClient, isTrainer, isAdmin } = useAuth();
@@ -40,17 +40,17 @@ const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false, adm
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Redirigir si la ruta requiere ser administrador
+  // Redirect if the route requires admin privileges
   if (adminOnly && !isAdmin) {
     return <Navigate to="/" replace />;
   }
 
-  // Redirigir a los clientes a su dashboard
+  // Redirect clients to their dashboard
   if (trainerOnly && !isTrainer && !isAdmin) {
     return <Navigate to="/client-dashboard" replace />;
   }
 
-  // Redirigir a los entrenadores al dashboard principal
+  // Redirect trainers to the main dashboard
   if (clientOnly && !isClient && !isAdmin) {
     return <Navigate to="/" replace />;
   }
@@ -165,15 +165,18 @@ const App = () => (
   </QueryClientProvider>
 );
 
-// Componente para redirigir a los usuarios según su rol
+// Component to redirect users based on their role
 const IndexRedirect = () => {
-  const { isClient, isTrainer, isAdmin } = useAuth();
+  const { isClient, isTrainer, isAdmin, profile } = useAuth();
+  
+  console.log("IndexRedirect - User role:", { isClient, isTrainer, isAdmin, profile });
   
   if (isAdmin) {
     return <Navigate to="/admin" replace />;
   }
   
   if (isTrainer) {
+    console.log("Redirecting trainer to trainer dashboard");
     return <Navigate to="/trainer-dashboard" replace />;
   }
   
@@ -181,7 +184,7 @@ const IndexRedirect = () => {
     return <Navigate to="/client-dashboard" replace />;
   }
   
-  // Si no tiene un rol específico, mostrar el dashboard principal
+  // If no specific role, show the main dashboard
   return <Index />;
 };
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    console.log("AuthProvider - Setting up auth state listener");
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
@@ -64,9 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentSession?.user) {
         fetchProfile(currentSession.user.id);
         checkIfAdmin(currentSession.user.id);
+      } else {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     });
 
     return () => {
@@ -85,13 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Error fetching profile:", error);
+        setIsLoading(false);
         return;
       }
 
       console.log("Profile fetched:", data);
       setProfile(data);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error in fetchProfile:", error);
+      setIsLoading(false);
     }
   };
 
@@ -172,8 +176,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
   };
-  
-  // Determinar si el usuario es cliente o entrenador
+
+  // Determine if the user is a client or trainer
   const isClient = profile?.role === 'client';
   const isTrainer = profile?.role === 'trainer';
 
@@ -186,9 +190,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isClient,
     isTrainer,
     isAdmin,
-    signIn,    // Added back
-    signUp     // Added back
+    signIn,
+    signUp
   };
+
+  // Add debugging to see if role information is correct
+  useEffect(() => {
+    if (profile) {
+      console.log("Profile updated:", { 
+        role: profile.role,
+        isClient,
+        isTrainer,
+        isAdmin
+      });
+    }
+  }, [profile, isClient, isTrainer, isAdmin]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
