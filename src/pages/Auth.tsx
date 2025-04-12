@@ -36,7 +36,6 @@ const Auth = () => {
       
       const fetchInvitationData = async () => {
         try {
-          // Fix the relation query to correctly fetch trainer name
           const { data, error } = await supabase
             .from("client_invitations")
             .select("*, trainer:trainer_id(name)")
@@ -49,7 +48,6 @@ const Auth = () => {
           if (data) {
             setInvitationData(data);
             
-            // Check if client already exists
             const { data: existingClients, error: existingClientsError } = await supabase
               .from("clients")
               .select("*")
@@ -66,7 +64,6 @@ const Auth = () => {
               return;
             }
             
-            // Fetch trainer profiles to display in the select
             const { data: trainerProfiles, error: trainerProfilesError } = await supabase
               .from("profiles")
               .select("id, name")
@@ -81,7 +78,7 @@ const Auth = () => {
                   if (!trainerIds.includes(data.trainer_id)) {
                     setTrainers(prev => [...prev, {
                       id: data.trainer_id,
-                      name: data.trainer?.name || "Entrenador"
+                      name: trainerProfiles[0]?.name || "Entrenador"
                     }]);
                   }
                 }
@@ -128,7 +125,6 @@ const Auth = () => {
       
       await signUp({ email, password, name, trainerId: selectedTrainer || invitationData?.trainer_id });
       
-      // Mark invitation as accepted
       if (invitationData) {
         const { error: acceptError } = await supabase
           .from("client_invitations")

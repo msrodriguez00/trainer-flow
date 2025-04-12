@@ -9,6 +9,7 @@ type Profile = {
   avatar_url: string | null;
   role: string | null;
   tier: string | null;
+  brand_settings?: string | null; // Added for storing trainer brand settings
 };
 
 type AuthContextType = {
@@ -20,6 +21,8 @@ type AuthContextType = {
   isClient: boolean;  // Propiedad para verificar si el usuario es cliente
   isTrainer: boolean; // Propiedad para verificar si el usuario es entrenador
   isAdmin: boolean;   // Nueva propiedad para verificar si el usuario es administrador
+  signIn: (credentials: { email: string; password: string }) => Promise<void>; // Added back
+  signUp: (userData: { email: string; password: string; name: string; trainerId?: string }) => Promise<void>; // Added back
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -110,6 +113,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signIn = async ({ email, password }: { email: string; password: string }) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  };
+
+  const signUp = async ({ 
+    email, 
+    password, 
+    name, 
+    trainerId 
+  }: { 
+    email: string; 
+    password: string; 
+    name: string; 
+    trainerId?: string 
+  }) => {
+    // Register the user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+        },
+      },
+    });
+
+    if (authError) throw authError;
+
+    if (authData.user) {
+      // Update the profile with role and other info
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          name,
+          role: trainerId ? "client" : "trainer",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", authData.user.id);
+
+      if (profileError) throw profileError;
+
+      // If trainerId exists, create client record
+      if (trainerId) {
+        const { error: clientError } = await supabase.from("clients").insert({
+          name,
+          email,
+          trainer_id: trainerId,
+          user_id: authData.user.id,
+        });
+
+        if (clientError) throw clientError;
+      }
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -126,7 +185,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     isClient,
     isTrainer,
-    isAdmin
+    isAdmin,
+    signIn,    // Added back
+    signUp     // Added back
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
