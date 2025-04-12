@@ -26,18 +26,18 @@ const InviteClientForm = ({ onSuccess }: InviteClientFormProps) => {
 
     setLoading(true);
     try {
-      // Check if client already exists
+      // Verificar si el cliente ya existe
       const { data: existingClients } = await supabase
         .from("clients")
         .select("*")
         .eq("email", email);
 
-      // Generate invitation token
+      // Generar token de invitación
       const token = uuidv4();
       const expires_at = new Date();
-      expires_at.setDate(expires_at.getDate() + 7); // Expires in 7 days
+      expires_at.setDate(expires_at.getDate() + 7); // Expira en 7 días
 
-      // Create invitation record with explicit relationship
+      // Crear registro de invitación con relación explícita
       const { error: inviteError } = await supabase
         .from("client_invitations")
         .insert({
@@ -48,17 +48,17 @@ const InviteClientForm = ({ onSuccess }: InviteClientFormProps) => {
         });
 
       if (inviteError) {
-        if (inviteError.code === "23505") { // Unique violation
+        if (inviteError.code === "23505") { // Violación de unicidad
           throw new Error("Ya has invitado a este cliente anteriormente.");
         }
         throw inviteError;
       }
 
-      // If client exists, add trainer to their trainers list
+      // Si el cliente existe, añadir entrenador a su lista de entrenadores
       if (existingClients && existingClients.length > 0) {
         const client = existingClients[0];
         
-        // Add current trainer to client's trainers array if not already there
+        // Añadir entrenador actual a la matriz de entrenadores del cliente si aún no está
         const updatedTrainers = [...(client.trainers || [])];
         if (!updatedTrainers.includes(user.id)) {
           updatedTrainers.push(user.id);
@@ -80,8 +80,8 @@ const InviteClientForm = ({ onSuccess }: InviteClientFormProps) => {
         });
       }
 
-      // In a real-world app, we would send an email here with the invitation link
-      console.log(`Invitation link: ${window.location.origin}/auth?token=${token}&email=${encodeURIComponent(email)}`);
+      // En una aplicación real, enviaríamos un correo con el enlace de invitación
+      console.log(`Enlace de invitación: ${window.location.origin}/auth?token=${token}&email=${encodeURIComponent(email)}`);
       
       setEmail("");
       if (onSuccess) onSuccess();

@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dumbbell, Users, ClipboardList, Plus, BookOpen, UserPlus } from "lucide-react";
+import { Dumbbell, Users, ClipboardList, Plus, BookOpen, UserPlus, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,18 +37,15 @@ const TrainerDashboard = () => {
     if (!user) return;
     
     try {
-      // Fetch exercise count
       const { count: exercisesCount, error: exercisesError } = await supabase
         .from("exercises")
         .select('*', { count: 'exact', head: true });
       
-      // Fetch clients count
       const { count: clientsCount, error: clientsError } = await supabase
         .from("clients")
         .select('*', { count: 'exact', head: true })
         .eq("trainer_id", user.id);
       
-      // Fetch plans count
       const { count: plansCount, error: plansError } = await supabase
         .from("plans")
         .select('*', { count: 'exact', head: true })
@@ -170,7 +166,6 @@ const TrainerDashboard = () => {
           </Button>
         </div>
 
-        {/* Stats cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
           <Card>
             <CardContent className="p-6 flex items-center justify-between">
@@ -210,7 +205,6 @@ const TrainerDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent plans */}
           <div className="lg:col-span-2">
             <Card>
               <CardHeader className="pb-2">
@@ -276,7 +270,6 @@ const TrainerDashboard = () => {
             </Card>
           </div>
 
-          {/* Recent clients */}
           <div>
             <Card>
               <CardHeader className="pb-2">
@@ -366,6 +359,14 @@ const TrainerDashboard = () => {
                     <UserPlus className="mr-2 h-4 w-4" />
                     Añadir cliente
                   </Button>
+                  <Button
+                    onClick={() => navigate("/client-invite")}
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Gestionar invitaciones
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -373,7 +374,6 @@ const TrainerDashboard = () => {
         </div>
       </main>
       
-      {/* Add Client Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
         <DialogContent>
           <DialogHeader>

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import InviteClientForm from "@/components/InviteClientForm";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, Mail } from "lucide-react";
 
 const ClientInvite = () => {
   const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
@@ -45,18 +45,18 @@ const ClientInvite = () => {
   };
 
   // Fetch invitations on component mount
-  useState(() => {
+  useEffect(() => {
     fetchInvitations();
-  });
+  }, [user]);
 
   const handleResendInvitation = async (invitation: any) => {
-    // In a real-world app, this would resend the email with the invitation link
+    // En una aplicación real, esto reenviaría el correo electrónico con el enlace de invitación
     toast({
       title: "Invitación reenviada",
       description: `Se ha reenviado la invitación a ${invitation.email}.`,
     });
     
-    console.log(`Resend invitation link: ${window.location.origin}/auth?token=${invitation.token}&email=${encodeURIComponent(invitation.email)}`);
+    console.log(`Reenvío de enlace de invitación: ${window.location.origin}/auth?token=${invitation.token}&email=${encodeURIComponent(invitation.email)}`);
   };
   
   const filteredInvitations = pendingInvitations.filter(invitation =>
@@ -68,7 +68,7 @@ const ClientInvite = () => {
       <Navbar />
       
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Invitar Clientes</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Invitaciones a Clientes</h1>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">

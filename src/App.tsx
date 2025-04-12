@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -26,7 +25,6 @@ import Navbar from "./components/Navbar";
 
 const queryClient = new QueryClient();
 
-// Improved route protection that redirects to the appropriate page based on user type
 const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false, adminOnly = false }: 
   { children: React.ReactNode, clientOnly?: boolean, trainerOnly?: boolean, adminOnly?: boolean }) => {
   const { user, isLoading, isClient, isTrainer, isAdmin } = useAuth();
@@ -40,17 +38,14 @@ const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false, adm
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Redirect if the route requires admin privileges
   if (adminOnly && !isAdmin) {
     return <Navigate to="/" replace />;
   }
 
-  // Redirect clients to their dashboard
   if (trainerOnly && !isTrainer && !isAdmin) {
     return <Navigate to="/client-dashboard" replace />;
   }
 
-  // Redirect trainers to the main dashboard
   if (clientOnly && !isClient && !isAdmin) {
     return <Navigate to="/" replace />;
   }
@@ -58,7 +53,6 @@ const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false, adm
   return <>{children}</>;
 };
 
-// Create new plans page
 const NewPlanPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -71,7 +65,6 @@ const NewPlanPage = () => {
     clientId: string;
     exercises: any[];
   }) => {
-    // In a real app, we would save this to a database
     toast({
       title: "Plan creado",
       description: `Se ha creado "${plan.name}" correctamente.`,
@@ -156,7 +149,6 @@ const App = () => (
                 <AdminDashboard />
               </ProtectedRoute>
             } />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
@@ -165,7 +157,6 @@ const App = () => (
   </QueryClientProvider>
 );
 
-// Component to redirect users based on their role
 const IndexRedirect = () => {
   const { isClient, isTrainer, isAdmin, profile } = useAuth();
   
@@ -184,7 +175,6 @@ const IndexRedirect = () => {
     return <Navigate to="/client-dashboard" replace />;
   }
   
-  // If no specific role, show the main dashboard
   return <Index />;
 };
 
