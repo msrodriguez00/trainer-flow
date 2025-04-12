@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { ColorPicker, ColorInput } from "@/components/ui/color-picker";
-import { Upload, Palette, Check } from "lucide-react";
+import { Upload, Palette, Check, Loader2 } from "lucide-react";
 
 const Profile = () => {
   const { user, profile, trainerBrand, isLoading, isTrainer } = useAuth();
@@ -55,7 +55,9 @@ const Profile = () => {
     
     setUpdating(true);
     try {
-      // Actualizar perfil del usuario
+      console.log("Actualizando perfil para:", user.id);
+      
+      // Actualizar perfil del usuario con manejo de errores mejorado
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -65,7 +67,10 @@ const Profile = () => {
         })
         .eq("id", user.id);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Error al actualizar perfil:", profileError);
+        throw new Error(`Error al actualizar perfil: ${profileError.message}`);
+      }
 
       // Si es entrenador, actualizar o crear la configuración de marca
       if (isTrainer) {
@@ -78,21 +83,39 @@ const Profile = () => {
           updated_at: new Date().toISOString(),
         };
 
-        if (trainerBrand) {
+        // Verificar si ya existe un registro de marca para este entrenador
+        const { data: existingBrand, error: checkError } = await supabase
+          .from("trainer_brands")
+          .select("*")
+          .eq("trainer_id", user.id)
+          .maybeSingle();
+        
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error("Error al verificar marca existente:", checkError);
+          throw new Error(`Error al verificar marca existente: ${checkError.message}`);
+        }
+
+        if (existingBrand) {
           // Actualizar la configuración existente
           const { error: brandError } = await supabase
             .from("trainer_brands")
             .update(brandData)
             .eq("trainer_id", user.id);
 
-          if (brandError) throw brandError;
+          if (brandError) {
+            console.error("Error al actualizar marca:", brandError);
+            throw new Error(`Error al actualizar marca: ${brandError.message}`);
+          }
         } else {
           // Crear una nueva configuración
           const { error: brandError } = await supabase
             .from("trainer_brands")
             .insert(brandData);
 
-          if (brandError) throw brandError;
+          if (brandError) {
+            console.error("Error al crear marca:", brandError);
+            throw new Error(`Error al crear marca: ${brandError.message}`);
+          }
         }
       }
 
@@ -100,6 +123,12 @@ const Profile = () => {
         title: "Perfil actualizado",
         description: "Tu información se ha actualizado correctamente.",
       });
+      
+      // Forzar recarga de datos
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -169,7 +198,8 @@ const Profile = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Cargando...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Cargando...</p>
       </div>
     );
   }
@@ -263,7 +293,12 @@ const Profile = () => {
                   </div>
                   
                   <Button type="submit" disabled={updating}>
-                    {updating ? "Actualizando..." : "Guardar Cambios"}
+                    {updating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Actualizando...
+                      </>
+                    ) : "Guardar Cambios"}
                   </Button>
                 </form>
               </CardContent>
