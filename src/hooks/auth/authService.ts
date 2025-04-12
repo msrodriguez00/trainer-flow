@@ -102,6 +102,7 @@ export const signUp = async ({
   }
 };
 
-export const signOut = async () => {
-  return await supabase.auth.signOut();
+export const signOut = async (): Promise<void> => {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 };
