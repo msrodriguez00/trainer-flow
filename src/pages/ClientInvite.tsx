@@ -8,12 +8,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, RefreshCw, Mail } from "lucide-react";
+import { Search, RefreshCw, Mail, Clock, Check, X, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+
+type InvitationStatus = "sent" | "expired" | "accepted";
+
+interface Invitation {
+  id: string;
+  email: string;
+  created_at: string;
+  expires_at: string;
+  accepted: boolean;
+  token: string;
+}
 
 const ClientInvite = () => {
-  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedInvitation, setSelectedInvitation] = useState<Invitation | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -26,7 +41,6 @@ const ClientInvite = () => {
         .from("client_invitations")
         .select("*")
         .eq("trainer_id", user.id)
-        .eq("accepted", false)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -49,7 +63,7 @@ const ClientInvite = () => {
     fetchInvitations();
   }, [user]);
 
-  const handleResendInvitation = async (invitation: any) => {
+  const handleResendInvitation = async (invitation: Invitation) => {
     // En una aplicación real, esto reenviaría el correo electrónico con el enlace de invitación
     toast({
       title: "Invitación reenviada",
@@ -57,6 +71,68 @@ const ClientInvite = () => {
     });
     
     console.log(`Reenvío de enlace de invitación: ${window.location.origin}/auth?token=${invitation.token}&email=${encodeURIComponent(invitation.email)}`);
+  };
+
+  const handleDeleteInvitation = async () => {
+    if (!selectedInvitation) return;
+    
+    try {
+      const { error } = await supabase
+        .from("client_invitations")
+        .delete()
+        .eq("id", selectedInvitation.id);
+
+      if (error) throw error;
+
+      setPendingInvitations((prev) => prev.filter((inv) => inv.id !== selectedInvitation.id));
+      
+      toast({
+        title: "Invitación cancelada",
+        description: `Se ha eliminado la invitación para ${selectedInvitation.email}.`,
+      });
+      
+      setShowDeleteDialog(false);
+      setSelectedInvitation(null);
+    } catch (error) {
+      console.error("Error deleting invitation:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la invitación.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const getInvitationStatus = (invitation: Invitation): InvitationStatus => {
+    if (invitation.accepted) return "accepted";
+    
+    const expiryDate = new Date(invitation.expires_at);
+    if (expiryDate < new Date()) return "expired";
+    
+    return "sent";
+  };
+  
+  const getStatusBadge = (status: InvitationStatus) => {
+    switch (status) {
+      case "sent":
+        return (
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+            <Mail className="h-3 w-3" /> Enviado
+          </Badge>
+        );
+      case "expired":
+        return (
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" /> Expirado
+          </Badge>
+        );
+      case "accepted":
+        return (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+            <Check className="h-3 w-3" /> Aceptado
+          </Badge>
+        );
+    }
   };
   
   const filteredInvitations = pendingInvitations.filter(invitation =>
@@ -79,7 +155,7 @@ const ClientInvite = () => {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium">Invitaciones pendientes</h3>
+                  <h3 className="text-lg font-medium">Invitaciones</h3>
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -105,29 +181,61 @@ const ClientInvite = () => {
                   <p className="text-center py-8 text-gray-500">Cargando invitaciones...</p>
                 ) : filteredInvitations.length > 0 ? (
                   <div className="space-y-4">
-                    {filteredInvitations.map((invitation) => (
-                      <div
-                        key={invitation.id}
-                        className="flex items-center justify-between p-4 bg-white rounded-md border"
-                      >
-                        <div>
-                          <p className="font-medium">{invitation.email}</p>
-                          <p className="text-sm text-gray-500">
-                            Enviada: {new Date(invitation.created_at).toLocaleDateString()}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Expira: {new Date(invitation.expires_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleResendInvitation(invitation)}
+                    {filteredInvitations.map((invitation) => {
+                      const status = getInvitationStatus(invitation);
+                      
+                      return (
+                        <div
+                          key={invitation.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-md border gap-3"
                         >
-                          Reenviar
-                        </Button>
-                      </div>
-                    ))}
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium">{invitation.email}</p>
+                              {getStatusBadge(status)}
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-1 sm:gap-3 text-sm text-gray-500">
+                              <p>
+                                Enviada: {new Date(invitation.created_at).toLocaleDateString()}
+                              </p>
+                              <p>
+                                {status === "expired" ? (
+                                  <span className="text-amber-600">Expirada: {new Date(invitation.expires_at).toLocaleDateString()}</span>
+                                ) : (
+                                  <span>Expira: {new Date(invitation.expires_at).toLocaleDateString()}</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 sm:flex-shrink-0">
+                            {status !== "accepted" && (
+                              <>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleResendInvitation(invitation)}
+                                >
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Reenviar
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700"
+                                  onClick={() => {
+                                    setSelectedInvitation(invitation);
+                                    setShowDeleteDialog(true);
+                                  }}
+                                >
+                                  <X className="h-4 w-4 mr-2" />
+                                  Cancelar
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-center py-8 text-gray-500">
@@ -142,6 +250,25 @@ const ClientInvite = () => {
           </div>
         </div>
       </main>
+      
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar invitación</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas cancelar la invitación enviada a {selectedInvitation?.email}? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteInvitation}>
+              Sí, eliminar invitación
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
