@@ -342,6 +342,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      is_admin_user: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
       update_user_role: {
         Args: { user_id: string; new_role: string }
         Returns: undefined

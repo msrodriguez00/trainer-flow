@@ -143,8 +143,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkIfAdmin = async (userId: string) => {
     try {
       console.log("Checking admin status for:", userId);
-      // Use the new check_if_admin function instead of is_admin
-      const { data, error } = await supabase.rpc('check_if_admin', { user_id: userId });
+      // Use the new is_admin_user function instead of check_if_admin
+      const { data, error } = await supabase.rpc('is_admin_user', { user_id: userId });
       
       if (error) {
         console.error("Error checking admin status:", error);

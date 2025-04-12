@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -79,8 +80,9 @@ const AdminDashboard = () => {
 
       const usersWithAdminStatus = await Promise.all(
         (profiles || []).map(async (profile) => {
+          // Usar is_admin_user en lugar de check_if_admin
           const { data: isAdminUser, error: adminCheckError } = await supabase
-            .rpc('check_if_admin', { user_id: profile.id });
+            .rpc('is_admin_user', { user_id: profile.id });
             
           if (adminCheckError) {
             console.error(`Error checking admin status for user ${profile.id}:`, adminCheckError);
