@@ -124,10 +124,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from("trainer_brands")
         .select("*")
         .eq("trainer_id", userId)
-        .single();
+        .maybeSingle(); // Cambiado de single() a maybeSingle()
       
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" error code
-        console.error("Error fetching trainer brand:", error);
+      if (error) {
+        // Solo registrar el error si no es el error PGRST116 (no rows returned)
+        if (error.code !== 'PGRST116') {
+          console.error("Error fetching trainer brand:", error);
+        } else {
+          console.log("No trainer brand found, this is normal for new trainers");
+        }
       } else if (data) {
         console.log("Trainer brand fetched:", data);
         setTrainerBrand(data);
