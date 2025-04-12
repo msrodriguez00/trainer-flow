@@ -1,15 +1,23 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dumbbell, Users, ClipboardList, Plus, BookOpen, UserPlus, Mail } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dumbbell, Users, ClipboardList, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Client, Plan } from "@/types";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import InviteClientForm from "@/components/InviteClientForm";
+
+// Import the new components
+import DashboardStatsCard from "@/components/dashboard/DashboardStatsCard";
+import RecentPlansCard from "@/components/dashboard/RecentPlansCard";
+import RecentClientsCard from "@/components/dashboard/RecentClientsCard";
+import QuickActionsCard from "@/components/dashboard/QuickActionsCard";
+
+// Import services
+import { fetchDashboardStats, fetchRecentPlans, fetchRecentClients } from "@/services/dashboardService";
 
 const TrainerDashboard = () => {
   const navigate = useNavigate();
@@ -27,104 +35,31 @@ const TrainerDashboard = () => {
   
   useEffect(() => {
     if (user) {
-      fetchStats();
-      fetchRecentPlans();
-      fetchRecentClients();
+      loadDashboardData();
     }
   }, [user]);
 
-  const fetchStats = async () => {
+  const loadDashboardData = async () => {
     if (!user) return;
     
     try {
-      const { count: exercisesCount, error: exercisesError } = await supabase
-        .from("exercises")
-        .select('*', { count: 'exact', head: true });
+      setLoading(true);
+      const stats = await fetchDashboardStats(user.id);
+      const plans = await fetchRecentPlans(user.id);
+      const clients = await fetchRecentClients(user.id);
       
-      const { count: clientsCount, error: clientsError } = await supabase
-        .from("clients")
-        .select('*', { count: 'exact', head: true })
-        .eq("trainer_id", user.id);
-      
-      const { count: plansCount, error: plansError } = await supabase
-        .from("plans")
-        .select('*', { count: 'exact', head: true })
-        .eq("trainer_id", user.id);
-      
-      if (exercisesError || clientsError || plansError) {
-        throw new Error("Error fetching stats");
-      }
-      
-      setStats({
-        exercises: exercisesCount || 0,
-        clients: clientsCount || 0,
-        plans: plansCount || 0,
-      });
+      setStats(stats);
+      setRecentPlans(plans);
+      setRecentClients(clients);
     } catch (error) {
-      console.error("Error fetching stats:", error);
+      console.error("Error loading dashboard data:", error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar las estadísticas.",
+        description: "No se pudieron cargar los datos del panel.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchRecentPlans = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("plans")
-        .select(`
-          id,
-          name,
-          client_id,
-          created_at,
-          plan_exercises:plan_exercises(*)
-        `)
-        .eq("trainer_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(3);
-
-      if (error) throw error;
-
-      const formattedPlans: Plan[] = data.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        clientId: item.client_id,
-        createdAt: item.created_at,
-        exercises: item.plan_exercises.map((ex: any) => ({
-          exerciseId: ex.exercise_id,
-          level: ex.level,
-          evaluations: []
-        }))
-      }));
-
-      setRecentPlans(formattedPlans);
-    } catch (error) {
-      console.error("Error fetching recent plans:", error);
-    }
-  };
-
-  const fetchRecentClients = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("trainer_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(4);
-
-      if (error) throw error;
-
-      setRecentClients(data);
-    } catch (error) {
-      console.error("Error fetching recent clients:", error);
     }
   };
 
@@ -144,10 +79,13 @@ const TrainerDashboard = () => {
     setInviteDialogOpen(true);
   };
   
+  const handleManageInvites = () => {
+    navigate("/client-invite");
+  };
+  
   const handleInviteSuccess = () => {
     setInviteDialogOpen(false);
-    fetchRecentClients();
-    fetchStats();
+    loadDashboardData();
     toast({
       title: "Invitación enviada",
       description: "La invitación ha sido enviada correctamente",
@@ -167,209 +105,49 @@ const TrainerDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-          <Card>
-            <CardContent className="p-6 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Ejercicios</p>
-                <h3 className="text-3xl font-bold text-gray-900">{stats.exercises}</h3>
-              </div>
-              <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-                <Dumbbell className="h-6 w-6 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
+          <DashboardStatsCard 
+            title="Ejercicios" 
+            value={stats.exercises} 
+            icon={<Dumbbell className="h-6 w-6 text-primary" />} 
+          />
           
-          <Card>
-            <CardContent className="p-6 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Clientes</p>
-                <h3 className="text-3xl font-bold text-gray-900">{stats.clients}</h3>
-              </div>
-              <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
+          <DashboardStatsCard 
+            title="Clientes" 
+            value={stats.clients} 
+            icon={<Users className="h-6 w-6 text-primary" />} 
+          />
           
-          <Card>
-            <CardContent className="p-6 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Planes</p>
-                <h3 className="text-3xl font-bold text-gray-900">{stats.plans}</h3>
-              </div>
-              <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-                <ClipboardList className="h-6 w-6 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
+          <DashboardStatsCard 
+            title="Planes" 
+            value={stats.plans} 
+            icon={<ClipboardList className="h-6 w-6 text-primary" />} 
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-xl">Planes Recientes</CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => navigate("/plans")}>
-                    Ver todos
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="text-center py-4">
-                    <p>Cargando planes...</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {recentPlans.length > 0 ? (
-                      recentPlans.map((plan) => {
-                        const client = recentClients.find((c) => c.id === plan.clientId);
-                        return (
-                          <div
-                            key={plan.id}
-                            className="flex items-center justify-between p-4 border rounded-md hover:bg-gray-50 cursor-pointer"
-                            onClick={() => navigate(`/plans/${plan.id}`)}
-                          >
-                            <div className="flex items-center">
-                              {client && (
-                                <img
-                                  src={client.avatar || "https://i.pravatar.cc/150"}
-                                  alt={client.name}
-                                  className="h-10 w-10 rounded-full mr-3"
-                                />
-                              )}
-                              <div>
-                                <h3 className="font-medium">{plan.name}</h3>
-                                <p className="text-sm text-gray-500">
-                                  {client?.name || "Cliente"}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {plan.exercises.length} ejercicios
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-center py-6">
-                        <p className="text-gray-500">No hay planes recientes</p>
-                        <Button
-                          variant="outline"
-                          className="mt-2"
-                          onClick={handleCreatePlan}
-                        >
-                          Crear primer plan
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <RecentPlansCard
+              plans={recentPlans}
+              clients={recentClients}
+              loading={loading}
+              onCreatePlan={handleCreatePlan}
+            />
           </div>
 
           <div>
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-xl">Clientes Recientes</CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => navigate("/clients")}>
-                    Ver todos
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="text-center py-4">
-                    <p>Cargando clientes...</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {recentClients.length > 0 ? (
-                      recentClients.map((client) => (
-                        <div
-                          key={client.id}
-                          className="flex items-center p-3 border rounded-md hover:bg-gray-50 cursor-pointer"
-                          onClick={() => navigate(`/clients/${client.id}`)}
-                        >
-                          <img
-                            src={client.avatar || "https://i.pravatar.cc/150"}
-                            alt={client.name}
-                            className="h-10 w-10 rounded-full mr-3"
-                          />
-                          <div>
-                            <h3 className="font-medium">{client.name}</h3>
-                            <p className="text-sm text-gray-500">{client.email}</p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-4">
-                        <p className="text-gray-500">No hay clientes</p>
-                      </div>
-                    )}
+            <RecentClientsCard
+              clients={recentClients}
+              loading={loading}
+              onAddClient={handleAddClient}
+            />
 
-                    <div className="flex justify-center pt-2">
-                      <Button variant="outline" onClick={handleAddClient}>
-                        <UserPlus className="h-4 w-4 mr-1" /> Añadir Cliente
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="mt-6">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xl">Acciones Rápidas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Button
-                    onClick={handleCreateExercise}
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <Dumbbell className="mr-2 h-4 w-4" />
-                    Añadir ejercicio nuevo
-                  </Button>
-                  <Button
-                    onClick={handleGoToLibrary}
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    Explorar biblioteca de ejercicios
-                  </Button>
-                  <Button
-                    onClick={handleCreatePlan}
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <ClipboardList className="mr-2 h-4 w-4" />
-                    Crear nuevo plan
-                  </Button>
-                  <Button
-                    onClick={handleAddClient}
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Añadir cliente
-                  </Button>
-                  <Button
-                    onClick={() => navigate("/client-invite")}
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <Mail className="mr-2 h-4 w-4" />
-                    Gestionar invitaciones
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <QuickActionsCard
+              onCreateExercise={handleCreateExercise}
+              onGoToLibrary={handleGoToLibrary}
+              onCreatePlan={handleCreatePlan}
+              onAddClient={handleAddClient}
+              onManageInvites={handleManageInvites}
+            />
           </div>
         </div>
       </main>
