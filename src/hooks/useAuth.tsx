@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,13 +9,22 @@ type Profile = {
   avatar_url: string | null;
   role: string | null;
   tier: string | null;
-  brand_settings?: string | null; // Added for storing trainer brand settings
+};
+
+type TrainerBrand = {
+  id: string;
+  trainer_id: string;
+  logo_url: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  accent_color: string | null;
 };
 
 type AuthContextType = {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  trainerBrand: TrainerBrand | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
   isClient: boolean;  // Propiedad para verificar si el usuario es cliente
@@ -30,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [trainerBrand, setTrainerBrand] = useState<TrainerBrand | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -51,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }, 0);
         } else {
           setProfile(null);
+          setTrainerBrand(null);
           setIsAdmin(false);
         }
       }
@@ -92,9 +104,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("Profile fetched:", data);
       setProfile(data);
-      setIsLoading(false);
+      
+      // If user is a trainer, fetch their brand settings
+      if (data.role === 'trainer') {
+        fetchTrainerBrand(userId);
+      } else {
+        setIsLoading(false);
+      }
     } catch (error) {
       console.error("Error in fetchProfile:", error);
+      setIsLoading(false);
+    }
+  };
+
+  const fetchTrainerBrand = async (userId: string) => {
+    try {
+      console.log("Fetching trainer brand for:", userId);
+      const { data, error } = await supabase
+        .from("trainer_brands")
+        .select("*")
+        .eq("trainer_id", userId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" error code
+        console.error("Error fetching trainer brand:", error);
+      } else if (data) {
+        console.log("Trainer brand fetched:", data);
+        setTrainerBrand(data);
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error in fetchTrainerBrand:", error);
       setIsLoading(false);
     }
   };
@@ -185,6 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     user,
     profile,
+    trainerBrand,
     isLoading,
     signOut,
     isClient,

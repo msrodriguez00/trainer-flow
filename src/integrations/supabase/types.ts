@@ -288,6 +288,47 @@ export type Database = {
         }
         Relationships: []
       }
+      trainer_brands: {
+        Row: {
+          accent_color: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_brands_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

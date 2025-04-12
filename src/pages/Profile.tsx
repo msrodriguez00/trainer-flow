@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,7 +16,7 @@ import { ColorPicker, ColorInput } from "@/components/ui/color-picker";
 import { Upload, Palette, Check } from "lucide-react";
 
 const Profile = () => {
-  const { user, profile, isLoading, isTrainer } = useAuth();
+  const { user, profile, trainerBrand, isLoading, isTrainer } = useAuth();
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -38,19 +39,14 @@ const Profile = () => {
       setName(profile.name || "");
       setAvatarUrl(profile.avatar_url || "");
       
-      if (isTrainer && profile.brand_settings) {
-        try {
-          const brandSettings = JSON.parse(profile.brand_settings);
-          setLogoUrl(brandSettings.logoUrl || "");
-          setPrimaryColor(brandSettings.primaryColor || "#9b87f5");
-          setSecondaryColor(brandSettings.secondaryColor || "#E5DEFF");
-          setAccentColor(brandSettings.accentColor || "#7E69AB");
-        } catch (error) {
-          console.error("Error parsing brand settings:", error);
-        }
+      if (isTrainer && trainerBrand) {
+        setLogoUrl(trainerBrand.logo_url || "");
+        setPrimaryColor(trainerBrand.primary_color || "#9b87f5");
+        setSecondaryColor(trainerBrand.secondary_color || "#E5DEFF");
+        setAccentColor(trainerBrand.accent_color || "#7E69AB");
       }
     }
-  }, [user, profile, isLoading, navigate, isTrainer]);
+  }, [user, profile, trainerBrand, isLoading, navigate, isTrainer]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,27 +55,46 @@ const Profile = () => {
     
     setUpdating(true);
     try {
-      const updateData: any = {
-        name,
-        avatar_url: avatarUrl,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (isTrainer) {
-        updateData.brand_settings = JSON.stringify({
-          logoUrl,
-          primaryColor,
-          secondaryColor,
-          accentColor
-        });
-      }
-
-      const { error } = await supabase
+      // Actualizar perfil del usuario
+      const { error: profileError } = await supabase
         .from("profiles")
-        .update(updateData)
+        .update({
+          name,
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", user.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Si es entrenador, actualizar o crear la configuración de marca
+      if (isTrainer) {
+        const brandData = {
+          trainer_id: user.id,
+          logo_url: logoUrl,
+          primary_color: primaryColor,
+          secondary_color: secondaryColor,
+          accent_color: accentColor,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (trainerBrand) {
+          // Actualizar la configuración existente
+          const { error: brandError } = await supabase
+            .from("trainer_brands")
+            .update(brandData)
+            .eq("trainer_id", user.id);
+
+          if (brandError) throw brandError;
+        } else {
+          // Crear una nueva configuración
+          const { error: brandError } = await supabase
+            .from("trainer_brands")
+            .insert(brandData);
+
+          if (brandError) throw brandError;
+        }
+      }
 
       toast({
         title: "Perfil actualizado",
