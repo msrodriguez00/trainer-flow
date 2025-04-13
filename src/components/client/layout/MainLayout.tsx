@@ -10,7 +10,32 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children }: MainLayoutProps) => {
   const { profile } = useAuth();
-  const { } = useTrainerTheme(); // This will trigger the useEffect in useTrainerTheme
+  
+  // This ensures the theme hook's useEffect runs on initial load
+  // which will apply the theme from sessionStorage if it exists
+  useTrainerTheme();
+  
+  // Debug for theme variables
+  useEffect(() => {
+    const logThemeVariables = () => {
+      const root = document.documentElement;
+      console.log("Current theme variables:", {
+        primary: getComputedStyle(root).getPropertyValue('--client-primary'),
+        secondary: getComputedStyle(root).getPropertyValue('--client-secondary'),
+        accent: getComputedStyle(root).getPropertyValue('--client-accent')
+      });
+    };
+    
+    // Log on initial mount
+    logThemeVariables();
+    
+    // Also log after a short delay to ensure CSS has been applied
+    const timer = setTimeout(() => {
+      logThemeVariables();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   return (
     <div className="min-h-screen bg-gray-50">

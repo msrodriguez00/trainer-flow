@@ -24,12 +24,19 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
   useEffect(() => {
     const storedBranding = sessionStorage.getItem('selected_trainer_branding');
     console.log("WelcomeHeader - stored branding:", storedBranding ? JSON.parse(storedBranding) : null);
+    
+    // Verify CSS variables
+    console.log("WelcomeHeader CSS variables:", {
+      primary: getComputedStyle(document.documentElement).getPropertyValue('--client-primary'),
+      secondary: getComputedStyle(document.documentElement).getPropertyValue('--client-secondary'),
+      accent: getComputedStyle(document.documentElement).getPropertyValue('--client-accent')
+    });
   }, []);
 
   return (
-    <Card className="bg-gradient-to-r from-primary/10 to-secondary/30 border-none">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-2xl">¡Bienvenido, {userName}!</CardTitle>
+    <Card className="border-2 border-primary">
+      <CardHeader className="pb-2 bg-secondary/50">
+        <CardTitle className="text-2xl text-primary">¡Bienvenido, {userName}!</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -41,6 +48,14 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
             loading={loading}
             onTrainerSelect={handleTrainerSelect}
           />
+          
+          {/* Add a visual indicator for theme testing */}
+          <div className="mt-4 flex items-center gap-2 text-sm">
+            <span>Theme test:</span>
+            <div className="w-6 h-6 rounded-full bg-primary"></div>
+            <div className="w-6 h-6 rounded-full bg-secondary"></div>
+            <div className="w-6 h-6 rounded-full bg-accent"></div>
+          </div>
         </div>
       </CardContent>
     </Card>
