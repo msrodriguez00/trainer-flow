@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -359,7 +358,8 @@ const ClientLogin = () => {
       applyThemeToDocument(trainer.branding);
       
       console.log("Theme applied for trainer:", trainer.name);
-      toast.success(`Tema de ${trainer.name} aplicado`, {
+      toast({
+        title: `Tema de ${trainer.name} aplicado`,
         description: "El tema personalizado del entrenador ha sido aplicado."
       });
     } else {

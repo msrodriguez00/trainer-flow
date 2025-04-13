@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Trainer } from "@/components/client/dashboard/types";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const useTrainerTheme = () => {
   const [currentTheme, setCurrentTheme] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
   
   // Load theme from session storage on initial mount with error handling
   useEffect(() => {
@@ -83,7 +84,8 @@ export const useTrainerTheme = () => {
         applyThemeToDocument(branding);
         setCurrentTheme(branding);
         
-        toast.success("Tema personalizado aplicado", {
+        toast({
+          title: "Tema personalizado aplicado",
           description: "El tema personalizado del entrenador ha sido aplicado."
         });
         return true;
@@ -96,7 +98,9 @@ export const useTrainerTheme = () => {
       console.error("Error in fetchTrainerTheme:", error);
       resetTheme();
       
-      toast.error("Error al cargar el tema", {
+      toast({
+        variant: "destructive",
+        title: "Error al cargar el tema",
         description: "No se pudo cargar el tema del entrenador. Se ha aplicado el tema predeterminado."
       });
       return false;
@@ -143,7 +147,8 @@ export const useTrainerTheme = () => {
         applyThemeToDocument(trainer.branding);
         setCurrentTheme(trainer.branding);
         
-        toast.success(`Tema de ${trainer.name} aplicado`, {
+        toast({
+          title: `Tema de ${trainer.name} aplicado`,
           description: "El tema personalizado del entrenador ha sido aplicado."
         });
         return true;
@@ -154,7 +159,9 @@ export const useTrainerTheme = () => {
       }
     } catch (error) {
       console.error("Error applying trainer theme:", error);
-      toast.error("Error al aplicar el tema", {
+      toast({
+        variant: "destructive",
+        title: "Error al aplicar el tema",
         description: "No se pudo aplicar el tema personalizado. Se ha aplicado el tema predeterminado."
       });
       resetTheme();
@@ -175,7 +182,8 @@ export const useTrainerTheme = () => {
     setCurrentTheme(defaultTheme);
     sessionStorage.removeItem('selected_trainer_branding');
     
-    toast.info("Tema predeterminado aplicado", {
+    toast({
+      title: "Tema predeterminado aplicado",
       description: "Se ha aplicado el tema predeterminado."
     });
   };

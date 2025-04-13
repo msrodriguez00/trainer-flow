@@ -3,7 +3,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth"; 
 import Navbar from "@/components/Navbar";
 import { useTrainerTheme } from "@/hooks/client/useTrainerTheme";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -12,6 +12,7 @@ interface MainLayoutProps {
 const MainLayout = ({ children }: MainLayoutProps) => {
   const { profile } = useAuth();
   const { currentTheme, fetchTrainerTheme, resetTheme } = useTrainerTheme();
+  const { toast } = useToast();
   const [themeVerified, setThemeVerified] = useState(false);
   
   // Apply and verify theme on initial load

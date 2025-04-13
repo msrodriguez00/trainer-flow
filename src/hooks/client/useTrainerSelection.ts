@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,18 +16,15 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
   const { toast } = useToast();
   const { applyTrainerTheme } = useTrainerTheme();
 
-  // Load trainers on initial mount
   useEffect(() => {
     loadTrainers();
   }, []);
 
-  // Main function to load trainers
   const loadTrainers = async () => {
     setLoading(true);
     console.log("useTrainerSelection: Loading trainers");
     
     try {
-      // Get current user data
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user?.email) {
@@ -38,7 +34,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       
       console.log("Loading trainers for user email:", user.email);
       
-      // Fetch client data
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
         .select("*")
@@ -58,7 +53,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       
       console.log("Client data loaded:", clientData);
       
-      // Extract trainer IDs
       let trainerIds: string[] = [];
       
       if (clientData.trainers && clientData.trainers.length > 0) {
@@ -70,7 +64,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       console.log("Trainer IDs from client data:", trainerIds);
       
       if (trainerIds.length > 0) {
-        // Fetch trainers data
         const { data: trainersData, error: trainersError } = await supabase
           .from("profiles")
           .select("id, name")
@@ -89,7 +82,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
           return;
         }
         
-        // Fetch branding for each trainer
         const trainersWithBranding: Trainer[] = [];
         
         for (const trainer of trainersData) {
@@ -103,7 +95,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
           
           if (brandError) {
             console.warn("Error fetching branding for trainer:", trainer.id, brandError);
-            // Continue with other trainers even if one fails
           }
           
           console.log("Branding data for trainer:", trainer.id, brandData);
@@ -128,7 +119,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
         console.log("Final trainers with branding:", trainersWithBranding);
         setTrainers(trainersWithBranding);
         
-        // Handle trainer selection
         if (!selectedTrainerId && trainersWithBranding.length > 0) {
           console.log("No trainer selected, selecting first one:", trainersWithBranding[0].id);
           handleTrainerSelect(trainersWithBranding[0].id);
@@ -156,7 +146,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     }
   };
 
-  // Handle case when no client data is found
   const handleNoClientData = () => {
     console.log("No client data found, creating default trainer");
     const defaultTrainer: Trainer = {
@@ -180,7 +169,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     });
   };
 
-  // Handle case when no trainers are found
   const handleNoTrainersFound = () => {
     console.log("No trainers found, creating fallback trainer");
     const fallbackTrainer: Trainer = {
@@ -204,7 +192,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     });
   };
 
-  // Set a default demo trainer
   const setDefaultTrainer = () => {
     console.log("Setting default demo trainer");
     const demoTrainer: Trainer = {
@@ -222,7 +209,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     handleTrainerSelect(demoTrainer.id);
   };
 
-  // Handle errors during trainer loading
   const handleLoadError = () => {
     console.log("Error loading trainers, creating fallback trainer");
     const fallbackTrainer: Trainer = {
@@ -246,7 +232,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     });
   };
 
-  // Handle trainer selection from UI
   const handleTrainerSelect = (trainerId: string) => {
     console.log("Trainer selected manually:", trainerId);
     const selected = trainers.find(t => t.id === trainerId);
@@ -256,15 +241,12 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       setSelectedTrainerId(trainerId);
       setTrainerName(selected.name);
       
-      // Save to session storage
       sessionStorage.setItem('selected_trainer_id', trainerId);
       sessionStorage.setItem('selected_trainer_name', selected.name);
       
-      // Apply theme
       const success = applyTrainerTheme(selected);
       console.log("Theme application result:", success);
       
-      // Notify parent component if callback provided
       if (onTrainerChange) {
         onTrainerChange(selected.id, selected.name, selected.branding);
       }
