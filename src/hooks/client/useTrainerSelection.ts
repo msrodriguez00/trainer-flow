@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Trainer } from "@/components/client/dashboard/types";
-import { useTrainerTheme } from "./useTrainerTheme";
+import { useAuth } from "@/hooks/useAuth";
 
 export const useTrainerSelection = (onTrainerChange?: (trainerId: string, trainerName: string, trainerBranding?: any) => void) => {
   const [selectedTrainerId, setSelectedTrainerId] = useState<string>(
@@ -14,7 +14,7 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
-  const { applyTrainerTheme } = useTrainerTheme();
+  const { user } = useAuth();
 
   useEffect(() => {
     loadTrainers();
@@ -36,7 +36,10 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
-        .select("*")
+        .select(`
+          *,
+          current_trainer_id
+        `)
         .eq("email", user.email.toLowerCase())
         .maybeSingle();
       
@@ -52,6 +55,12 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       }
       
       console.log("Client data loaded:", clientData);
+      
+      // Check if client has a current trainer set
+      if (clientData.current_trainer_id) {
+        console.log("Client has current trainer set:", clientData.current_trainer_id);
+        setSelectedTrainerId(clientData.current_trainer_id);
+      }
       
       let trainerIds: string[] = [];
       
@@ -232,6 +241,59 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     });
   };
 
+  const applyTrainerTheme = async (trainer: Trainer) => {
+    console.log("Applying trainer theme to client database:", trainer);
+    if (!trainer.branding || !user?.email) return false;
+    
+    try {
+      // Save theme to session storage for current session
+      sessionStorage.setItem('selected_trainer_id', trainer.id);
+      sessionStorage.setItem('selected_trainer_name', trainer.name);
+      sessionStorage.setItem('selected_trainer_branding', JSON.stringify(trainer.branding));
+      
+      // Save theme to database for persistence
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          current_theme_primary_color: trainer.branding.primary_color,
+          current_theme_secondary_color: trainer.branding.secondary_color,
+          current_theme_accent_color: trainer.branding.accent_color,
+          current_theme_logo_url: trainer.branding.logo_url,
+          current_trainer_id: trainer.id
+        })
+        .eq("email", user.email.toLowerCase());
+        
+      if (error) {
+        console.error("Error saving theme to database:", error);
+        throw error;
+      }
+      
+      // Apply theme to CSS variables
+      document.documentElement.style.setProperty('--client-primary', trainer.branding.primary_color, 'important');
+      document.documentElement.style.setProperty('--client-secondary', trainer.branding.secondary_color, 'important');
+      document.documentElement.style.setProperty('--client-accent', trainer.branding.accent_color, 'important');
+      
+      // Force re-render of components that use the theme
+      document.documentElement.classList.remove('theme-applied');
+      setTimeout(() => document.documentElement.classList.add('theme-applied'), 10);
+      
+      toast({
+        title: `Tema de ${trainer.name} aplicado`,
+        description: "El tema personalizado del entrenador ha sido aplicado y guardado."
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error applying trainer theme:", error);
+      toast({
+        variant: "destructive",
+        title: "Error al aplicar el tema",
+        description: "No se pudo guardar el tema personalizado en la base de datos."
+      });
+      return false;
+    }
+  };
+
   const handleTrainerSelect = (trainerId: string) => {
     console.log("Trainer selected manually:", trainerId);
     const selected = trainers.find(t => t.id === trainerId);
@@ -240,9 +302,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       console.log("Applying theme for selected trainer:", selected);
       setSelectedTrainerId(trainerId);
       setTrainerName(selected.name);
-      
-      sessionStorage.setItem('selected_trainer_id', trainerId);
-      sessionStorage.setItem('selected_trainer_name', selected.name);
       
       const success = applyTrainerTheme(selected);
       console.log("Theme application result:", success);

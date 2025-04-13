@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TrainerSelector from "./TrainerSelector";
 import { useTrainerSelection } from "@/hooks/client/useTrainerSelection";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useState, useRef } from "react";
-import { useTrainerTheme } from "@/hooks/client/useTrainerTheme";
+import { useEffect, useState } from "react";
+import { useClientTheme } from "@/hooks/client/useClientTheme";
 
 interface WelcomeHeaderProps {
   userName: string;
@@ -14,14 +14,12 @@ interface WelcomeHeaderProps {
 
 const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderProps) => {
   const { user } = useAuth();
-  const { currentTheme } = useTrainerTheme();
+  const { clientTheme } = useClientTheme();
   const [themeColors, setThemeColors] = useState({
     primary: '',
     secondary: '',
     accent: ''
   });
-  
-  const themeCheckRef = useRef(false);
   
   const {
     trainers,
@@ -30,30 +28,35 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
     handleTrainerSelect
   } = useTrainerSelection(onTrainerChange);
 
-  // Update theme colors for display only once on mount and when theme actually changes
+  // Update theme colors for display whenever clientTheme changes
   useEffect(() => {
-    // Skip if we've already run this effect and currentTheme hasn't actually changed
-    if (themeCheckRef.current && !currentTheme) return;
-    
-    const root = document.documentElement;
-    const colors = {
-      primary: getComputedStyle(root).getPropertyValue('--client-primary').trim(),
-      secondary: getComputedStyle(root).getPropertyValue('--client-secondary').trim(),
-      accent: getComputedStyle(root).getPropertyValue('--client-accent').trim()
-    };
-    
-    if (colors.primary) {
-      console.log("WelcomeHeader - Current CSS variables:", colors);
-      setThemeColors(colors);
-      themeCheckRef.current = true;
+    if (clientTheme) {
+      setThemeColors({
+        primary: clientTheme.primaryColor,
+        secondary: clientTheme.secondaryColor,
+        accent: clientTheme.accentColor
+      });
+      
+      console.log("WelcomeHeader - Theme colors updated:", {
+        primary: clientTheme.primaryColor,
+        secondary: clientTheme.secondaryColor,
+        accent: clientTheme.accentColor
+      });
+    } else {
+      // Fallback to CSS variables if clientTheme is not available
+      const root = document.documentElement;
+      const colors = {
+        primary: getComputedStyle(root).getPropertyValue('--client-primary').trim(),
+        secondary: getComputedStyle(root).getPropertyValue('--client-secondary').trim(),
+        accent: getComputedStyle(root).getPropertyValue('--client-accent').trim()
+      };
+      
+      if (colors.primary) {
+        setThemeColors(colors);
+        console.log("WelcomeHeader - Fallback to CSS variables:", colors);
+      }
     }
-    
-    // Only log these if they exist (prevents unnecessary re-renders)
-    const storedBranding = sessionStorage.getItem('selected_trainer_branding');
-    if (storedBranding && !themeCheckRef.current) {
-      console.log("WelcomeHeader - stored branding:", JSON.parse(storedBranding));
-    }
-  }, [currentTheme]);
+  }, [clientTheme]);
 
   return (
     <Card className="welcome-header-card border-2" style={{ borderColor: themeColors.primary }}>

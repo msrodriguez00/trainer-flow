@@ -85,6 +85,11 @@ export type Database = {
         Row: {
           avatar: string | null
           created_at: string
+          current_theme_accent_color: string | null
+          current_theme_logo_url: string | null
+          current_theme_primary_color: string | null
+          current_theme_secondary_color: string | null
+          current_trainer_id: string | null
           email: string
           id: string
           name: string
@@ -95,6 +100,11 @@ export type Database = {
         Insert: {
           avatar?: string | null
           created_at?: string
+          current_theme_accent_color?: string | null
+          current_theme_logo_url?: string | null
+          current_theme_primary_color?: string | null
+          current_theme_secondary_color?: string | null
+          current_trainer_id?: string | null
           email: string
           id?: string
           name: string
@@ -105,6 +115,11 @@ export type Database = {
         Update: {
           avatar?: string | null
           created_at?: string
+          current_theme_accent_color?: string | null
+          current_theme_logo_url?: string | null
+          current_theme_primary_color?: string | null
+          current_theme_secondary_color?: string | null
+          current_trainer_id?: string | null
           email?: string
           id?: string
           name?: string

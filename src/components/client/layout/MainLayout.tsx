@@ -1,8 +1,8 @@
 
-import { ReactNode, useEffect, useState, useRef } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth"; 
 import Navbar from "@/components/Navbar";
-import { useTrainerTheme } from "@/hooks/client/useTrainerTheme";
+import { useClientTheme } from "@/hooks/client/useClientTheme";
 import { useToast } from "@/hooks/use-toast";
 
 interface MainLayoutProps {
@@ -11,112 +11,15 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children }: MainLayoutProps) => {
   const { profile } = useAuth();
-  const { currentTheme, fetchTrainerTheme, resetTheme } = useTrainerTheme();
-  const { toast } = useToast();
+  const { clientTheme, isLoading } = useClientTheme();
   const [themeVerified, setThemeVerified] = useState(false);
-  const themeInitializedRef = useRef(false);
   
-  // Apply and verify theme only once on initial load
   useEffect(() => {
-    // Skip if we've already initialized the theme
-    if (themeInitializedRef.current) return;
-    themeInitializedRef.current = true;
-    
-    const verifyAndApplyTheme = async () => {
-      console.log("MainLayout: Verifying theme");
-      
-      // Log current theme state
-      const logThemeVariables = () => {
-        const root = document.documentElement;
-        const computedStyles = {
-          primary: getComputedStyle(root).getPropertyValue('--client-primary'),
-          secondary: getComputedStyle(root).getPropertyValue('--client-secondary'),
-          accent: getComputedStyle(root).getPropertyValue('--client-accent')
-        };
-        
-        console.log("Current theme variables:", computedStyles);
-        return computedStyles;
-      };
-      
-      // Initial log
-      logThemeVariables();
-      
-      try {
-        // Check if we have a selected trainer
-        const trainerId = sessionStorage.getItem('selected_trainer_id');
-        
-        if (trainerId) {
-          // Try to apply theme from session storage first
-          const storedBranding = sessionStorage.getItem('selected_trainer_branding');
-          
-          if (storedBranding) {
-            try {
-              console.log("Found stored branding, applying:", storedBranding);
-              const branding = JSON.parse(storedBranding);
-              
-              // Apply theme with !important flag for CSS variables
-              document.documentElement.style.setProperty('--client-primary', branding.primary_color, 'important');
-              document.documentElement.style.setProperty('--client-secondary', branding.secondary_color, 'important');
-              document.documentElement.style.setProperty('--client-accent', branding.accent_color, 'important');
-              
-              // Force re-render of styled components
-              document.documentElement.classList.remove('theme-applied');
-              setTimeout(() => document.documentElement.classList.add('theme-applied'), 10);
-              
-              // Debug verification
-              console.log("Branding should be applied, verifying CSS variables:");
-              const verifyStyles = logThemeVariables();
-              console.log("Applied vs Expected:", {
-                primary: {
-                  applied: verifyStyles.primary.trim(),
-                  expected: branding.primary_color
-                },
-                secondary: {
-                  applied: verifyStyles.secondary.trim(),
-                  expected: branding.secondary_color
-                },
-                accent: {
-                  applied: verifyStyles.accent.trim(),
-                  expected: branding.accent_color
-                }
-              });
-              
-            } catch (e) {
-              console.error("Error parsing stored branding:", e);
-              
-              // Fetch fresh theme data if parsing fails
-              await fetchTrainerTheme(trainerId);
-            }
-          } else {
-            // No stored theme data, fetch from database
-            console.log("No stored branding found, fetching from DB for trainer:", trainerId);
-            await fetchTrainerTheme(trainerId);
-          }
-        } else {
-          // No trainer selected, use default theme
-          console.log("No trainer selected, using default theme");
-          resetTheme();
-        }
-      } catch (e) {
-        console.error("Error verifying theme:", e);
-        resetTheme();
-      } finally {
-        // Final log to verify application
-        const finalStyles = logThemeVariables();
-        
-        // Check if theme is actually applied
-        const primary = finalStyles.primary.trim();
-        if (!primary || primary === "undefined" || primary === "null") {
-          console.warn("Theme variables not properly applied, forcing reset");
-          resetTheme();
-        }
-        
-        setThemeVerified(true);
-      }
-    };
-    
-    verifyAndApplyTheme();
-  }, []);
+    // Set themeVerified when theme is loaded
+    if (!isLoading && clientTheme) {
+      setThemeVerified(true);
+    }
+  }, [isLoading, clientTheme]);
   
   return (
     <div className="min-h-screen bg-gray-50">

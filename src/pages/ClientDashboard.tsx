@@ -9,12 +9,15 @@ import TrainingPlansList from "@/components/client/dashboard/TrainingPlansList";
 import ActivityCalendar from "@/components/client/dashboard/ActivityCalendar";
 import LoadingScreen from "@/components/client/common/LoadingScreen";
 import { useToast } from "@/hooks/use-toast";
+import { useClientTheme } from "@/hooks/client/useClientTheme";
+import { supabase } from "@/integrations/supabase/client";
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
   const { user, profile, isLoading, isClient } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { toast } = useToast();
+  const { updateClientTheme, clientTheme } = useClientTheme();
   
   // Redirect non-clients to main page
   useEffect(() => {
@@ -29,21 +32,35 @@ const ClientDashboard = () => {
       isLoading, 
       isClient, 
       profile,
+      clientTheme,
       user: user ? {
         id: user.id,
         email: user.email,
       } : null
     });
-  }, [isLoading, isClient, profile, user]);
+  }, [isLoading, isClient, profile, user, clientTheme]);
 
   // Manejador para cambios de entrenador
-  const handleTrainerChange = (trainerId: string, trainerName: string, trainerBranding?: any) => {
+  const handleTrainerChange = async (trainerId: string, trainerName: string, trainerBranding?: any) => {
     console.log("Entrenador seleccionado:", trainerName, "ID:", trainerId, "Branding:", trainerBranding);
+    
+    if (trainerBranding && user?.email) {
+      // Update client's current theme in the database
+      const theme = {
+        primaryColor: trainerBranding.primary_color || '#9b87f5',
+        secondaryColor: trainerBranding.secondary_color || '#E5DEFF',
+        accentColor: trainerBranding.accent_color || '#7E69AB',
+        logoUrl: trainerBranding.logo_url || null,
+        trainerId: trainerId
+      };
+      
+      await updateClientTheme(theme);
+    }
+    
     toast({
       title: "Entrenador seleccionado",
       description: `Has seleccionado a ${trainerName} como tu entrenador actual.`,
     });
-    // Aquí podríamos cargar datos específicos del entrenador si fuera necesario
   };
 
   if (isLoading) {

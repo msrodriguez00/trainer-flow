@@ -17,7 +17,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InvitationResponseModal } from "@/components/client/InvitationResponseModal";
 import { TrainerInvitation } from "@/components/client/types";
-import { useTrainerTheme } from "@/hooks/client/useTrainerTheme";
+import { useClientTheme } from "@/hooks/client/useClientTheme";
 
 interface Trainer {
   id: string;
@@ -44,7 +44,7 @@ const ClientLogin = () => {
   const navigate = useNavigate();
   const { user, isClient } = useAuth();
   const { toast } = useToast();
-  const { applyThemeToDocument } = useTrainerTheme();
+  const { applyThemeToDocument } = useClientTheme();
 
   // Check for email in the URL
   const emailParam = searchParams.get("email");
@@ -344,9 +344,10 @@ const ClientLogin = () => {
     }
   };
 
-  const applyTrainerTheme = (trainer: Trainer) => {
+  // Apply selected trainer theme and save to database
+  const applyTrainerTheme = async (trainer: Trainer) => {
     console.log("ClientLogin: Applying trainer theme:", trainer);
-    if (trainer.branding) {
+    if (trainer.branding && user?.email) {
       setTrainerBranding(trainer.branding);
       
       // Save to session storage for persistence
@@ -355,7 +356,27 @@ const ClientLogin = () => {
       sessionStorage.setItem('selected_trainer_branding', JSON.stringify(trainer.branding));
       
       // Apply theme to CSS variables with !important
-      applyThemeToDocument(trainer.branding);
+      document.documentElement.style.setProperty('--client-primary', trainer.branding.primary_color, 'important');
+      document.documentElement.style.setProperty('--client-secondary', trainer.branding.secondary_color, 'important');
+      document.documentElement.style.setProperty('--client-accent', trainer.branding.accent_color, 'important');
+      
+      // Save theme to database
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          current_theme_primary_color: trainer.branding.primary_color,
+          current_theme_secondary_color: trainer.branding.secondary_color,
+          current_theme_accent_color: trainer.branding.accent_color,
+          current_theme_logo_url: trainer.branding.logo_url,
+          current_trainer_id: trainer.id
+        })
+        .eq("email", user.email.toLowerCase());
+        
+      if (error) {
+        console.error("Error saving theme to database:", error);
+      } else {
+        console.log("Theme saved to database for trainer:", trainer.name);
+      }
       
       console.log("Theme applied for trainer:", trainer.name);
       toast({
