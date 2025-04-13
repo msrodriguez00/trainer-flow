@@ -361,6 +361,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_client_invitation: {
+        Args: {
+          p_invitation_id: string
+          p_trainer_id: string
+          p_user_id: string
+          p_email: string
+        }
+        Returns: undefined
+      }
       is_admin: {
         Args: { user_id: string }
         Returns: boolean
