@@ -16,7 +16,7 @@ import { LoadingInvitations } from "./LoadingInvitations";
 import { AuthRequiredMessage } from "./AuthRequiredMessage";
 import { ErrorMessage } from "./ErrorMessage";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 const PendingInvitationsCard = () => {
   const {
@@ -31,15 +31,20 @@ const PendingInvitationsCard = () => {
   } = useInvitations();
   
   const { toast } = useToast();
+  const initialLoadDone = useRef(false);
   
-  // Automatically refresh again after mounting to ensure we have the latest data
+  // Solo ejecutar una vez después del montaje inicial
   useEffect(() => {
-    // Small delay to ensure auth is fully initialized
-    const timer = setTimeout(() => {
-      refreshInvitations();
-    }, 500);
-    
-    return () => clearTimeout(timer);
+    // Evitar múltiples llamadas usando una referencia
+    if (!initialLoadDone.current) {
+      // Pequeño retraso para asegurar que la autenticación esté completamente inicializada
+      const timer = setTimeout(() => {
+        refreshInvitations();
+        initialLoadDone.current = true;
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
   }, [refreshInvitations]);
 
   // Debug output
