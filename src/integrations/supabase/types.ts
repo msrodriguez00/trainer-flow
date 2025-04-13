@@ -9,21 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      admin_users: {
-        Row: {
-          created_at: string
-          id: string
-        }
-        Insert: {
-          created_at?: string
-          id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-        }
-        Relationships: []
-      }
       client_invitations: {
         Row: {
           accepted: boolean
@@ -373,15 +358,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_if_admin: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
       is_admin: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
-      is_admin_user: {
         Args: { user_id: string }
         Returns: boolean
       }
