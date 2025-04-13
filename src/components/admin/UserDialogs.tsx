@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
-import { User } from "@/pages/AdminDashboard";
+import { User } from "@/components/admin/types";
 import UserForm, { UserFormValues } from "./UserForm";
 import DeleteUserDialog from "./DeleteUserDialog";
 

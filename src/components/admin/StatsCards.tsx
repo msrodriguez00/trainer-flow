@@ -1,5 +1,5 @@
 
-import { User } from "@/pages/AdminDashboard";
+import { User } from "@/components/admin/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface StatsCardsProps {

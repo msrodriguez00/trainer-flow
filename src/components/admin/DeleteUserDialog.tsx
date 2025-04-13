@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { User } from "@/pages/AdminDashboard";
+import { User } from "@/components/admin/types";
 
 interface DeleteUserDialogProps {
   userToDelete: User | null;

@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { User } from "@/pages/AdminDashboard";
+import { User } from "@/components/admin/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Table,
