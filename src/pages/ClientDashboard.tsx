@@ -21,6 +21,12 @@ const ClientDashboard = () => {
     }
   }, [isLoading, isClient, navigate]);
 
+  // Manejador para cambios de entrenador
+  const handleTrainerChange = (trainerId: string, trainerName: string, trainerBranding?: any) => {
+    console.log("Entrenador seleccionado:", trainerName, "ID:", trainerId);
+    // Aquí podríamos cargar datos específicos del entrenador si fuera necesario
+  };
+
   if (isLoading) {
     return <LoadingScreen />;
   }
@@ -29,10 +35,11 @@ const ClientDashboard = () => {
     <MainLayout>
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-6">
-          {/* Welcome header with user info */}
+          {/* Welcome header with user info and trainer selector */}
           <WelcomeHeader 
             userName={profile?.name || "Cliente"} 
             userEmail={user?.email || ""} 
+            onTrainerChange={handleTrainerChange}
           />
           
           {/* Trainer invitations section */}

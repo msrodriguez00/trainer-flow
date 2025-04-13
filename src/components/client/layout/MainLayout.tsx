@@ -10,7 +10,7 @@ interface MainLayoutProps {
 const MainLayout = ({ children }: MainLayoutProps) => {
   const { profile } = useAuth();
   
-  // Apply dynamic branding if available from session storage
+  // Apply dynamic branding when the component mounts
   useEffect(() => {
     // Try to get and apply trainer branding from session storage
     const branding = sessionStorage.getItem('selected_trainer_branding');
