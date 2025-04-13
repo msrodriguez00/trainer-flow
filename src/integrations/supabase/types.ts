@@ -170,47 +170,13 @@ export type Database = {
           },
         ]
       }
-      exercise_levels: {
-        Row: {
-          exercise_id: string
-          id: string
-          level: number
-          repetitions: number
-          video: string
-          weight: number
-        }
-        Insert: {
-          exercise_id: string
-          id?: string
-          level: number
-          repetitions: number
-          video: string
-          weight: number
-        }
-        Update: {
-          exercise_id?: string
-          id?: string
-          level?: number
-          repetitions?: number
-          video?: string
-          weight?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "exercise_levels_exercise_id_fkey"
-            columns: ["exercise_id"]
-            isOneToOne: false
-            referencedRelation: "exercises"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       exercises: {
         Row: {
           categories: string[]
           created_at: string
           created_by: string
           id: string
+          levels: Json
           name: string
         }
         Insert: {
@@ -218,6 +184,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          levels?: Json
           name: string
         }
         Update: {
@@ -225,6 +192,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          levels?: Json
           name?: string
         }
         Relationships: []

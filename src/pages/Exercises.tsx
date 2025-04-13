@@ -35,13 +35,7 @@ const Exercises = () => {
           id,
           name,
           categories,
-          exercise_levels:exercise_levels(
-            id,
-            level,
-            video,
-            repetitions,
-            weight
-          )
+          levels
         `)
         .order("name");
 
@@ -51,7 +45,7 @@ const Exercises = () => {
         id: item.id,
         name: item.name,
         categories: item.categories,
-        levels: item.exercise_levels.map((level: any) => ({
+        levels: item.levels.map((level: any) => ({
           level: level.level,
           video: level.video,
           repetitions: level.repetitions,
@@ -84,33 +78,24 @@ const Exercises = () => {
     if (!user) return;
     
     try {
-      // First insert the exercise
-      const { data: exerciseData, error: exerciseError } = await supabase
+      // Insert exercise with levels directly in JSON field
+      const { data, error } = await supabase
         .from("exercises")
         .insert({
           name: exercise.name,
           categories: exercise.categories,
-          created_by: user.id
+          created_by: user.id,
+          levels: exercise.levels.map((level, idx) => ({
+            level: idx + 1,
+            video: level.video,
+            repetitions: level.repetitions,
+            weight: level.weight
+          }))
         })
         .select()
         .single();
 
-      if (exerciseError) throw exerciseError;
-
-      // Then insert each level
-      const levelsToInsert = exercise.levels.map((level, idx) => ({
-        exercise_id: exerciseData.id,
-        level: idx + 1,
-        video: level.video,
-        repetitions: level.repetitions,
-        weight: level.weight
-      }));
-
-      const { error: levelsError } = await supabase
-        .from("exercise_levels")
-        .insert(levelsToInsert);
-
-      if (levelsError) throw levelsError;
+      if (error) throw error;
 
       toast({
         title: "Ejercicio creado",
@@ -140,44 +125,22 @@ const Exercises = () => {
     try {
       console.log("Updating exercise:", editExercise.id, updatedExercise);
       
-      // Step 1: Update the exercise basic info
-      const { error: exerciseError } = await supabase
+      // Update exercise with levels directly in JSON field
+      const { error } = await supabase
         .from("exercises")
         .update({
           name: updatedExercise.name,
-          categories: updatedExercise.categories
-        })
-        .eq("id", editExercise.id);
-
-      if (exerciseError) throw exerciseError;
-      
-      // Step 2: Delete existing levels one by one
-      for (const level of editExercise.levels) {
-        if (typeof level.id === 'string') {
-          const { error: deleteError } = await supabase
-            .from("exercise_levels")
-            .delete()
-            .eq("id", level.id);
-          
-          if (deleteError) throw deleteError;
-        }
-      }
-
-      // Step 3: Insert new levels one by one
-      for (let i = 0; i < updatedExercise.levels.length; i++) {
-        const level = updatedExercise.levels[i];
-        const { error: insertError } = await supabase
-          .from("exercise_levels")
-          .insert({
-            exercise_id: editExercise.id,
-            level: i + 1,
+          categories: updatedExercise.categories,
+          levels: updatedExercise.levels.map((level, idx) => ({
+            level: idx + 1,
             video: level.video,
             repetitions: level.repetitions,
             weight: level.weight
-          });
-        
-        if (insertError) throw insertError;
-      }
+          }))
+        })
+        .eq("id", editExercise.id);
+
+      if (error) throw error;
 
       toast({
         title: "Ejercicio actualizado",

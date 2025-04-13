@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -50,13 +49,7 @@ const ExerciseLibrary = () => {
           id,
           name,
           categories,
-          exercise_levels:exercise_levels(
-            id,
-            level,
-            video,
-            repetitions,
-            weight
-          )
+          levels
         `)
         .order("name");
 
@@ -66,7 +59,7 @@ const ExerciseLibrary = () => {
         id: item.id,
         name: item.name,
         categories: item.categories,
-        levels: item.exercise_levels.map((level: any) => ({
+        levels: item.levels.map((level: any) => ({
           level: level.level,
           video: level.video,
           repetitions: level.repetitions,
@@ -109,33 +102,24 @@ const ExerciseLibrary = () => {
     if (!user) return;
     
     try {
-      // First insert the exercise
-      const { data: exerciseData, error: exerciseError } = await supabase
+      // Insert exercise with levels directly in JSON field
+      const { data, error } = await supabase
         .from("exercises")
         .insert({
           name: exercise.name,
           categories: exercise.categories,
-          created_by: user.id
+          created_by: user.id,
+          levels: exercise.levels.map((level, idx) => ({
+            level: idx + 1,
+            video: level.video,
+            repetitions: level.repetitions,
+            weight: level.weight
+          }))
         })
         .select()
         .single();
 
-      if (exerciseError) throw exerciseError;
-
-      // Then insert each level
-      const levelsToInsert = exercise.levels.map((level, idx) => ({
-        exercise_id: exerciseData.id,
-        level: idx + 1,
-        video: level.video,
-        repetitions: level.repetitions,
-        weight: level.weight
-      }));
-
-      const { error: levelsError } = await supabase
-        .from("exercise_levels")
-        .insert(levelsToInsert);
-
-      if (levelsError) throw levelsError;
+      if (error) throw error;
 
       toast({
         title: "Ejercicio creado",
@@ -163,39 +147,22 @@ const ExerciseLibrary = () => {
     if (!editExercise || !user) return;
     
     try {
-      // Update the exercise
-      const { error: exerciseError } = await supabase
+      // Update exercise with levels directly in JSON field
+      const { error } = await supabase
         .from("exercises")
         .update({
           name: updatedExercise.name,
-          categories: updatedExercise.categories
+          categories: updatedExercise.categories,
+          levels: updatedExercise.levels.map((level, idx) => ({
+            level: idx + 1,
+            video: level.video,
+            repetitions: level.repetitions,
+            weight: level.weight
+          }))
         })
         .eq("id", editExercise.id);
 
-      if (exerciseError) throw exerciseError;
-
-      // Delete existing levels
-      const { error: deleteError } = await supabase
-        .from("exercise_levels")
-        .delete()
-        .eq("exercise_id", editExercise.id);
-
-      if (deleteError) throw deleteError;
-
-      // Insert new levels
-      const levelsToInsert = updatedExercise.levels.map((level, idx) => ({
-        exercise_id: editExercise.id,
-        level: idx + 1,
-        video: level.video,
-        repetitions: level.repetitions,
-        weight: level.weight
-      }));
-
-      const { error: levelsError } = await supabase
-        .from("exercise_levels")
-        .insert(levelsToInsert);
-
-      if (levelsError) throw levelsError;
+      if (error) throw error;
 
       toast({
         title: "Ejercicio actualizado",
