@@ -15,6 +15,8 @@ import { EmptyInvitations } from "./EmptyInvitations";
 import { LoadingInvitations } from "./LoadingInvitations";
 import { AuthRequiredMessage } from "./AuthRequiredMessage";
 import { ErrorMessage } from "./ErrorMessage";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 const PendingInvitationsCard = () => {
   const {
@@ -27,13 +29,35 @@ const PendingInvitationsCard = () => {
     formatDate,
     refreshInvitations
   } = useInvitations();
+  
+  const { toast } = useToast();
+  
+  // Automatically refresh again after mounting to ensure we have the latest data
+  useEffect(() => {
+    // Small delay to ensure auth is fully initialized
+    const timer = setTimeout(() => {
+      refreshInvitations();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [refreshInvitations]);
+
+  // Debug output
+  useEffect(() => {
+    console.log("PendingInvitationsCard state:", {
+      loading,
+      error,
+      invitationsCount: invitations?.length || 0,
+      invitations
+    });
+  }, [invitations, loading, error]);
 
   if (window.location.pathname === "/auth") {
     return <AuthRequiredMessage />;
   }
 
   return (
-    <Card>
+    <Card className="shadow-md">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="flex items-center">
@@ -49,7 +73,10 @@ const PendingInvitationsCard = () => {
         <Button 
           variant="outline" 
           size="icon" 
-          onClick={refreshInvitations}
+          onClick={() => {
+            toast({ description: "Actualizando invitaciones..." });
+            refreshInvitations();
+          }}
           disabled={loading}
           title="Actualizar invitaciones"
         >
@@ -61,7 +88,7 @@ const PendingInvitationsCard = () => {
           <LoadingInvitations />
         ) : error ? (
           <ErrorMessage error={error} onRetry={refreshInvitations} />
-        ) : invitations.length > 0 ? (
+        ) : invitations && invitations.length > 0 ? (
           <InvitationsList 
             invitations={invitations} 
             onAccept={handleAcceptInvitation} 
@@ -73,7 +100,7 @@ const PendingInvitationsCard = () => {
           <EmptyInvitations />
         )}
       </CardContent>
-      {!loading && !error && invitations.length === 0 && (
+      {!loading && !error && (!invitations || invitations.length === 0) && (
         <CardFooter className="text-center text-sm text-muted-foreground">
           <Button 
             variant="ghost" 

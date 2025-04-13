@@ -15,6 +15,7 @@ export function useInvitations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingIds, setProcessingIds] = useState<string[]>([]);
+  const [lastRefresh, setLastRefresh] = useState<number>(0);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -28,7 +29,10 @@ export function useInvitations() {
     console.log("=== STARTING INVITATION FETCH PROCESS ===");
     console.log("User auth object:", user);
     console.log("Current route:", window.location.pathname);
+    console.log("Last refresh timestamp:", lastRefresh);
     
+    // Update the last refresh timestamp
+    setLastRefresh(Date.now());
     setLoading(true);
     setError(null);
     
@@ -39,8 +43,26 @@ export function useInvitations() {
       
       const formattedInvitations = await fetchPendingInvitationsByEmail(userEmail);
       console.log("fetchPendingInvitations - API call completed, invitations received:", formattedInvitations.length);
-      setInvitations(formattedInvitations);
       
+      // Deep comparison to prevent unnecessary state updates
+      const invitationsChanged = JSON.stringify(invitations) !== JSON.stringify(formattedInvitations);
+      
+      if (invitationsChanged || invitations.length !== formattedInvitations.length) {
+        console.log("Setting new invitations state:", formattedInvitations);
+        setInvitations(formattedInvitations);
+        
+        // Only show toast if it's not the initial load and invitations have changed
+        if (lastRefresh > 0 && invitationsChanged) {
+          if (formattedInvitations.length > 0) {
+            toast({
+              title: "Invitaciones actualizadas",
+              description: `Se encontraron ${formattedInvitations.length} invitaciones pendientes.`,
+            });
+          }
+        }
+      } else {
+        console.log("No changes in invitations detected");
+      }
     } catch (error: any) {
       console.error("Error fetching invitations:", error);
       setError(`No se pudieron cargar las invitaciones: ${error.message || "Error desconocido"}`);
@@ -53,7 +75,7 @@ export function useInvitations() {
       setLoading(false);
       console.log("=== INVITATION FETCH PROCESS COMPLETED ===");
     }
-  }, [user?.email, toast]);
+  }, [user?.email, toast, invitations, lastRefresh]);
 
   useEffect(() => {
     if (user?.email) {
@@ -71,11 +93,17 @@ export function useInvitations() {
   const handleAcceptInvitation = async (invitationId: string, trainerId: string) => {
     if (!user?.email || !user?.id) {
       console.log("No user email in handleAcceptInvitation, aborting");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se puede aceptar la invitación sin iniciar sesión.",
+      });
       return;
     }
     
     setProcessingIds(prev => [...prev, invitationId]);
     try {
+      console.log("Accepting invitation:", invitationId, "for trainer:", trainerId, "user:", user.id);
       await acceptInvitation(invitationId, trainerId, user.id, user.email);
 
       setInvitations(invitations.filter(inv => inv.id !== invitationId));
@@ -99,6 +127,7 @@ export function useInvitations() {
   const handleRejectInvitation = async (invitationId: string) => {
     setProcessingIds(prev => [...prev, invitationId]);
     try {
+      console.log("Rejecting invitation:", invitationId);
       await rejectInvitation(invitationId);
 
       setInvitations(invitations.filter(inv => inv.id !== invitationId));
@@ -119,6 +148,12 @@ export function useInvitations() {
     }
   };
 
+  // Force refresh invitations on demand
+  const refreshInvitations = useCallback(() => {
+    console.log("Manual refresh triggered");
+    return fetchPendingInvitations();
+  }, [fetchPendingInvitations]);
+
   return {
     invitations,
     loading,
@@ -127,6 +162,6 @@ export function useInvitations() {
     handleAcceptInvitation,
     handleRejectInvitation,
     formatDate,
-    refreshInvitations: fetchPendingInvitations
+    refreshInvitations
   };
 }
