@@ -34,8 +34,10 @@
     --ring: 222.2 84% 4.9%;
  
     --radius: 0.5rem;
-    
-    /* Client theme variables - with !important to ensure they override other styles */
+  }
+
+  /* Client theme variables - defined separately for clarity and with !important to ensure they override other styles */
+  :root {
     --client-primary: #9b87f5 !important;
     --client-secondary: #E5DEFF !important;
     --client-accent: #7E69AB !important;
@@ -92,4 +94,14 @@
 
 .border-client-primary {
   border-color: var(--client-primary);
+}
+
+/* Apply a short animation when theme changes to force re-render */
+.theme-applied * {
+  animation: theme-flash 0.1s;
+}
+
+@keyframes theme-flash {
+  0% { opacity: 0.98; }
+  100% { opacity: 1; }
 }
