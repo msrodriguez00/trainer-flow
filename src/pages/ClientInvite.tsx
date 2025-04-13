@@ -12,19 +12,19 @@ import { Search, RefreshCw, Mail, Clock, Check, X, AlertTriangle } from "lucide-
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
-type InvitationStatus = "sent" | "expired" | "accepted";
+type InvitationStatus = "pending" | "accepted" | "rejected" | "expired";
 
 interface Invitation {
   id: string;
   email: string;
   created_at: string;
   expires_at: string;
-  accepted: boolean;
+  status: InvitationStatus;
   token: string;
 }
 
 const ClientInvite = () => {
-  const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedInvitation, setSelectedInvitation] = useState<Invitation | null>(null);
@@ -44,8 +44,18 @@ const ClientInvite = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      
+      // Process invitations to check for expired ones
+      const processedInvitations = (data || []).map((inv: any) => {
+        const expiryDate = new Date(inv.expires_at);
+        // If status is pending but invitation is expired, mark it as expired
+        if (inv.status === 'pending' && expiryDate < new Date()) {
+          return { ...inv, status: 'expired' as InvitationStatus };
+        }
+        return inv;
+      });
 
-      setPendingInvitations(data || []);
+      setInvitations(processedInvitations);
     } catch (error) {
       console.error("Error fetching invitations:", error);
       toast({
@@ -84,7 +94,7 @@ const ClientInvite = () => {
 
       if (error) throw error;
 
-      setPendingInvitations((prev) => prev.filter((inv) => inv.id !== selectedInvitation.id));
+      setInvitations((prev) => prev.filter((inv) => inv.id !== selectedInvitation.id));
       
       toast({
         title: "Invitación cancelada",
@@ -104,20 +114,20 @@ const ClientInvite = () => {
   };
   
   const getInvitationStatus = (invitation: Invitation): InvitationStatus => {
-    if (invitation.accepted) return "accepted";
+    // If the status is already computed (like for expired invitations), return it
+    if (invitation.status === 'expired') {
+      return 'expired';
+    }
     
-    const expiryDate = new Date(invitation.expires_at);
-    if (expiryDate < new Date()) return "expired";
-    
-    return "sent";
+    return invitation.status as InvitationStatus;
   };
   
   const getStatusBadge = (status: InvitationStatus) => {
     switch (status) {
-      case "sent":
+      case "pending":
         return (
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
-            <Mail className="h-3 w-3" /> Enviado
+            <Mail className="h-3 w-3" /> Pendiente
           </Badge>
         );
       case "expired":
@@ -132,10 +142,16 @@ const ClientInvite = () => {
             <Check className="h-3 w-3" /> Aceptado
           </Badge>
         );
+      case "rejected":
+        return (
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1">
+            <X className="h-3 w-3" /> Rechazado
+          </Badge>
+        );
     }
   };
   
-  const filteredInvitations = pendingInvitations.filter(invitation =>
+  const filteredInvitations = invitations.filter(invitation =>
     invitation.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -208,7 +224,7 @@ const ClientInvite = () => {
                             </div>
                           </div>
                           <div className="flex gap-2 sm:flex-shrink-0">
-                            {status !== "accepted" && (
+                            {(status === "pending" || status === "expired") && (
                               <>
                                 <Button 
                                   variant="outline" 

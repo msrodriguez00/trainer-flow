@@ -71,13 +71,13 @@ const ClientLogin = () => {
 
   const checkInvitationAfterLogin = async (token: string, email: string) => {
     try {
-      // Check if the invitation exists and is valid
+      // Check if the invitation exists and is valid, using status field now
       const { data: invitationData, error: invitationError } = await supabase
         .from("client_invitations")
         .select("*")
         .eq("token", token)
         .eq("email", email.toLowerCase())
-        .eq("accepted", false)
+        .eq("status", "pending") // Changed from 'accepted' boolean to 'status' field
         .single();
         
       if (invitationError) throw invitationError;
@@ -98,7 +98,8 @@ const ClientLogin = () => {
           email: invitationData.email,
           trainer_id: invitationData.trainer_id,
           trainer_name: trainerData?.name || "Entrenador",
-          created_at: invitationData.created_at
+          created_at: invitationData.created_at,
+          status: invitationData.status
         });
         setShowInvitationModal(true);
       } else {
@@ -219,9 +220,10 @@ const ClientLogin = () => {
     try {
       console.log("Accepting invitation:", invitationId, "for trainer:", trainerId);
       
+      // Use status field instead of accepted boolean
       const { error: updateError } = await supabase
         .from("client_invitations")
-        .update({ accepted: true })
+        .update({ status: "accepted" })
         .eq("id", invitationId);
 
       if (updateError) throw updateError;
@@ -301,9 +303,10 @@ const ClientLogin = () => {
     try {
       console.log("Rejecting invitation:", invitationId);
       
+      // Update status instead of deleting
       const { error } = await supabase
         .from("client_invitations")
-        .delete()
+        .update({ status: "rejected" })
         .eq("id", invitationId);
 
       if (error) throw error;

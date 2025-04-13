@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,13 +43,13 @@ const Auth = () => {
   
   const checkInvitationAfterLogin = async (token: string, email: string) => {
     try {
-      // Check if the invitation exists and is valid
+      // Check if the invitation exists and is valid, using status field now
       const { data: invitationData, error: invitationError } = await supabase
         .from("client_invitations")
         .select("*")
         .eq("token", token)
         .eq("email", email.toLowerCase())
-        .eq("accepted", false)
+        .eq("status", "pending") // Changed from 'accepted' boolean to 'status' field
         .single();
         
       if (invitationError) throw invitationError;
@@ -71,7 +70,8 @@ const Auth = () => {
           email: invitationData.email,
           trainer_id: invitationData.trainer_id,
           trainer_name: trainerData?.name || "Entrenador",
-          created_at: invitationData.created_at
+          created_at: invitationData.created_at,
+          status: invitationData.status as 'pending' | 'accepted' | 'rejected'
         });
         setShowInvitationModal(true);
       } else {
@@ -153,9 +153,10 @@ const Auth = () => {
     try {
       console.log("Accepting invitation:", invitationId, "for trainer:", trainerId);
       
+      // Update status instead of accepted boolean
       const { error: updateError } = await supabase
         .from("client_invitations")
-        .update({ accepted: true })
+        .update({ status: "accepted" })
         .eq("id", invitationId);
 
       if (updateError) throw updateError;
@@ -235,9 +236,10 @@ const Auth = () => {
     try {
       console.log("Rejecting invitation:", invitationId);
       
+      // Update status instead of deleting
       const { error } = await supabase
         .from("client_invitations")
-        .delete()
+        .update({ status: "rejected" })
         .eq("id", invitationId);
 
       if (error) throw error;

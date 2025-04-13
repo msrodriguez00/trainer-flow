@@ -27,12 +27,12 @@ export function useInvitations() {
       const userEmail = user.email.toLowerCase();
       console.log("Fetching invitations for email:", userEmail);
       
-      // First, fetch the invitations without the join
+      // First, fetch the invitations without the join, using the status field now
       const { data: invitationsData, error: invitationsError } = await supabase
         .from("client_invitations")
-        .select("id, email, trainer_id, created_at")
+        .select("id, email, trainer_id, created_at, status")
         .eq("email", userEmail)
-        .eq("accepted", false)
+        .eq("status", "pending")  // Changed from 'accepted' boolean to 'status' field
         .order("created_at", { ascending: false });
 
       if (invitationsError) {
@@ -70,7 +70,8 @@ export function useInvitations() {
             email: invitation.email,
             trainer_id: invitation.trainer_id,
             trainer_name: trainer?.name || "Entrenador",
-            created_at: invitation.created_at
+            created_at: invitation.created_at,
+            status: invitation.status
           });
         }
         
@@ -118,9 +119,10 @@ export function useInvitations() {
     try {
       console.log("Accepting invitation:", invitationId, "for trainer:", trainerId);
       
+      // Update the status to 'accepted' instead of the 'accepted' boolean
       const { error: updateError } = await supabase
         .from("client_invitations")
-        .update({ accepted: true })
+        .update({ status: "accepted" })
         .eq("id", invitationId);
 
       if (updateError) throw updateError;
@@ -201,9 +203,10 @@ export function useInvitations() {
     try {
       console.log("Rejecting invitation:", invitationId);
       
+      // Update the status to 'rejected' instead of deleting
       const { error } = await supabase
         .from("client_invitations")
-        .delete()
+        .update({ status: "rejected" })
         .eq("id", invitationId);
 
       if (error) throw error;

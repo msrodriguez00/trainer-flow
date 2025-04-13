@@ -16,6 +16,7 @@ export type Database = {
           email: string
           expires_at: string
           id: string
+          status: string
           token: string
           trainer_id: string
         }
@@ -25,6 +26,7 @@ export type Database = {
           email: string
           expires_at?: string
           id?: string
+          status?: string
           token: string
           trainer_id: string
         }
@@ -34,6 +36,7 @@ export type Database = {
           email?: string
           expires_at?: string
           id?: string
+          status?: string
           token?: string
           trainer_id?: string
         }

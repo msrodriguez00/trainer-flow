@@ -5,6 +5,7 @@ export interface TrainerInvitation {
   trainer_id: string;
   trainer_name: string;
   created_at: string;
+  status: 'pending' | 'accepted' | 'rejected';
 }
 
 export interface InvitationResponse {
