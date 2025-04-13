@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import { Exercise } from "@/types";
-import NewExerciseForm from "@/components/NewExerciseForm";
+import NewExerciseForm from "@/components/exercises/NewExerciseForm";
 import { useExercises } from "@/hooks/useExercises";
 import ExercisesHeader from "@/components/exercises/ExercisesHeader";
 import ExercisesList from "@/components/exercises/ExercisesList";

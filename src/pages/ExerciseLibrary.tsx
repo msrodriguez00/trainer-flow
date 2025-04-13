@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Exercise, Category } from "@/types";
 import ExerciseCard from "@/components/ExerciseCard";
-import NewExerciseForm from "@/components/NewExerciseForm";
+import NewExerciseForm from "@/components/exercises/NewExerciseForm";
 import { Plus, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,14 +82,12 @@ const ExerciseLibrary = () => {
 
   const filteredExercises = exercises.filter(
     (exercise) => {
-      // Filter by search term
       const matchesSearch = 
         exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         exercise.categories.some((cat) =>
           cat.toLowerCase().includes(searchTerm.toLowerCase())
         );
       
-      // Filter by selected categories
       const matchesCategory = 
         selectedCategories.length === 0 || 
         exercise.categories.some(cat => selectedCategories.includes(cat));
@@ -102,7 +100,6 @@ const ExerciseLibrary = () => {
     if (!user) return;
     
     try {
-      // Insert exercise with levels directly in JSON field
       const { data, error } = await supabase
         .from("exercises")
         .insert({
@@ -126,7 +123,7 @@ const ExerciseLibrary = () => {
         description: `Se ha añadido "${exercise.name}" a tu biblioteca.`,
       });
       
-      fetchExercises(); // Refresh the list
+      fetchExercises();
       setIsFormOpen(false);
     } catch (error) {
       console.error("Error creating exercise:", error);
@@ -147,7 +144,6 @@ const ExerciseLibrary = () => {
     if (!editExercise || !user) return;
     
     try {
-      // Update exercise with levels directly in JSON field
       const { error } = await supabase
         .from("exercises")
         .update({
@@ -169,7 +165,7 @@ const ExerciseLibrary = () => {
         description: `Se ha actualizado "${updatedExercise.name}" correctamente.`,
       });
       
-      fetchExercises(); // Refresh the list
+      fetchExercises();
       setIsFormOpen(false);
       setEditExercise(undefined);
     } catch (error) {

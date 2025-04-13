@@ -47,27 +47,43 @@ export const ExerciseLevelItem = ({
         onValidationChange={(isValid) => onVideoValidationChange(index, isValid)}
       />
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label htmlFor={`rep-${index}`}>Repeticiones</Label>
-          <Input
-            id={`rep-${index}`}
-            type="number"
-            value={level.repetitions}
-            onChange={(e) => onUpdate(index, "repetitions", e.target.value)}
-            min="0"
-          />
-        </div>
-        <div>
-          <Label htmlFor={`weight-${index}`}>Carga (kg)</Label>
-          <Input
-            id={`weight-${index}`}
-            type="number"
-            value={level.weight}
-            onChange={(e) => onUpdate(index, "weight", e.target.value)}
-            min="0"
-          />
-        </div>
+      <LevelMetricsInputs 
+        index={index}
+        level={level}
+        onUpdate={onUpdate}
+      />
+    </div>
+  );
+};
+
+interface LevelMetricsInputsProps {
+  index: number;
+  level: Omit<Level, "level">;
+  onUpdate: (index: number, field: keyof Omit<Level, "level">, value: string | number) => void;
+}
+
+export const LevelMetricsInputs = ({ index, level, onUpdate }: LevelMetricsInputsProps) => {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <Label htmlFor={`rep-${index}`}>Repeticiones</Label>
+        <Input
+          id={`rep-${index}`}
+          type="number"
+          value={level.repetitions}
+          onChange={(e) => onUpdate(index, "repetitions", e.target.value)}
+          min="0"
+        />
+      </div>
+      <div>
+        <Label htmlFor={`weight-${index}`}>Carga (kg)</Label>
+        <Input
+          id={`weight-${index}`}
+          type="number"
+          value={level.weight}
+          onChange={(e) => onUpdate(index, "weight", e.target.value)}
+          min="0"
+        />
       </div>
     </div>
   );

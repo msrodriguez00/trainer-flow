@@ -1,9 +1,7 @@
 
 import { useState } from "react";
 import { Exercise, Category, Level } from "@/types";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +10,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { CategorySelection } from "./exercises/CategorySelection";
-import { ExerciseLevelsList } from "./exercises/ExerciseLevelsList";
-import { EXERCISE_CATEGORIES } from "./exercises/constants";
+import { CategorySelection } from "./CategorySelection";
+import { ExerciseLevelsList } from "./ExerciseLevelsList";
+import { ExerciseNameInput } from "./ExerciseNameInput";
+import { EXERCISE_CATEGORIES } from "./constants";
 
 interface NewExerciseFormProps {
   isOpen: boolean;
@@ -133,15 +132,10 @@ const NewExerciseForm = ({
           </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">Nombre del Ejercicio</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Sentadillas"
-            />
-          </div>
+          <ExerciseNameInput 
+            name={name} 
+            onChange={setName} 
+          />
 
           <CategorySelection
             categories={EXERCISE_CATEGORIES}
