@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -71,28 +70,20 @@ const AdminDashboard = () => {
 
       console.log("Perfiles obtenidos:", profiles?.length || 0);
 
-      const usersWithAdminStatus = await Promise.all(
-        (profiles || []).map(async (profile) => {
-          const { data: isAdminUser, error: adminCheckError } = await supabase
-            .rpc('is_admin_user', { user_id: profile.id });
-            
-          if (adminCheckError) {
-            console.error(`Error checking admin status for user ${profile.id}:`, adminCheckError);
-          }
+      // Ahora isAdmin se determina por el role='admin' en el perfil
+      const processedUsers = (profiles || []).map((profile) => {
+        return {
+          id: profile.id,
+          email: profile.id,
+          name: profile.name,
+          avatar_url: profile.avatar_url,
+          role: profile.role,
+          isAdmin: profile.role === 'admin'
+        };
+      });
 
-          return {
-            id: profile.id,
-            email: profile.id,
-            name: profile.name,
-            avatar_url: profile.avatar_url,
-            role: profile.role,
-            isAdmin: !!isAdminUser
-          };
-        })
-      );
-
-      console.log("Usuarios procesados con estado de admin:", usersWithAdminStatus.length);
-      setUsers(usersWithAdminStatus);
+      console.log("Usuarios procesados:", processedUsers.length);
+      setUsers(processedUsers);
     } catch (error) {
       console.error("Error fetching usuarios:", error);
       toast({
@@ -118,7 +109,7 @@ const AdminDashboard = () => {
       }
 
       setUsers(users.map(user => 
-        user.id === userId ? { ...user, role: newRole } : user
+        user.id === userId ? { ...user, role: newRole, isAdmin: newRole === 'admin' } : user
       ));
 
       toast({
@@ -135,25 +126,26 @@ const AdminDashboard = () => {
     }
   };
 
+  // Now toggle admin status will change the role to/from 'admin'
   const toggleAdminStatus = async (userId: string, currentIsAdmin: boolean) => {
     try {
-      if (currentIsAdmin) {
-        const { error } = await supabase
-          .from("admin_users")
-          .delete()
-          .eq("id", userId);
+      // We will set the role to 'admin' or keep the previous role (or set to 'client' as default)
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+      
+      const newRole = currentIsAdmin ? 
+        (user.role === 'admin' ? 'client' : user.role) : 
+        'admin';
+      
+      const { error } = await supabase.rpc('update_user_role', {
+        user_id: userId,
+        new_role: newRole
+      });
 
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("admin_users")
-          .insert({ id: userId });
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       setUsers(users.map(user => 
-        user.id === userId ? { ...user, isAdmin: !currentIsAdmin } : user
+        user.id === userId ? { ...user, role: newRole, isAdmin: newRole === 'admin' } : user
       ));
 
       toast({
@@ -200,19 +192,18 @@ const AdminDashboard = () => {
 
       if (authData.user) {
         // Actualizar el perfil con el rol
-        if (data.role) {
-          await supabase.rpc('update_user_role', {
-            user_id: authData.user.id,
-            new_role: data.role
-          });
-        }
-
-        // Si debe ser admin, añadirlo a la tabla de admins
-        if (data.isAdmin) {
-          await supabase
-            .from("admin_users")
-            .insert({ id: authData.user.id });
-        }
+        const isAdmin = data.isAdmin;
+        const role = isAdmin ? 'admin' : (data.role || 'client');
+        
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({
+            name: data.name,
+            role: role,
+          })
+          .eq("id", authData.user.id);
+          
+        if (updateError) throw updateError;
 
         toast({
           title: "Usuario creado",
@@ -237,21 +228,19 @@ const AdminDashboard = () => {
     try {
       if (!currentUser) return;
 
+      // Determinar el nuevo rol
+      const newRole = data.isAdmin ? 'admin' : (data.role || currentUser.role || 'client');
+
       // Actualizar el perfil con los nuevos datos
       const { error: updateError } = await supabase
         .from("profiles")
         .update({
           name: data.name,
-          role: data.role || null,
+          role: newRole,
         })
         .eq("id", currentUser.id);
 
       if (updateError) throw updateError;
-
-      // Si cambió el estado de admin
-      if (data.isAdmin !== currentUser.isAdmin) {
-        await toggleAdminStatus(currentUser.id, currentUser.isAdmin);
-      }
 
       // Si se proporcionó una nueva contraseña
       if (data.password) {

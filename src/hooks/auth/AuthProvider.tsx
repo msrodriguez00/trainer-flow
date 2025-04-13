@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthContext } from "./AuthContext";
-import { fetchProfile, fetchTrainerBrand, checkIfAdmin, signIn, signUp, signOut } from "./authService";
+import { fetchProfile, fetchTrainerBrand, signIn, signUp, signOut } from "./authService";
 import { Profile, TrainerBrand } from "./types";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -58,10 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleUserAuthenticated = async (userId: string) => {
     try {
       await loadUserProfile(userId);
-      await checkUserAdminStatus(userId);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error loading user data:", error);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -74,8 +73,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Profile fetched:", profileData);
       setProfile(profileData);
       
+      // Changed: Check for admin role in profile
+      setIsAdmin(profileData.role === 'admin');
+      
       // If user is a trainer, fetch their brand settings
-      if (profileData.role === 'trainer') {
+      if (profileData.role === 'trainer' || profileData.role === 'admin') {
         const brandData = await fetchTrainerBrand(userId);
         console.log("Trainer brand fetched:", brandData);
         setTrainerBrand(brandData);
@@ -86,21 +88,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const checkUserAdminStatus = async (userId: string) => {
-    try {
-      console.log("Checking admin status for:", userId);
-      const isUserAdmin = await checkIfAdmin(userId);
-      console.log("Admin status check result:", isUserAdmin);
-      setIsAdmin(isUserAdmin);
-    } catch (error) {
-      console.error("Error in checkUserAdminStatus:", error);
-      throw error;
-    }
-  };
-
   // Determine if the user is a client or trainer
   const isClient = profile?.role === 'client';
-  const isTrainer = profile?.role === 'trainer';
+  const isTrainer = profile?.role === 'trainer' || profile?.role === 'admin'; // Admin can also access trainer features
 
   const value = {
     session,

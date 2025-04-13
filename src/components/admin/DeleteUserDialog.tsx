@@ -19,6 +19,16 @@ interface DeleteUserDialogProps {
 const DeleteUserDialog = ({ userToDelete, onCancel, onConfirm }: DeleteUserDialogProps) => {
   if (!userToDelete) return null;
   
+  // Helper function to get a readable role name in Spanish
+  const getRoleInSpanish = (role: string | null) => {
+    switch (role) {
+      case "trainer": return "entrenador";
+      case "client": return "cliente";
+      case "admin": return "administrador";
+      default: return "usuario";
+    }
+  };
+  
   return (
     <DialogContent className="sm:max-w-[425px]">
       <DialogHeader>
@@ -27,7 +37,7 @@ const DeleteUserDialog = ({ userToDelete, onCancel, onConfirm }: DeleteUserDialo
           Confirmar eliminación
         </DialogTitle>
         <DialogDescription>
-          ¿Estás seguro de que deseas eliminar al usuario {userToDelete.name || userToDelete.email}? Esta acción no se puede deshacer.
+          ¿Estás seguro de que deseas eliminar al {getRoleInSpanish(userToDelete.role)} {userToDelete.name || userToDelete.email}? Esta acción no se puede deshacer.
         </DialogDescription>
       </DialogHeader>
       <DialogFooter>

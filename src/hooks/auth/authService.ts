@@ -31,20 +31,7 @@ export const fetchTrainerBrand = async (userId: string) => {
   return data || null;
 };
 
-export const checkIfAdmin = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('admin_users')
-    .select('id')
-    .eq('id', userId)
-    .maybeSingle();
-  
-  if (error) {
-    console.error("Error checking admin status:", error);
-    throw error;
-  }
-  
-  return data !== null;
-};
+// Changed: removing checkIfAdmin as we'll use role from profile instead
 
 export const signIn = async ({ email, password }: { email: string; password: string }) => {
   const { error } = await supabase.auth.signInWithPassword({ email, password });

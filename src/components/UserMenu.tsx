@@ -33,10 +33,8 @@ const UserMenu = () => {
   const handleDashboard = () => {
     if (isClient) {
       navigate("/client-dashboard");
-    } else if (isTrainer) {
-      navigate("/trainer-dashboard");
-    } else if (isAdmin) {
-      navigate("/admin");
+    } else if (isTrainer || isAdmin) {
+      navigate(isAdmin ? "/admin" : "/trainer-dashboard");
     } else {
       navigate("/");
     }
@@ -86,6 +84,14 @@ const UserMenu = () => {
       </Badge>
     );
   };
+  
+  // Función para obtener el rol en español
+  const getRoleText = () => {
+    if (profile?.role === 'admin') return 'Administrador';
+    if (isTrainer) return 'Entrenador';
+    if (isClient) return 'Cliente';
+    return 'Usuario';
+  };
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -102,8 +108,8 @@ const UserMenu = () => {
           <div>
             {profile?.name || user?.email}
             <p className="text-xs text-gray-500">
-              {isAdmin ? 'Administrador' : isTrainer ? 'Entrenador' : 'Cliente'}
-              {isTrainer && ` - ${profile?.tier?.charAt(0).toUpperCase()}${profile?.tier?.slice(1) || 'Base'}`}
+              {getRoleText()}
+              {isTrainer && profile?.role !== 'admin' && ` - ${profile?.tier?.charAt(0).toUpperCase()}${profile?.tier?.slice(1) || 'Base'}`}
             </p>
           </div>
           {getTrainerTierBadge()}

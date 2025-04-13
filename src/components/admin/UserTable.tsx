@@ -50,6 +50,20 @@ const UserTable = ({
     return email.substring(0, 2).toUpperCase();
   };
 
+  // Helper function to get role badge color
+  const getRoleBadgeClass = (role: string | null) => {
+    switch (role) {
+      case 'trainer':
+        return 'bg-blue-100 text-blue-800';
+      case 'client':
+        return 'bg-green-100 text-green-800';
+      case 'admin':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (loadingUsers) {
     return <div className="text-center py-6">Cargando usuarios...</div>;
   }
@@ -65,7 +79,6 @@ const UserTable = ({
           <TableHead>Usuario</TableHead>
           <TableHead>ID</TableHead>
           <TableHead>Rol</TableHead>
-          <TableHead>Admin</TableHead>
           <TableHead className="w-[150px]">Acciones</TableHead>
         </TableRow>
       </TableHeader>
@@ -84,23 +97,13 @@ const UserTable = ({
             <TableCell className="font-mono text-xs truncate max-w-[100px]">{user.id}</TableCell>
             <TableCell>
               <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                user.role === 'trainer'
-                  ? 'bg-blue-100 text-blue-800'
-                  : user.role === 'client'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-800'
+                getRoleBadgeClass(user.role)
               }`}>
-                {user.role || "Sin rol"}
+                {user.role === 'admin' ? 'Administrador' : 
+                 user.role === 'trainer' ? 'Entrenador' : 
+                 user.role === 'client' ? 'Cliente' : 
+                 "Sin rol"}
               </span>
-            </TableCell>
-            <TableCell>
-              {user.isAdmin ? (
-                <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
-                  Admin
-                </span>
-              ) : (
-                "-"
-              )}
             </TableCell>
             <TableCell>
               <div className="flex items-center space-x-2">
@@ -138,11 +141,10 @@ const UserTable = ({
                     >
                       Establecer como Entrenador
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => toggleAdminStatus(user.id, user.isAdmin)}
+                      onClick={() => handleRoleChange(user.id, "admin")}
                     >
-                      {user.isAdmin ? "Quitar Admin" : "Hacer Admin"}
+                      Establecer como Administrador
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

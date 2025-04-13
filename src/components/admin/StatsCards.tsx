@@ -8,7 +8,7 @@ interface StatsCardsProps {
 
 const StatsCards = ({ users }: StatsCardsProps) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">
@@ -40,6 +40,18 @@ const StatsCards = ({ users }: StatsCardsProps) => {
         <CardContent>
           <div className="text-2xl font-bold">
             {users.filter(u => u.role === "client").length}
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">
+            Administradores
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {users.filter(u => u.role === "admin").length}
           </div>
         </CardContent>
       </Card>
