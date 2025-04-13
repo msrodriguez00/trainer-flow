@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Trainer } from "@/components/client/dashboard/types";
+import { useTrainerTheme } from "./useTrainerTheme";
 
 export const useTrainerSelection = (onTrainerChange?: (trainerId: string, trainerName: string, trainerBranding?: any) => void) => {
   const [selectedTrainerId, setSelectedTrainerId] = useState<string>(
@@ -14,6 +15,7 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
+  const { applyTrainerTheme } = useTrainerTheme();
 
   useEffect(() => {
     loadTrainers();
@@ -233,17 +235,6 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       if (onTrainerChange) {
         onTrainerChange(selected.id, selected.name, selected.branding);
       }
-    }
-  };
-
-  // Apply the trainer's theme to the application
-  const applyTrainerTheme = (trainer: Trainer) => {
-    if (trainer.branding) {
-      sessionStorage.setItem('selected_trainer_branding', JSON.stringify(trainer.branding));
-      
-      document.documentElement.style.setProperty('--client-primary', trainer.branding.primary_color);
-      document.documentElement.style.setProperty('--client-secondary', trainer.branding.secondary_color);
-      document.documentElement.style.setProperty('--client-accent', trainer.branding.accent_color);
     }
   };
 
