@@ -1,10 +1,10 @@
 
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Client } from "@/types";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserPlus } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface RecentClientsCardProps {
   clients: Client[];
@@ -15,10 +15,14 @@ interface RecentClientsCardProps {
 const RecentClientsCard = ({ clients, loading, onAddClient }: RecentClientsCardProps) => {
   const navigate = useNavigate();
   
-  // Función para manejar errores de carga de imágenes
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const target = e.target as HTMLImageElement;
-    target.src = "https://via.placeholder.com/150";
+  // Obtener iniciales para el fallback del avatar
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
   };
 
   return (
@@ -45,12 +49,16 @@ const RecentClientsCard = ({ clients, loading, onAddClient }: RecentClientsCardP
                   className="flex items-center p-3 border rounded-md hover:bg-gray-50 cursor-pointer"
                   onClick={() => navigate(`/clients/${client.id}`)}
                 >
-                  <img
-                    src={client.avatar || "https://via.placeholder.com/150"}
-                    alt={client.name}
-                    className="h-10 w-10 rounded-full mr-3 object-cover"
-                    onError={handleImageError}
-                  />
+                  <Avatar className="h-10 w-10 mr-3">
+                    <AvatarImage 
+                      src={client.avatar || undefined} 
+                      alt={client.name} 
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {getInitials(client.name)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
                     <h3 className="font-medium">{client.name}</h3>
                     <p className="text-sm text-gray-500">{client.email}</p>

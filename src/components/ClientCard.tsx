@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface ClientCardProps {
   client: Client;
@@ -20,10 +21,14 @@ interface ClientCardProps {
 const ClientCard = ({ client, onEdit, onDelete }: ClientCardProps) => {
   const navigate = useNavigate();
   
-  // Función para manejar errores de carga de imágenes
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const target = e.target as HTMLImageElement;
-    target.src = "https://via.placeholder.com/150";
+  // Obtener iniciales para el fallback del avatar
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
   };
 
   return (
@@ -31,12 +36,16 @@ const ClientCard = ({ client, onEdit, onDelete }: ClientCardProps) => {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div className="flex items-center">
-            <img
-              src={client.avatar || "https://via.placeholder.com/150"}
-              alt={client.name}
-              className="h-10 w-10 rounded-full mr-3 object-cover"
-              onError={handleImageError}
-            />
+            <Avatar className="h-10 w-10 mr-3">
+              <AvatarImage 
+                src={client.avatar || undefined} 
+                alt={client.name} 
+                className="object-cover"
+              />
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {getInitials(client.name)}
+              </AvatarFallback>
+            </Avatar>
             <div>
               <CardTitle className="text-lg">{client.name}</CardTitle>
               <p className="text-sm text-gray-500">{client.email}</p>

@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * A hook to manage trainer theme application
+ * Un hook para gestionar la aplicación del tema del entrenador
  */
 export const useTrainerTheme = () => {
   const [currentTheme, setCurrentTheme] = useState<any>(null);
@@ -13,48 +13,42 @@ export const useTrainerTheme = () => {
   const { toast } = useToast();
   const themeInitializedRef = useRef(false);
   
-  // Load theme from session storage on initial mount with error handling
+  // Cargar tema desde el almacenamiento de la sesión en el montaje inicial con manejo de errores
   useEffect(() => {
-    // Skip if we've already initialized
+    // Omitir si ya hemos inicializado
     if (themeInitializedRef.current) return;
     themeInitializedRef.current = true;
     
     try {
-      console.log("useTrainerTheme: Initializing");
+      console.log("useTrainerTheme: Inicializando");
       
       const storedBranding = sessionStorage.getItem('selected_trainer_branding');
       const selectedTrainerId = sessionStorage.getItem('selected_trainer_id');
       
-      console.log("Initial stored values:", { 
-        storedBranding: storedBranding ? "exists" : "none", 
+      console.log("Valores almacenados iniciales:", { 
+        storedBranding: storedBranding ? "existe" : "ninguno", 
         selectedTrainerId 
       });
       
       if (storedBranding) {
         try {
           const branding = JSON.parse(storedBranding);
-          console.log("Applying theme from session storage:", branding);
+          console.log("Aplicando tema desde el almacenamiento de sesión:", branding);
           applyThemeToDocument(branding);
           setCurrentTheme(branding);
         } catch (parseError) {
-          console.error("Error parsing stored branding:", parseError);
-          // If parsing fails, try to fetch fresh data
+          console.error("Error al analizar la marca almacenada:", parseError);
+          // Si el análisis falla, intenta obtener datos nuevos
           if (selectedTrainerId) {
             fetchTrainerTheme(selectedTrainerId);
-          } else {
-            resetTheme();
           }
         }
       } else if (selectedTrainerId) {
-        console.log("No branding in session but trainer ID exists, fetching theme:", selectedTrainerId);
+        console.log("No hay marca en la sesión pero existe el ID del entrenador, obteniendo tema:", selectedTrainerId);
         fetchTrainerTheme(selectedTrainerId);
-      } else {
-        console.log("No theme data available, applying defaults");
-        resetTheme();
       }
     } catch (error) {
-      console.error("Error initializing trainer theme:", error);
-      resetTheme();
+      console.error("Error al inicializar el tema del entrenador:", error);
     }
   }, []);
 
@@ -62,7 +56,7 @@ export const useTrainerTheme = () => {
   const fetchTrainerTheme = async (trainerId: string) => {
     setIsLoading(true);
     try {
-      console.log("Fetching theme for trainer:", trainerId);
+      console.log("Obteniendo tema para el entrenador:", trainerId);
       const { data: brandData, error } = await supabase
         .from("trainer_brands")
         .select("*")
@@ -70,11 +64,11 @@ export const useTrainerTheme = () => {
         .maybeSingle();
       
       if (error) {
-        console.error("Error fetching trainer branding:", error);
+        console.error("Error al obtener la marca del entrenador:", error);
         throw error;
       }
       
-      console.log("Trainer branding data fetched:", brandData);
+      console.log("Datos de marca del entrenador obtenidos:", brandData);
       
       if (brandData) {
         const branding = {
@@ -84,30 +78,17 @@ export const useTrainerTheme = () => {
           logo_url: brandData.logo_url
         };
         
-        console.log("Saving and applying branding:", branding);
+        console.log("Guardando y aplicando marca:", branding);
         sessionStorage.setItem('selected_trainer_branding', JSON.stringify(branding));
         applyThemeToDocument(branding);
         setCurrentTheme(branding);
-        
-        toast({
-          title: "Tema personalizado aplicado",
-          description: "El tema personalizado del entrenador ha sido aplicado."
-        });
         return true;
       } else {
-        console.log("No branding data found for trainer:", trainerId);
-        resetTheme();
+        console.log("No se encontraron datos de marca para el entrenador:", trainerId);
         return false;
       }
     } catch (error) {
-      console.error("Error in fetchTrainerTheme:", error);
-      resetTheme();
-      
-      toast({
-        variant: "destructive",
-        title: "Error al cargar el tema",
-        description: "No se pudo cargar el tema del entrenador. Se ha aplicado el tema predeterminado."
-      });
+      console.error("Error en fetchTrainerTheme:", error);
       return false;
     } finally {
       setIsLoading(false);
@@ -116,39 +97,24 @@ export const useTrainerTheme = () => {
 
   // Apply theme to document with forced re-rendering
   const applyThemeToDocument = (branding: any) => {
-    console.log("Applying theme with !important:", branding);
+    console.log("Aplicando tema con !important:", branding);
     
-    // Force the CSS variables with !important to ensure they override any other styles
+    // Forzar las variables CSS con !important para asegurar que sobreescriban cualquier otro estilo
     document.documentElement.style.setProperty('--client-primary', branding.primary_color, 'important');
     document.documentElement.style.setProperty('--client-secondary', branding.secondary_color, 'important');
     document.documentElement.style.setProperty('--client-accent', branding.accent_color, 'important');
-    
-    // Add theme-applied class to force a re-render of components
-    document.documentElement.classList.remove('theme-applied');
-    setTimeout(() => {
-      document.documentElement.classList.add('theme-applied');
-      
-      // Log verification of applied values
-      console.log("Theme should now be applied. Verifying CSS variables:");
-      const root = document.documentElement;
-      console.log({
-        primary: getComputedStyle(root).getPropertyValue('--client-primary'),
-        secondary: getComputedStyle(root).getPropertyValue('--client-secondary'),
-        accent: getComputedStyle(root).getPropertyValue('--client-accent')
-      });
-    }, 10);
   };
 
   // Apply a trainer's theme with explicit error handling
   const applyTrainerTheme = (trainer: Trainer) => {
     if (!trainer) {
-      console.error("Cannot apply theme - trainer object is null or undefined");
+      console.error("No se puede aplicar el tema - el objeto del entrenador es nulo o indefinido");
       return false;
     }
     
     try {
       if (trainer.branding) {
-        console.log("Applying trainer theme for:", trainer.name, trainer.branding);
+        console.log("Aplicando tema del entrenador para:", trainer.name, trainer.branding);
         sessionStorage.setItem('selected_trainer_branding', JSON.stringify(trainer.branding));
         applyThemeToDocument(trainer.branding);
         setCurrentTheme(trainer.branding);
@@ -159,18 +125,17 @@ export const useTrainerTheme = () => {
         });
         return true;
       } else if (trainer.id) {
-        // If trainer exists but has no branding, try to fetch it
-        console.log("Trainer has no branding object, fetching from DB:", trainer.id);
+        // Si el entrenador existe pero no tiene marca, intenta obtenerla
+        console.log("El entrenador no tiene objeto de marca, obteniendo de la BD:", trainer.id);
         return fetchTrainerTheme(trainer.id);
       }
     } catch (error) {
-      console.error("Error applying trainer theme:", error);
+      console.error("Error al aplicar el tema del entrenador:", error);
       toast({
         variant: "destructive",
         title: "Error al aplicar el tema",
-        description: "No se pudo aplicar el tema personalizado. Se ha aplicado el tema predeterminado."
+        description: "No se pudo aplicar el tema personalizado."
       });
-      resetTheme();
     }
     return false;
   };
@@ -183,15 +148,10 @@ export const useTrainerTheme = () => {
       accent_color: "#7E69AB"
     };
     
-    console.log("Resetting to default theme:", defaultTheme);
+    console.log("Restableciendo al tema predeterminado:", defaultTheme);
     applyThemeToDocument(defaultTheme);
     setCurrentTheme(defaultTheme);
     sessionStorage.removeItem('selected_trainer_branding');
-    
-    toast({
-      title: "Tema predeterminado aplicado",
-      description: "Se ha aplicado el tema predeterminado."
-    });
   };
 
   return {
