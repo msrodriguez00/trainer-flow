@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +11,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ClientLogin from "./pages/ClientLogin";
 import Profile from "./pages/Profile";
 import Exercises from "./pages/Exercises";
 import ExerciseLibrary from "./pages/ExerciseLibrary";
@@ -94,6 +96,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/client-login" element={<ClientLogin />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <IndexRedirect />

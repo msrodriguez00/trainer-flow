@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 
 const Auth = () => {
   const [type, setType] = useState<"sign-in" | "sign-up">("sign-in");
@@ -301,6 +301,20 @@ const Auth = () => {
               </form>
             </TabsContent>
           </Tabs>
+          
+          <div className="text-center border-t pt-4 mt-2">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/client-login")}
+              className="w-full"
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Acceso para clientes
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Usa esta opción si eres cliente de un entrenador
+            </p>
+          </div>
         </CardContent>
         <CardFooter className="flex justify-between">
           {location.state?.from && (
