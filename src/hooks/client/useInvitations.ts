@@ -71,7 +71,7 @@ export function useInvitations() {
             trainer_id: invitation.trainer_id,
             trainer_name: trainer?.name || "Entrenador",
             created_at: invitation.created_at,
-            status: invitation.status
+            status: invitation.status as 'pending' | 'accepted' | 'rejected'
           });
         }
         

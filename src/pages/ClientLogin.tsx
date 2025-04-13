@@ -99,7 +99,7 @@ const ClientLogin = () => {
           trainer_id: invitationData.trainer_id,
           trainer_name: trainerData?.name || "Entrenador",
           created_at: invitationData.created_at,
-          status: invitationData.status
+          status: invitationData.status as 'pending' | 'accepted' | 'rejected'
         });
         setShowInvitationModal(true);
       } else {
