@@ -14,6 +14,7 @@ export const useUserManagement = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
@@ -221,10 +222,24 @@ export const useUserManagement = () => {
   const handleDeleteUser = async () => {
     try {
       if (!userToDelete) return;
-
-      const { error } = await supabase.auth.admin.deleteUser(userToDelete.id);
-
-      if (error) throw error;
+      
+      setIsDeletingUser(true);
+      
+      // Use edge function instead of direct API call
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({ userId: userToDelete.id }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || "Error al eliminar usuario");
+      }
 
       toast({
         title: "Usuario eliminado",
@@ -241,6 +256,8 @@ export const useUserManagement = () => {
         description: error.message || "No se pudo eliminar el usuario",
         variant: "destructive",
       });
+    } finally {
+      setIsDeletingUser(false);
     }
   };
 
@@ -267,6 +284,7 @@ export const useUserManagement = () => {
     setDeleteDialogOpen,
     userToDelete,
     setUserToDelete,
+    isDeletingUser,
     fetchUsers,
     handleRoleChange,
     toggleAdminStatus,

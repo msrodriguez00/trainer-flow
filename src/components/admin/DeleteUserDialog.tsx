@@ -14,9 +14,10 @@ interface DeleteUserDialogProps {
   userToDelete: User | null;
   onCancel: () => void;
   onConfirm: () => void;
+  isDeleting?: boolean;
 }
 
-const DeleteUserDialog = ({ userToDelete, onCancel, onConfirm }: DeleteUserDialogProps) => {
+const DeleteUserDialog = ({ userToDelete, onCancel, onConfirm, isDeleting = false }: DeleteUserDialogProps) => {
   if (!userToDelete) return null;
   
   // Helper function to get a readable role name in Spanish
@@ -44,14 +45,16 @@ const DeleteUserDialog = ({ userToDelete, onCancel, onConfirm }: DeleteUserDialo
         <Button 
           variant="outline" 
           onClick={onCancel}
+          disabled={isDeleting}
         >
           Cancelar
         </Button>
         <Button 
           variant="destructive" 
           onClick={onConfirm}
+          disabled={isDeleting}
         >
-          Eliminar
+          {isDeleting ? "Eliminando..." : "Eliminar"}
         </Button>
       </DialogFooter>
     </DialogContent>

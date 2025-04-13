@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -115,6 +114,7 @@ const AdminDashboard = () => {
           handleCreateUser={userManagement.handleCreateUser}
           handleUpdateUser={userManagement.handleUpdateUser}
           handleDeleteUser={userManagement.handleDeleteUser}
+          isDeletingUser={userManagement.isDeletingUser}
         />
 
         <Dialog 

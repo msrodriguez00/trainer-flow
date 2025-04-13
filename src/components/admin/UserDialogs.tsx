@@ -19,6 +19,7 @@ interface UserDialogsProps {
   handleCreateUser: (data: UserFormValues) => void;
   handleUpdateUser: (data: UserFormValues) => void;
   handleDeleteUser: () => void;
+  isDeletingUser?: boolean;
 }
 
 const UserDialogs = ({
@@ -35,6 +36,7 @@ const UserDialogs = ({
   handleCreateUser,
   handleUpdateUser,
   handleDeleteUser,
+  isDeletingUser = false,
 }: UserDialogsProps) => {
   return (
     <>
@@ -76,6 +78,7 @@ const UserDialogs = ({
             setUserToDelete(null);
           }}
           onConfirm={handleDeleteUser}
+          isDeleting={isDeletingUser}
         />
       </Dialog>
     </>
