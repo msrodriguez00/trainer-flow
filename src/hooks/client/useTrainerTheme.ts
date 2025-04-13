@@ -122,15 +122,16 @@ export const useTrainerTheme = () => {
     document.documentElement.classList.remove('theme-applied');
     setTimeout(() => {
       document.documentElement.classList.add('theme-applied');
+      
+      // Log verification of applied values
+      console.log("Theme should now be applied. Verifying CSS variables:");
+      const root = document.documentElement;
+      console.log({
+        primary: getComputedStyle(root).getPropertyValue('--client-primary'),
+        secondary: getComputedStyle(root).getPropertyValue('--client-secondary'),
+        accent: getComputedStyle(root).getPropertyValue('--client-accent')
+      });
     }, 10);
-    
-    // Log to verify the values were set correctly
-    const root = document.documentElement;
-    console.log("Theme applied, current CSS variables:", {
-      primary: getComputedStyle(root).getPropertyValue('--client-primary'),
-      secondary: getComputedStyle(root).getPropertyValue('--client-secondary'),
-      accent: getComputedStyle(root).getPropertyValue('--client-accent')
-    });
   };
 
   // Apply a trainer's theme with explicit error handling
@@ -142,7 +143,7 @@ export const useTrainerTheme = () => {
     
     try {
       if (trainer.branding) {
-        console.log("Applying trainer theme:", trainer.name, trainer.branding);
+        console.log("Applying trainer theme for:", trainer.name, trainer.branding);
         sessionStorage.setItem('selected_trainer_branding', JSON.stringify(trainer.branding));
         applyThemeToDocument(trainer.branding);
         setCurrentTheme(trainer.branding);

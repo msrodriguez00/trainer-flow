@@ -58,6 +58,24 @@ const MainLayout = ({ children }: MainLayoutProps) => {
               document.documentElement.classList.remove('theme-applied');
               setTimeout(() => document.documentElement.classList.add('theme-applied'), 10);
               
+              // Debug verification
+              console.log("Branding should be applied, verifying CSS variables:");
+              const verifyStyles = logThemeVariables();
+              console.log("Applied vs Expected:", {
+                primary: {
+                  applied: verifyStyles.primary.trim(),
+                  expected: branding.primary_color
+                },
+                secondary: {
+                  applied: verifyStyles.secondary.trim(),
+                  expected: branding.secondary_color
+                },
+                accent: {
+                  applied: verifyStyles.accent.trim(),
+                  expected: branding.accent_color
+                }
+              });
+              
             } catch (e) {
               console.error("Error parsing stored branding:", e);
               
@@ -105,15 +123,15 @@ const MainLayout = ({ children }: MainLayoutProps) => {
             {themeVerified ? "✅ Tema verificado" : "⏳ Verificando tema..."}
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full bg-primary border border-gray-300"></span>
+            <span className="w-4 h-4 rounded-full bg-[var(--client-primary)] border border-gray-300"></span>
             <span className="text-xs font-medium">Primary</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full bg-secondary border border-gray-300"></span>
+            <span className="w-4 h-4 rounded-full bg-[var(--client-secondary)] border border-gray-300"></span>
             <span className="text-xs font-medium">Secondary</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full bg-accent border border-gray-300"></span>
+            <span className="w-4 h-4 rounded-full bg-[var(--client-accent)] border border-gray-300"></span>
             <span className="text-xs font-medium">Accent</span>
           </div>
         </div>

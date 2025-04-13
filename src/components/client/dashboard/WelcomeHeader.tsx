@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TrainerSelector from "./TrainerSelector";
 import { useTrainerSelection } from "@/hooks/client/useTrainerSelection";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTrainerTheme } from "@/hooks/client/useTrainerTheme";
 
 interface WelcomeHeaderProps {
@@ -15,6 +15,12 @@ interface WelcomeHeaderProps {
 const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderProps) => {
   const { user } = useAuth();
   const { currentTheme } = useTrainerTheme();
+  const [themeColors, setThemeColors] = useState({
+    primary: '',
+    secondary: '',
+    accent: ''
+  });
+  
   const {
     trainers,
     loading,
@@ -22,19 +28,24 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
     handleTrainerSelect
   } = useTrainerSelection(onTrainerChange);
 
-  // Debug logging para verificar que los temas se están aplicando
+  // Update theme colors for display whenever they change
   useEffect(() => {
+    const root = document.documentElement;
+    const colors = {
+      primary: getComputedStyle(root).getPropertyValue('--client-primary').trim(),
+      secondary: getComputedStyle(root).getPropertyValue('--client-secondary').trim(),
+      accent: getComputedStyle(root).getPropertyValue('--client-accent').trim()
+    };
+    
+    console.log("WelcomeHeader - Current CSS variables:", colors);
+    setThemeColors(colors);
+    
     const storedBranding = sessionStorage.getItem('selected_trainer_branding');
-    console.log("WelcomeHeader - stored branding:", storedBranding ? JSON.parse(storedBranding) : null);
+    if (storedBranding) {
+      console.log("WelcomeHeader - stored branding:", JSON.parse(storedBranding));
+    }
     
-    // Verify CSS variables
-    console.log("WelcomeHeader CSS variables:", {
-      primary: getComputedStyle(document.documentElement).getPropertyValue('--client-primary'),
-      secondary: getComputedStyle(document.documentElement).getPropertyValue('--client-secondary'),
-      accent: getComputedStyle(document.documentElement).getPropertyValue('--client-accent')
-    });
-    
-    // Verify direct element styles
+    // Verify card styles
     const cardElement = document.querySelector('.welcome-header-card');
     if (cardElement) {
       console.log("WelcomeHeader card computed styles:", {
@@ -42,12 +53,12 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
         backgroundColor: getComputedStyle(cardElement).backgroundColor
       });
     }
-  }, []);
+  }, [currentTheme]);
 
   return (
-    <Card className="welcome-header-card border-2 border-primary">
-      <CardHeader className="pb-2 bg-secondary/50">
-        <CardTitle className="text-2xl text-primary">¡Bienvenido, {userName}!</CardTitle>
+    <Card className="welcome-header-card border-2" style={{ borderColor: themeColors.primary }}>
+      <CardHeader className="pb-2" style={{ backgroundColor: `${themeColors.secondary}80` }}>
+        <CardTitle className="text-2xl" style={{ color: themeColors.primary }}>¡Bienvenido, {userName}!</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -64,16 +75,19 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
           <div className="mt-4 flex flex-col gap-2">
             <div className="text-sm font-medium">Tema actual:</div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-primary border border-gray-300"></div>
-              <span className="text-xs">Primary</span>
+              <div className="w-6 h-6 rounded-full border border-gray-300" 
+                style={{ backgroundColor: themeColors.primary }}></div>
+              <span className="text-xs">Primary: {themeColors.primary}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-secondary border border-gray-300"></div>
-              <span className="text-xs">Secondary</span>
+              <div className="w-6 h-6 rounded-full border border-gray-300" 
+                style={{ backgroundColor: themeColors.secondary }}></div>
+              <span className="text-xs">Secondary: {themeColors.secondary}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-accent border border-gray-300"></div>
-              <span className="text-xs">Accent</span>
+              <div className="w-6 h-6 rounded-full border border-gray-300" 
+                style={{ backgroundColor: themeColors.accent }}></div>
+              <span className="text-xs">Accent: {themeColors.accent}</span>
             </div>
           </div>
         </div>
