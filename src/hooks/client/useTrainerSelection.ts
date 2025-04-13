@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -296,10 +297,11 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
 
   const handleTrainerSelect = (trainerId: string) => {
     console.log("Trainer selected manually:", trainerId);
+    // Corregir el problema de búsqueda del entrenador
     const selected = trainers.find(t => t.id === trainerId);
     
     if (selected) {
-      console.log("Applying theme for selected trainer:", selected);
+      console.log("Selected trainer found, applying theme:", selected);
       setSelectedTrainerId(trainerId);
       setTrainerName(selected.name);
       
@@ -310,7 +312,16 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
         onTrainerChange(selected.id, selected.name, selected.branding);
       }
     } else {
-      console.error("Selected trainer not found in trainers list:", trainerId);
+      // Mensaje de error más claro y medida de recuperación
+      console.error("Selected trainer not found in trainers list:", trainerId, "Available trainers:", trainers);
+      // Si no encontramos el entrenador pero tenemos alguno en la lista, usar el primero
+      if (trainers.length > 0) {
+        console.log("Falling back to first available trainer");
+        handleTrainerSelect(trainers[0].id);
+      } else {
+        // Si no hay entrenadores, establecer uno por defecto
+        setDefaultTrainer();
+      }
     }
   };
 

@@ -162,6 +162,11 @@ const App = () => (
                 <ClientDashboard />
               </ProtectedRoute>
             } />
+            <Route path="/client-plans" element={
+              <ProtectedRoute clientOnly>
+                <ClientDashboard />
+              </ProtectedRoute>
+            } />
             <Route path="/admin" element={
               <ProtectedRoute adminOnly>
                 <AdminDashboard />

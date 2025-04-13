@@ -21,7 +21,13 @@ const Navbar = () => {
     { path: "/exercises", icon: Dumbbell, label: "Ejercicios", showFor: "trainer" },
     { path: "/library", icon: BookOpen, label: "Biblioteca", showFor: "trainer" },
     { path: "/clients", icon: Users, label: "Clientes", showFor: "trainer" },
-    { path: "/plans", icon: ClipboardList, label: "Planes", showFor: "all" },
+    // Modificamos este item para asegurar que los clientes usen la ruta correcta
+    { 
+      path: isClient ? "/client-dashboard" : "/plans", 
+      icon: ClipboardList, 
+      label: "Planes", 
+      showFor: "all" 
+    },
   ];
 
   // Filtrar los elementos de navegación según el rol del usuario
