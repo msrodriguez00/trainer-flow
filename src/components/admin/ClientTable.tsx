@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Client, Trainer } from '@/pages/AdminDashboard';
+import { Client, Trainer } from './types';
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import {

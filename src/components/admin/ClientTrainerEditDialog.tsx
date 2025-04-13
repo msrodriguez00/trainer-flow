@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Client, Trainer } from '@/pages/AdminDashboard';
+import { Client, Trainer } from './types';
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
