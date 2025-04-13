@@ -14,6 +14,7 @@ import { Dialog } from "@/components/ui/dialog";
 import UserTable from "@/components/admin/UserTable";
 import StatsCards from "@/components/admin/StatsCards";
 import UserDialogs from "@/components/admin/UserDialogs";
+import ClientTable from "@/components/admin/ClientTable";
 import { UserFormValues } from "@/components/admin/UserForm";
 
 export type User = {
@@ -25,10 +26,24 @@ export type User = {
   isAdmin: boolean;
 };
 
+export type Client = {
+  id: string;
+  name: string;
+  email: string;
+  trainers: string[] | null;
+};
+
+export type Trainer = {
+  id: string;
+  name: string;
+};
+
 const AdminDashboard = () => {
   const { isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Users state
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -36,6 +51,13 @@ const AdminDashboard = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  
+  // Client-trainer state
+  const [clients, setClients] = useState<Client[]>([]);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [isEditingClient, setIsEditingClient] = useState(false);
+  const [currentClient, setCurrentClient] = useState<Client | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
@@ -51,14 +73,13 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (isAdmin) {
       fetchUsers();
+      fetchClientsAndTrainers();
     }
   }, [isAdmin]);
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
-      console.log("Iniciando fetchUsers...");
-      
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*");
@@ -68,9 +89,6 @@ const AdminDashboard = () => {
         throw profilesError;
       }
 
-      console.log("Perfiles obtenidos:", profiles?.length || 0);
-
-      // Ahora isAdmin se determina por el role='admin' en el perfil
       const processedUsers = (profiles || []).map((profile) => {
         return {
           id: profile.id,
@@ -93,6 +111,45 @@ const AdminDashboard = () => {
       });
     } finally {
       setLoadingUsers(false);
+    }
+  };
+
+  const fetchClientsAndTrainers = async () => {
+    setLoadingClients(true);
+    try {
+      const { data: clientsData, error: clientsError } = await supabase
+        .from("clients")
+        .select("*");
+
+      if (clientsError) {
+        console.error("Error al obtener clientes:", clientsError);
+        throw clientsError;
+      }
+      
+      console.log("Clientes obtenidos:", clientsData?.length || 0);
+      setClients(clientsData || []);
+      
+      const { data: trainersData, error: trainersError } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .in("role", ["trainer", "admin"]);
+        
+      if (trainersError) {
+        console.error("Error al obtener entrenadores:", trainersError);
+        throw trainersError;
+      }
+      
+      console.log("Entrenadores obtenidos:", trainersData?.length || 0);
+      setTrainers(trainersData || []);
+    } catch (error) {
+      console.error("Error fetching clients and trainers:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los datos de clientes y entrenadores",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingClients(false);
     }
   };
 
@@ -126,10 +183,8 @@ const AdminDashboard = () => {
     }
   };
 
-  // Now toggle admin status will change the role to/from 'admin'
   const toggleAdminStatus = async (userId: string, currentIsAdmin: boolean) => {
     try {
-      // We will set the role to 'admin' or keep the previous role (or set to 'client' as default)
       const user = users.find(u => u.id === userId);
       if (!user) return;
       
@@ -175,7 +230,6 @@ const AdminDashboard = () => {
         return;
       }
 
-      // Crear el usuario en Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: data.email,
         password: data.password,
@@ -191,7 +245,6 @@ const AdminDashboard = () => {
       }
 
       if (authData.user) {
-        // Actualizar el perfil con el rol
         const isAdmin = data.isAdmin;
         const role = isAdmin ? 'admin' : (data.role || 'client');
         
@@ -210,7 +263,6 @@ const AdminDashboard = () => {
           description: `Usuario ${data.email} creado exitosamente`,
         });
 
-        // Actualizar la lista de usuarios
         fetchUsers();
         setIsCreating(false);
       }
@@ -228,10 +280,8 @@ const AdminDashboard = () => {
     try {
       if (!currentUser) return;
 
-      // Determinar el nuevo rol
       const newRole = data.isAdmin ? 'admin' : (data.role || currentUser.role || 'client');
 
-      // Actualizar el perfil con los nuevos datos
       const { error: updateError } = await supabase
         .from("profiles")
         .update({
@@ -242,7 +292,6 @@ const AdminDashboard = () => {
 
       if (updateError) throw updateError;
 
-      // Si se proporcionó una nueva contraseña
       if (data.password) {
         const { error: passwordError } = await supabase.auth.admin.updateUserById(
           currentUser.id,
@@ -257,7 +306,6 @@ const AdminDashboard = () => {
         description: `Usuario ${data.email} actualizado exitosamente`,
       });
 
-      // Actualizar la lista de usuarios
       fetchUsers();
       setIsEditing(false);
       setCurrentUser(null);
@@ -275,7 +323,6 @@ const AdminDashboard = () => {
     try {
       if (!userToDelete) return;
 
-      // Eliminar el usuario de Supabase Auth
       const { error } = await supabase.auth.admin.deleteUser(userToDelete.id);
 
       if (error) throw error;
@@ -285,7 +332,6 @@ const AdminDashboard = () => {
         description: `Usuario ${userToDelete.email} eliminado exitosamente`,
       });
 
-      // Actualizar la lista de usuarios
       setUsers(users.filter(user => user.id !== userToDelete.id));
       setDeleteDialogOpen(false);
       setUserToDelete(null);
@@ -299,6 +345,36 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleUpdateClientTrainers = async (clientId: string, trainerIds: string[]) => {
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({ trainers: trainerIds })
+        .eq("id", clientId);
+
+      if (error) throw error;
+
+      setClients(clients.map(client => 
+        client.id === clientId ? { ...client, trainers: trainerIds } : client
+      ));
+
+      toast({
+        title: "Cliente actualizado",
+        description: "Los entrenadores del cliente han sido actualizados exitosamente",
+      });
+      
+      setIsEditingClient(false);
+      setCurrentClient(null);
+    } catch (error: any) {
+      console.error("Error updating client trainers:", error);
+      toast({
+        title: "Error al actualizar cliente",
+        description: error.message || "No se pudieron actualizar los entrenadores del cliente",
+        variant: "destructive",
+      });
+    }
+  };
+
   const openEditModal = (user: User) => {
     setCurrentUser(user);
     setIsEditing(true);
@@ -307,6 +383,11 @@ const AdminDashboard = () => {
   const openDeleteDialog = (user: User) => {
     setUserToDelete(user);
     setDeleteDialogOpen(true);
+  };
+
+  const openEditClientModal = (client: Client) => {
+    setCurrentClient(client);
+    setIsEditingClient(true);
   };
 
   if (isLoading) {
@@ -325,6 +406,7 @@ const AdminDashboard = () => {
         <Tabs defaultValue="users" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="users">Gestión de Usuarios</TabsTrigger>
+            <TabsTrigger value="clients">Gestión de Clientes</TabsTrigger>
             <TabsTrigger value="stats">Estadísticas</TabsTrigger>
           </TabsList>
 
@@ -355,6 +437,25 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
+          <TabsContent value="clients">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gestión de Clientes</CardTitle>
+                <CardDescription>
+                  Gestiona la asignación de entrenadores a los clientes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ClientTable
+                  clients={clients}
+                  trainers={trainers}
+                  loading={loadingClients}
+                  onEditClient={openEditClientModal}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="stats">
             <Card>
               <CardHeader>
@@ -370,7 +471,6 @@ const AdminDashboard = () => {
           </TabsContent>
         </Tabs>
 
-        {/* User Dialogs Component */}
         <UserDialogs 
           isCreating={isCreating}
           setIsCreating={setIsCreating}
@@ -386,6 +486,24 @@ const AdminDashboard = () => {
           handleUpdateUser={handleUpdateUser}
           handleDeleteUser={handleDeleteUser}
         />
+
+        <Dialog open={isEditingClient} onOpenChange={(open) => !open && setIsEditingClient(false)}>
+          {currentClient && (
+            <div>
+              {trainers && (
+                <ClientTrainerEditDialog
+                  client={currentClient}
+                  trainers={trainers}
+                  onCancel={() => {
+                    setIsEditingClient(false);
+                    setCurrentClient(null);
+                  }}
+                  onSave={handleUpdateClientTrainers}
+                />
+              )}
+            </div>
+          )}
+        </Dialog>
       </main>
     </div>
   );
