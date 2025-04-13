@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Exercise, Category, Level } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,20 +29,33 @@ const NewExerciseForm = ({
   initialExercise,
 }: NewExerciseFormProps) => {
   const { toast } = useToast();
-  const [name, setName] = useState(initialExercise?.name || "");
-  const [selectedCategories, setSelectedCategories] = useState<Category[]>(
-    initialExercise?.categories || []
-  );
-  const [levels, setLevels] = useState<Omit<Level, "level">[]>(
-    initialExercise?.levels.map((l) => ({
-      video: l.video,
-      repetitions: l.repetitions,
-      weight: l.weight,
-    })) || [{ video: "", repetitions: 0, weight: 0 }]
-  );
-  const [videoErrors, setVideoErrors] = useState<boolean[]>(
-    initialExercise?.levels.map(() => false) || [false]
-  );
+  const [name, setName] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
+  const [levels, setLevels] = useState<Omit<Level, "level">[]>([
+    { video: "", repetitions: 0, weight: 0 }
+  ]);
+  const [videoErrors, setVideoErrors] = useState<boolean[]>([false]);
+
+  // Effect to initialize form when initialExercise changes or dialog opens
+  useEffect(() => {
+    if (initialExercise && isOpen) {
+      setName(initialExercise.name);
+      setSelectedCategories(initialExercise.categories);
+      
+      // Map the levels from the initialExercise, omitting the "level" property
+      const formattedLevels = initialExercise.levels.map(level => ({
+        video: level.video,
+        repetitions: level.repetitions,
+        weight: level.weight
+      }));
+      
+      setLevels(formattedLevels);
+      setVideoErrors(new Array(formattedLevels.length).fill(false));
+    } else if (!initialExercise && isOpen) {
+      // Reset form when opening for a new exercise
+      resetForm();
+    }
+  }, [initialExercise, isOpen]);
 
   const handleCategoryChange = (category: Category, checked: boolean) => {
     if (checked) {
@@ -111,16 +124,16 @@ const NewExerciseForm = ({
       levels: formattedLevels,
     });
 
-    resetForm();
+    if (!initialExercise) {
+      resetForm();
+    }
   };
 
   const resetForm = () => {
-    if (!initialExercise) {
-      setName("");
-      setSelectedCategories([]);
-      setLevels([{ video: "", repetitions: 0, weight: 0 }]);
-      setVideoErrors([false]);
-    }
+    setName("");
+    setSelectedCategories([]);
+    setLevels([{ video: "", repetitions: 0, weight: 0 }]);
+    setVideoErrors([false]);
   };
 
   return (
