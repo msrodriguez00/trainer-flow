@@ -27,13 +27,16 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       
       // Obtener el email del cliente actual
       const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log("Auth session:", session);
       
       if (!user?.email) {
         console.error("No se pudo determinar el usuario actual");
         throw new Error("No se pudo determinar el usuario actual");
       }
       
-      console.log("Usuario actual:", user.email);
+      console.log("Usuario actual:", user.email, "ID:", user.id);
       
       // Buscar el cliente y sus entrenadores asignados
       const { data: clientData, error: clientError } = await supabase
@@ -49,8 +52,25 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       
       console.log("Client data:", clientData);
       
-      // If no client record exists, create a default trainer for UI rendering
+      // Verificar si hay un problema de correspondencia de usuario
       if (!clientData) {
+        console.log("⚠️ No se encontró registro de cliente para el email:", user.email);
+        console.log("⚠️ Verificando si existe el cliente por user_id:", user.id);
+        
+        // Intentar buscar por user_id como alternativa
+        const { data: clientByUserId, error: userIdError } = await supabase
+          .from("clients")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+          
+        if (userIdError) {
+          console.error("Error al buscar cliente por user_id:", userIdError);
+        } else {
+          console.log("Resultado de búsqueda por user_id:", clientByUserId);
+        }
+        
+        // Si no se encuentra, mostrar trainer por defecto
         const defaultTrainer: Trainer = {
           id: "default-trainer",
           name: "Entrenador Predeterminado",
@@ -66,10 +86,9 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
         handleTrainerSelect(defaultTrainer.id);
         setLoading(false);
         
-        // Show a notification toast that's more informative but not disruptive
         toast({
           title: "Sin información de cliente",
-          description: "Puedes continuar como invitado o contactar con soporte.",
+          description: "No encontramos tus datos de cliente. Contacta a soporte o tu entrenador.",
           variant: "default"
         });
         

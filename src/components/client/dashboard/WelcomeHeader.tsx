@@ -21,6 +21,12 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
   } = useTrainerSelection(onTrainerChange);
 
   console.log("WelcomeHeader rendered with trainers:", trainers);
+  
+  useEffect(() => {
+    if (user) {
+      console.log("WelcomeHeader - Usuario autenticado:", user.id, "Role:", user.app_metadata?.role);
+    }
+  }, [user]);
 
   return (
     <Card className="bg-gradient-to-r from-primary/10 to-secondary/30 border-none">
@@ -44,6 +50,7 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
               <p>Debug: User ID: {user?.id || 'No user'}</p>
               <p>Debug: Email: {userEmail}</p>
               <p>Debug: Trainers loaded: {trainers.length}</p>
+              <p>Debug: User metadata: {JSON.stringify(user?.user_metadata)}</p>
             </div>
           )}
         </div>
