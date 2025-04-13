@@ -39,6 +39,7 @@ export type Client = {
 
 export type PlanExercise = {
   exerciseId: string;
+  exerciseName?: string;
   level: number;
   evaluations: Evaluation[];
 };
