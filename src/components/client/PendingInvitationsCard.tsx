@@ -1,11 +1,13 @@
 
-import { UserPlus } from "lucide-react";
+import { UserPlus, RefreshCcw } from "lucide-react";
 import { 
   Card, 
   CardContent, 
   CardHeader, 
-  CardTitle 
+  CardTitle,
+  CardDescription
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useInvitations } from "@/hooks/client/useInvitations";
 import { InvitationsList } from "./InvitationsList";
 import { EmptyInvitations } from "./EmptyInvitations";
@@ -21,7 +23,8 @@ const PendingInvitationsCard = () => {
     processingIds,
     handleAcceptInvitation,
     handleRejectInvitation,
-    formatDate
+    formatDate,
+    refreshInvitations
   } = useInvitations();
 
   if (window.location.pathname === "/auth") {
@@ -30,11 +33,27 @@ const PendingInvitationsCard = () => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <UserPlus className="mr-2 h-5 w-5" />
-          Invitaciones de Entrenadores
-        </CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center">
+            <UserPlus className="mr-2 h-5 w-5" />
+            Invitaciones de Entrenadores
+          </CardTitle>
+          {invitations.length > 0 && (
+            <CardDescription>
+              Tienes {invitations.length} invitación(es) pendiente(s)
+            </CardDescription>
+          )}
+        </div>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={refreshInvitations}
+          disabled={loading}
+          title="Actualizar invitaciones"
+        >
+          <RefreshCcw className="h-4 w-4" />
+        </Button>
       </CardHeader>
       <CardContent>
         {loading ? (

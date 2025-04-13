@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,27 +26,28 @@ export function useInvitations() {
       const userEmail = user.email.toLowerCase();
       console.log("Fetching invitations for email:", userEmail);
       
-      // Query directly by email and status=pending
+      // First, check the query result directly to debug
       const { data: invitationsData, error: invitationsError } = await supabase
         .from("client_invitations")
         .select("id, email, trainer_id, created_at, status")
         .eq("email", userEmail)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
+        .eq("status", "pending");
+      
+      console.log("Raw query result:", invitationsData, "Error:", invitationsError);
 
       if (invitationsError) {
         console.error("Error fetching invitations:", invitationsError);
         throw invitationsError;
       }
 
-      console.log("Raw invitations data:", invitationsData);
-      
       // If we have invitations, fetch the trainer names separately
       if (invitationsData && invitationsData.length > 0) {
         const formattedInvitations: TrainerInvitation[] = [];
         
         // Get all trainer IDs
         const trainerIds = invitationsData.map(inv => inv.trainer_id);
+        
+        console.log("Found trainer IDs:", trainerIds);
         
         // Fetch trainer profiles in a single query
         const { data: trainerProfiles, error: trainersError } = await supabase
@@ -60,7 +60,7 @@ export function useInvitations() {
           throw trainersError;
         }
         
-        console.log("Trainer profiles:", trainerProfiles);
+        console.log("Trainer profiles found:", trainerProfiles);
         
         // Map trainer names to invitations
         for (const invitation of invitationsData) {
@@ -75,8 +75,10 @@ export function useInvitations() {
           });
         }
         
+        console.log("Formatted invitations:", formattedInvitations);
         setInvitations(formattedInvitations);
       } else {
+        console.log("No invitations found for email:", userEmail);
         setInvitations([]);
       }
       
@@ -94,20 +96,17 @@ export function useInvitations() {
   };
 
   useEffect(() => {
-    if (user?.email && isClient) {
+    if (user?.email) {
       console.log("Client user is available, fetching invitations for:", user.email);
       fetchPendingInvitations();
     } else {
-      console.log("Not a client user or no email available, skipping invitation fetch");
-      console.log("User info:", { email: user?.email, isClient });
+      console.log("No user email available, skipping invitation fetch");
       setLoading(false);
-      if (user && !isClient && window.location.pathname !== "/auth") {
-        setError("Esta sección es solo para clientes");
-      } else if (!user && window.location.pathname !== "/auth") {
+      if (!user && window.location.pathname !== "/auth") {
         setError("Debes iniciar sesión para ver invitaciones");
       }
     }
-  }, [user, isClient]);
+  }, [user?.email]);
 
   const handleAcceptInvitation = async (invitationId: string, trainerId: string) => {
     if (!user?.email) {
@@ -244,6 +243,7 @@ export function useInvitations() {
     processingIds,
     handleAcceptInvitation,
     handleRejectInvitation,
-    formatDate
+    formatDate,
+    refreshInvitations: fetchPendingInvitations
   };
 }
