@@ -9,20 +9,10 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
   const normalizedEmail = email.toLowerCase().trim();
   console.log("Normalized email for query:", normalizedEmail);
   
-  // Log all request details
-  console.log("Request URL:", `${supabase.supabaseUrl}/rest/v1/client_invitations`);
-  console.log("Request headers:", {
-    "Authorization": "Bearer [REDACTED]",
-    "apikey": "[REDACTED]",
-    "Content-Type": "application/json"
-  });
-  console.log("Query parameters:", {
-    "email": "eq." + normalizedEmail,
-    "status": "eq.pending"
-  });
-  
-  // Get pending invitations with more precise email matching
-  console.log("Executing query: SELECT * FROM client_invitations WHERE email = '" + normalizedEmail + "' AND status = 'pending'");
+  // Log relevant request information without accessing protected properties
+  console.log("Fetching invitations for email:", normalizedEmail);
+  console.log("QUERY START: Fetching invitations from client_invitations table");
+  console.log("SQL equivalent: SELECT * FROM client_invitations WHERE email = '" + normalizedEmail + "' AND status = 'pending'");
   
   try {
     // First attempt to get data with select and filter methods
@@ -32,8 +22,9 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
       .eq("email", normalizedEmail)
       .eq("status", "pending");
     
-    console.log("Raw response from database:", invitationsData);
-    console.log("Error from database:", invitationsError);
+    console.log("QUERY END: Response received from database");
+    console.log("Raw query result:", invitationsData);
+    console.log("Error:", invitationsError);
 
     // Verify the response is not null
     if (invitationsError) {
