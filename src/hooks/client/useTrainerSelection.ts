@@ -49,13 +49,30 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       
       console.log("Client data:", clientData);
       
+      // If no client record exists, create a default trainer for UI rendering
       if (!clientData) {
-        toast({
-          title: "No se encontró información de cliente",
-          description: "No pudimos encontrar tu información como cliente",
-          variant: "destructive"
-        });
+        const defaultTrainer: Trainer = {
+          id: "default-trainer",
+          name: "Entrenador Predeterminado",
+          branding: {
+            logo_url: null,
+            primary_color: "#9b87f5",
+            secondary_color: "#E5DEFF",
+            accent_color: "#7E69AB"
+          }
+        };
+        
+        setTrainers([defaultTrainer]);
+        handleTrainerSelect(defaultTrainer.id);
         setLoading(false);
+        
+        // Show a notification toast that's more informative but not disruptive
+        toast({
+          title: "Sin información de cliente",
+          description: "Puedes continuar como invitado o contactar con soporte.",
+          variant: "default"
+        });
+        
         return;
       }
 
@@ -90,8 +107,8 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
         if (!trainerData || trainerData.length === 0) {
           toast({
             title: "No se encontraron entrenadores",
-            description: "No pudimos encontrar tus entrenadores asignados",
-            variant: "destructive"
+            description: "Contacta con soporte para asignar entrenadores",
+            variant: "default"
           });
           
           // Fallback para no romper la UI
@@ -160,13 +177,8 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
           }
         }
       } else {
-        // Si no hay entrenadores, mostrar un error y agregar uno de prueba para mostrar la interfaz
+        // Si no hay entrenadores, crear uno de prueba para mostrar la interfaz
         console.log("No hay entrenadores asignados");
-        toast({
-          title: "Sin entrenadores asignados",
-          description: "No tienes entrenadores asignados actualmente",
-          variant: "destructive"
-        });
         
         const demoTrainer: Trainer = {
           id: "demo-trainer",
@@ -184,10 +196,12 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       }
     } catch (error: any) {
       console.error("Error cargando entrenadores:", error);
+      
+      // Mostrar mensaje de error más detallado
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudieron cargar tus entrenadores",
+        title: "No se pudieron cargar entrenadores",
+        description: "Estamos experimentando dificultades técnicas. Por favor, inténtalo más tarde.",
+        variant: "destructive"
       });
       
       // Añadir un entrenador de respaldo para mostrar la interfaz

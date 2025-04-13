@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TrainerSelector from "./TrainerSelector";
 import { useTrainerSelection } from "@/hooks/client/useTrainerSelection";
+import { useAuth } from "@/hooks/useAuth";
 
 interface WelcomeHeaderProps {
   userName: string;
@@ -11,6 +12,7 @@ interface WelcomeHeaderProps {
 }
 
 const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderProps) => {
+  const { user } = useAuth();
   const {
     trainers,
     loading,
@@ -35,6 +37,15 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
             loading={loading}
             onTrainerSelect={handleTrainerSelect}
           />
+
+          {/* Debug info - only visible during development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-xs text-gray-400 mt-4 border-t pt-2">
+              <p>Debug: User ID: {user?.id || 'No user'}</p>
+              <p>Debug: Email: {userEmail}</p>
+              <p>Debug: Trainers loaded: {trainers.length}</p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
