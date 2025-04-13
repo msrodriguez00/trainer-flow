@@ -27,12 +27,12 @@ export function useInvitations() {
       const userEmail = user.email.toLowerCase();
       console.log("Fetching invitations for email:", userEmail);
       
-      // First, fetch the invitations without the join, using the status field now
+      // Query directly by email and status=pending
       const { data: invitationsData, error: invitationsError } = await supabase
         .from("client_invitations")
         .select("id, email, trainer_id, created_at, status")
         .eq("email", userEmail)
-        .eq("status", "pending")  // Changed from 'accepted' boolean to 'status' field
+        .eq("status", "pending")
         .order("created_at", { ascending: false });
 
       if (invitationsError) {
