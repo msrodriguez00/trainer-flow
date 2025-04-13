@@ -60,7 +60,7 @@ const Auth = () => {
                 title: "Cliente ya registrado",
                 description: "Ya estás registrado en el sistema. Por favor, inicia sesión.",
               });
-              navigate("/sign-in");
+              navigate("/client-login");
               return;
             }
             

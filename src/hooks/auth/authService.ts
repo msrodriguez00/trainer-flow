@@ -31,8 +31,6 @@ export const fetchTrainerBrand = async (userId: string) => {
   return data || null;
 };
 
-// Changed: removing checkIfAdmin as we'll use role from profile instead
-
 export const signIn = async ({ email, password }: { email: string; password: string }) => {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
@@ -63,12 +61,12 @@ export const signUp = async ({
   if (authError) throw authError;
 
   if (authData.user) {
-    // Update the profile with role and other info
+    // Always set role as "client" for users registering via client portal or invitation
     const { error: profileError } = await supabase
       .from("profiles")
       .update({
         name,
-        role: trainerId ? "client" : "trainer",
+        role: "client", // Ensure role is always set to "client"
         updated_at: new Date().toISOString(),
       })
       .eq("id", authData.user.id);
