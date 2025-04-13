@@ -22,8 +22,8 @@ interface ClientTableProps {
 
 const ClientTable = ({ clients, trainers, loading, onEditClient }: ClientTableProps) => {
   // Function to get trainer names from trainer IDs
-  const getTrainerNames = (trainerIds: string[] | null) => {
-    if (!trainerIds || trainerIds.length === 0) return 'Sin entrenadores';
+  const getTrainerNames = (trainerIds: string[] | null): string[] => {
+    if (!trainerIds || trainerIds.length === 0) return [];
     
     return trainerIds.map(id => {
       const trainer = trainers.find(t => t.id === id);

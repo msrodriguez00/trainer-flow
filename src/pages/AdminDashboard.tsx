@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +16,7 @@ import UserTable from "@/components/admin/UserTable";
 import StatsCards from "@/components/admin/StatsCards";
 import UserDialogs from "@/components/admin/UserDialogs";
 import ClientTable from "@/components/admin/ClientTable";
+import ClientTrainerEditDialog from "@/components/admin/ClientTrainerEditDialog";
 import { UserFormValues } from "@/components/admin/UserForm";
 
 export type User = {
