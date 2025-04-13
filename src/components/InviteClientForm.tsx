@@ -37,7 +37,7 @@ const InviteClientForm = ({ onSuccess }: InviteClientFormProps) => {
       const expires_at = new Date();
       expires_at.setDate(expires_at.getDate() + 7); // Expira en 7 días
 
-      // Crear registro de invitación con relación explícita
+      // Crear registro de invitación
       const { error: inviteError } = await supabase
         .from("client_invitations")
         .insert({
@@ -47,10 +47,8 @@ const InviteClientForm = ({ onSuccess }: InviteClientFormProps) => {
           expires_at: expires_at.toISOString()
         });
 
-      if (inviteError) {
-        if (inviteError.code === "23505") { // Violación de unicidad
-          throw new Error("Ya has invitado a este cliente anteriormente.");
-        }
+      // Solo mostrar error si no es una violación de unicidad (podemos reinvitar)
+      if (inviteError && inviteError.code !== "23505") {
         throw inviteError;
       }
 
@@ -71,7 +69,7 @@ const InviteClientForm = ({ onSuccess }: InviteClientFormProps) => {
         
         toast({
           title: "Cliente ya registrado",
-          description: "Este cliente ya existe en el sistema. Se le ha enviado un link para conectarse contigo.",
+          description: "Este cliente ya existe en el sistema. Se le ha enviado un nuevo link para conectarse contigo.",
         });
       } else {
         toast({
