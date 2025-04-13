@@ -36,7 +36,7 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
     sessionStorage.getItem('selected_trainer_name') || "Tu Entrenador"
   );
   const [trainers, setTrainers] = useState<Trainer[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
   console.log("WelcomeHeader rendered with trainers:", trainers);
@@ -61,7 +61,7 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
         // Buscar el cliente y sus entrenadores asignados
         const { data: clientData, error: clientError } = await supabase
           .from("clients")
-          .select("trainers")
+          .select("*")
           .eq("email", user.email.toLowerCase())
           .maybeSingle();
           
@@ -72,10 +72,26 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
         
         console.log("Client data:", clientData);
         
-        // Para pruebas - añadir un entrenador de ejemplo si no hay datos
-        const trainersToUse = clientData?.trainers && clientData.trainers.length > 0 
-          ? clientData.trainers 
-          : ["d4b5d3e4-9c8b-4a7e-8d6f-5a4b3c2d1e0f"]; // ID ficticio para pruebas
+        if (!clientData) {
+          toast({
+            title: "No se encontró información de cliente",
+            description: "No pudimos encontrar tu información como cliente",
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Usar los entrenadores del cliente o su entrenador principal
+        let trainersToUse: string[] = [];
+        
+        if (clientData.trainers && clientData.trainers.length > 0) {
+          trainersToUse = clientData.trainers;
+          console.log("Usando trainers array:", trainersToUse);
+        } else if (clientData.trainer_id) {
+          trainersToUse = [clientData.trainer_id];
+          console.log("Usando trainer_id:", trainersToUse);
+        }
         
         console.log("Trainers to use:", trainersToUse);
         
@@ -93,15 +109,36 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
           
           console.log("Trainer data:", trainerData);
           
+          // Si no hay entrenadores reales, mostrar un error
+          if (!trainerData || trainerData.length === 0) {
+            toast({
+              title: "No se encontraron entrenadores",
+              description: "No pudimos encontrar tus entrenadores asignados",
+              variant: "destructive"
+            });
+            
+            // Fallback para no romper la UI
+            const fallbackTrainer: Trainer = {
+              id: "fallback-trainer",
+              name: "Entrenador Predeterminado",
+              branding: {
+                logo_url: null,
+                primary_color: "#9b87f5",
+                secondary_color: "#E5DEFF",
+                accent_color: "#7E69AB"
+              }
+            };
+            
+            setTrainers([fallbackTrainer]);
+            handleTrainerSelect(fallbackTrainer.id);
+            setLoading(false);
+            return;
+          }
+          
           // Cargar la información de branding para cada entrenador
           const trainersWithBranding: Trainer[] = [];
           
-          // Si no hay entrenadores reales, añadir uno de ejemplo para pruebas
-          const trainersList = trainerData && trainerData.length > 0 
-            ? trainerData 
-            : [{ id: "test-trainer-id", name: "Entrenador de Prueba" }];
-            
-          for (const trainer of trainersList) {
+          for (const trainer of trainerData) {
             const { data: brandData } = await supabase
               .from("trainer_brands")
               .select("*")
@@ -140,11 +177,20 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
             const selectedTrainer = trainersWithBranding.find(t => t.id === selectedTrainerId);
             if (selectedTrainer) {
               applyTrainerTheme(selectedTrainer);
+            } else if (trainersWithBranding.length > 0) {
+              // Si el entrenador guardado no está en la lista, usar el primero
+              handleTrainerSelect(trainersWithBranding[0].id);
             }
           }
         } else {
-          // Si no hay entrenadores, agregar uno de prueba para mostrar la interfaz
-          console.log("No hay entrenadores asignados, usando entrenador de prueba");
+          // Si no hay entrenadores, mostrar un error y agregar uno de prueba para mostrar la interfaz
+          console.log("No hay entrenadores asignados");
+          toast({
+            title: "Sin entrenadores asignados",
+            description: "No tienes entrenadores asignados actualmente",
+            variant: "destructive"
+          });
+          
           const demoTrainer: Trainer = {
             id: "demo-trainer",
             name: "Entrenador Demo",
@@ -240,10 +286,10 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
                   onValueChange={handleTrainerSelect}
                   disabled={loading}
                 >
-                  <SelectTrigger className="w-full sm:w-[250px] bg-white">
+                  <SelectTrigger className="w-full sm:w-[250px] bg-white border-gray-300">
                     <SelectValue placeholder="Selecciona un entrenador" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     {trainers.map((trainer) => (
                       <SelectItem key={trainer.id} value={trainer.id}>
                         {trainer.name}
@@ -252,10 +298,16 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="text-gray-600">
-                  <span className="font-medium">{trainers[0]?.name || "Sin entrenador asignado"}</span>
+                <p className="text-gray-600 font-medium p-2 bg-white/50 rounded">
+                  {trainers[0]?.name || "Sin entrenador asignado"}
                 </p>
               )}
+            </div>
+          )}
+          
+          {loading && (
+            <div className="text-sm text-gray-500">
+              Cargando entrenadores...
             </div>
           )}
         </div>
