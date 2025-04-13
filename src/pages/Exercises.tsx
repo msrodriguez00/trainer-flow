@@ -29,9 +29,13 @@ const Exercises = () => {
   );
 
   const handleCreateExercise = async (exercise: Omit<Exercise, "id">) => {
-    const success = await createExercise(exercise);
-    if (success) {
-      closeForm();
+    try {
+      const success = await createExercise(exercise);
+      if (success) {
+        closeForm();
+      }
+    } catch (error) {
+      console.error("Error creating exercise:", error);
     }
   };
 
@@ -43,15 +47,22 @@ const Exercises = () => {
   const handleUpdateExercise = async (updatedExercise: Omit<Exercise, "id">) => {
     if (!editExercise) return;
     
-    const success = await updateExercise(editExercise.id, updatedExercise);
-    if (success) {
-      closeForm();
+    try {
+      const success = await updateExercise(editExercise.id, updatedExercise);
+      if (success) {
+        closeForm();
+      }
+    } catch (error) {
+      console.error("Error updating exercise:", error);
     }
   };
 
   const closeForm = () => {
-    setIsFormOpen(false);
-    setEditExercise(undefined);
+    // Use setTimeout to avoid state update conflict
+    setTimeout(() => {
+      setIsFormOpen(false);
+      setEditExercise(undefined);
+    }, 0);
   };
 
   const openNewExerciseForm = () => {
@@ -80,12 +91,15 @@ const Exercises = () => {
         />
       </main>
 
-      <NewExerciseForm
-        isOpen={isFormOpen}
-        onClose={closeForm}
-        onSubmit={editExercise ? handleUpdateExercise : handleCreateExercise}
-        initialExercise={editExercise}
-      />
+      {/* Only render the form component when it needs to be shown */}
+      {isFormOpen && (
+        <NewExerciseForm
+          isOpen={isFormOpen}
+          onClose={closeForm}
+          onSubmit={editExercise ? handleUpdateExercise : handleCreateExercise}
+          initialExercise={editExercise}
+        />
+      )}
     </div>
   );
 };

@@ -133,9 +133,7 @@ const NewExerciseForm = ({
         resetForm();
       }
     } finally {
-      // Ensure we always clean up even if onSubmit fails
       setIsSubmitting(false);
-      // Don't close here - let the parent component handle closing on successful submission
     }
   };
 
@@ -146,9 +144,13 @@ const NewExerciseForm = ({
     setVideoErrors([false]);
   };
 
+  // Critical fix: This was causing the UI to be blocked
   const handleDialogChange = (open: boolean) => {
-    if (!open && !isSubmitting) {
-      onClose();
+    if (!open) {
+      // Small delay to prevent React state update conflicts
+      setTimeout(() => {
+        onClose();
+      }, 0);
     }
   };
 
