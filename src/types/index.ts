@@ -34,6 +34,7 @@ export type Client = {
   name: string;
   email: string;
   avatar: string;
+  created_at: string;
 };
 
 export type PlanExercise = {

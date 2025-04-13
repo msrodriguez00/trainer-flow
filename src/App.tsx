@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/auth/useAuth";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 import Exercises from "./pages/Exercises";
 import ExerciseLibrary from "./pages/ExerciseLibrary";
 import Clients from "./pages/Clients";
+import ClientDetails from "./pages/ClientDetails";
 import ClientInvite from "./pages/ClientInvite";
 import Plans from "./pages/Plans";
 import ClientDashboard from "./pages/ClientDashboard"; 
@@ -130,6 +131,11 @@ const App = () => (
             <Route path="/clients" element={
               <ProtectedRoute trainerOnly>
                 <Clients />
+              </ProtectedRoute>
+            } />
+            <Route path="/clients/:id" element={
+              <ProtectedRoute trainerOnly>
+                <ClientDetails />
               </ProtectedRoute>
             } />
             <Route path="/client-invite" element={
