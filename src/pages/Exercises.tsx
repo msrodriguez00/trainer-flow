@@ -12,6 +12,7 @@ const Exercises = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editExercise, setEditExercise] = useState<Exercise | undefined>(undefined);
+  const [formKey, setFormKey] = useState(0); // Add a key to force re-render of form
   
   const { 
     exercises, 
@@ -23,13 +24,13 @@ const Exercises = () => {
 
   // Add logging for component renders and state changes
   useEffect(() => {
-    console.log("Exercises page rendered - isFormOpen:", isFormOpen, "editExercise:", editExercise?.id);
+    console.log("Exercises page rendered - isFormOpen:", isFormOpen, "editExercise:", editExercise?.id, "formKey:", formKey);
     
     // Cleanup function to ensure we log unmounts
     return () => {
       console.log("Exercises page unmounting");
     };
-  }, [isFormOpen, editExercise]);
+  }, [isFormOpen, editExercise, formKey]);
 
   const filteredExercises = exercises.filter(
     (exercise) =>
@@ -45,9 +46,11 @@ const Exercises = () => {
       await createExercise(exercise);
       console.log("Exercise created successfully");
       closeForm();
+      return true;
     } catch (error) {
       console.error("Error creating exercise:", error);
       closeForm(); // Close form even on error
+      return false;
     }
   };
 
@@ -55,12 +58,13 @@ const Exercises = () => {
     console.log("handleEditExercise called with exercise ID:", exercise.id);
     setEditExercise(exercise);
     setIsFormOpen(true);
+    setFormKey(prev => prev + 1); // Increment form key to force fresh instance
   }, []);
 
   const handleUpdateExercise = async (updatedExercise: Omit<Exercise, "id">) => {
     if (!editExercise) {
       console.error("Cannot update exercise - editExercise is undefined");
-      return;
+      return false;
     }
     
     console.log("handleUpdateExercise called for exercise ID:", editExercise.id);
@@ -69,9 +73,11 @@ const Exercises = () => {
       await updateExercise(editExercise.id, updatedExercise);
       console.log("Exercise updated successfully");
       closeForm();
+      return true;
     } catch (error) {
       console.error("Error updating exercise:", error);
       closeForm(); // Close form even on error
+      return false;
     }
   };
 
@@ -80,17 +86,20 @@ const Exercises = () => {
     console.log("closeForm called - cleaning up form state");
     setIsFormOpen(false);
     
-    // Use setTimeout to ensure state updates don't conflict
+    // Delay resetting the editExercise to prevent race conditions
     setTimeout(() => {
       console.log("Resetting editExercise to undefined");
       setEditExercise(undefined);
-    }, 100);
+      // Increment the key after cleanup to ensure next open gets fresh instance
+      setFormKey(prev => prev + 1);
+    }, 200);
   }, []);
 
   const openNewExerciseForm = useCallback(() => {
     console.log("openNewExerciseForm called");
     setEditExercise(undefined);
     setIsFormOpen(true);
+    setFormKey(prev => prev + 1); // Increment form key to force fresh instance
   }, []);
 
   return (
@@ -114,17 +123,19 @@ const Exercises = () => {
         />
       </main>
 
-      {/* Add Toaster component */}
+      {/* Ensure Toaster is present */}
       <Toaster />
 
-      {/* Use key to force re-render of form when it reopens */}
-      <NewExerciseForm
-        key={`exercise-form-${isFormOpen ? 'open' : 'closed'}-${editExercise?.id || 'new'}`}
-        isOpen={isFormOpen}
-        onClose={closeForm}
-        onSubmit={editExercise ? handleUpdateExercise : handleCreateExercise}
-        initialExercise={editExercise}
-      />
+      {/* Only render form when needed and with a unique key */}
+      {isFormOpen && (
+        <NewExerciseForm
+          key={`exercise-form-${formKey}`}
+          isOpen={isFormOpen}
+          onClose={closeForm}
+          onSubmit={editExercise ? handleUpdateExercise : handleCreateExercise}
+          initialExercise={editExercise}
+        />
+      )}
     </div>
   );
 };

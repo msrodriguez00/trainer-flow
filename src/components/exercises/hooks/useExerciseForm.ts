@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Exercise, Category, Level } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,6 +19,16 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
   const [videoErrors, setVideoErrors] = useState<boolean[]>([false]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Memoized reset function to avoid recreating it on each render
+  const resetForm = useCallback(() => {
+    console.log("useExerciseForm - Resetting form state");
+    setName("");
+    setSelectedCategories([]);
+    setLevels([{ video: "", repetitions: 0, weight: 0 }]);
+    setVideoErrors([false]);
+    setIsSubmitting(false);
+  }, []);
+
   // Effect to initialize form when initialExercise changes
   useEffect(() => {
     console.log("useExerciseForm - initialExercise changed:", initialExercise?.id);
@@ -26,16 +36,16 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     if (initialExercise) {
       console.log("useExerciseForm - Setting form data from initialExercise");
       setName(initialExercise.name);
-      setSelectedCategories(initialExercise.categories);
+      setSelectedCategories([...initialExercise.categories]);
       
-      // Map the levels from the initialExercise, omitting the "level" property
+      // Deep copy the levels from the initialExercise to avoid reference issues
       const formattedLevels = initialExercise.levels.map(level => ({
         video: level.video,
         repetitions: level.repetitions,
         weight: level.weight
       }));
       
-      setLevels(formattedLevels);
+      setLevels([...formattedLevels]);
       setVideoErrors(new Array(formattedLevels.length).fill(false));
     } else {
       console.log("useExerciseForm - No initialExercise, resetting form");
@@ -46,13 +56,13 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     return () => {
       console.log("useExerciseForm - Cleanup on unmount or initialExercise change");
     };
-  }, [initialExercise]);
+  }, [initialExercise, resetForm]);
 
   const handleCategoryChange = (category: Category, checked: boolean) => {
     if (checked) {
-      setSelectedCategories([...selectedCategories, category]);
+      setSelectedCategories(prev => [...prev, category]);
     } else {
-      setSelectedCategories(selectedCategories.filter((c) => c !== category));
+      setSelectedCategories(prev => prev.filter((c) => c !== category));
     }
   };
 
@@ -66,14 +76,14 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
   };
 
   const addLevel = () => {
-    setLevels([...levels, { video: "", repetitions: 0, weight: 0 }]);
-    setVideoErrors([...videoErrors, false]);
+    setLevels(prev => [...prev, { video: "", repetitions: 0, weight: 0 }]);
+    setVideoErrors(prev => [...prev, false]);
   };
 
   const removeLevel = (index: number) => {
     if (levels.length > 1) {
-      setLevels(levels.filter((_, i) => i !== index));
-      setVideoErrors(videoErrors.filter((_, i) => i !== index));
+      setLevels(prev => prev.filter((_, i) => i !== index));
+      setVideoErrors(prev => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -125,8 +135,20 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
       });
       
       console.log("useExerciseForm - onSubmit completed successfully");
-      // Clean up state after successful submission
+      toast({
+        title: "Éxito",
+        description: initialExercise ? "Ejercicio actualizado correctamente" : "Ejercicio creado correctamente",
+      });
+      
+      // Reset the form to prevent issues if it's reused
       resetForm();
+      
+      // Close the dialog after a short delay to ensure state updates complete
+      setTimeout(() => {
+        console.log("useExerciseForm - Closing dialog after successful submission");
+        onClose();
+      }, 100);
+      
     } catch (error) {
       console.error("useExerciseForm - Error submitting exercise:", error);
       toast({
@@ -134,18 +156,8 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
         description: "Ha ocurrido un error al guardar el ejercicio.",
         variant: "destructive",
       });
-    } finally {
-      console.log("useExerciseForm - Setting isSubmitting to false");
       setIsSubmitting(false);
     }
-  };
-
-  const resetForm = () => {
-    console.log("useExerciseForm - Resetting form state");
-    setName("");
-    setSelectedCategories([]);
-    setLevels([{ video: "", repetitions: 0, weight: 0 }]);
-    setVideoErrors([false]);
   };
 
   return {
@@ -161,5 +173,6 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     removeLevel,
     handleVideoValidationChange,
     handleSubmit,
+    resetForm,
   };
 };

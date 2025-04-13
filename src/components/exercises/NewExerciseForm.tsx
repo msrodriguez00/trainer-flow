@@ -11,17 +11,30 @@ interface NewExerciseFormProps {
 }
 
 const NewExerciseForm = (props: NewExerciseFormProps) => {
-  // Ensure cleanup happens if component unmounts while open
+  // Add detailed logging
   useEffect(() => {
-    console.log("NewExerciseForm useEffect - isOpen:", props.isOpen);
+    console.log("NewExerciseForm mounted - props:", {
+      isOpen: props.isOpen,
+      initialExerciseId: props.initialExercise?.id,
+    });
     
+    // Cleanup function 
     return () => {
+      console.log("NewExerciseForm unmounting - props:", {
+        isOpen: props.isOpen,
+        initialExerciseId: props.initialExercise?.id,
+      });
+      
+      // Only call onClose if dialog was open when component unmounts
       if (props.isOpen) {
-        console.log("NewExerciseForm - Cleanup on unmount while open");
+        console.log("NewExerciseForm - Calling onClose during unmount while dialog was open");
         props.onClose();
       }
     };
-  }, [props.isOpen, props.onClose]);
+  }, [props.isOpen, props.onClose, props.initialExercise]);
+  
+  // Separate logging for render phase
+  console.log("NewExerciseForm rendering - isOpen:", props.isOpen, "initialExercise:", props.initialExercise?.id);
   
   // Only render dialog when it's actually open
   if (!props.isOpen) {
@@ -29,7 +42,6 @@ const NewExerciseForm = (props: NewExerciseFormProps) => {
     return null;
   }
 
-  console.log("NewExerciseForm - Rendering dialog with initialExercise:", props.initialExercise?.id);
   return <ExerciseFormDialog {...props} />;
 };
 

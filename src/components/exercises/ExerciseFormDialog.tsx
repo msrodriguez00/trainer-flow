@@ -14,7 +14,7 @@ import { CategorySelection } from "./CategorySelection";
 import { ExerciseLevelsList } from "./ExerciseLevelsList";
 import { ExerciseNameInput } from "./ExerciseNameInput";
 import { EXERCISE_CATEGORIES } from "./constants";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 
 interface ExerciseFormDialogProps {
   isOpen: boolean;
@@ -42,29 +42,40 @@ export const ExerciseFormDialog = ({
     removeLevel,
     handleVideoValidationChange,
     handleSubmit,
+    resetForm,
   } = useExerciseForm({ initialExercise, onSubmit, onClose });
 
+  // Safe close handler that ensures form state is properly reset
+  const safeClose = useCallback(() => {
+    console.log("ExerciseFormDialog - safeClose called");
+    resetForm(); // Make sure form is reset
+    onClose(); // Then close the dialog
+  }, [onClose, resetForm]);
+
   useEffect(() => {
-    console.log("ExerciseFormDialog useEffect - isOpen:", isOpen);
+    console.log("ExerciseFormDialog useEffect - isOpen:", isOpen, "initialExercise:", initialExercise?.id);
     
+    // If dialog is closed, ensure form is reset
     if (!isOpen) {
-      console.log("ExerciseFormDialog - Dialog is closed, cleaning up");
-      onClose();
+      console.log("ExerciseFormDialog - Dialog closed, resetting form");
+      resetForm();
     }
     
     return () => {
-      console.log("ExerciseFormDialog - Cleanup on unmount");
+      console.log("ExerciseFormDialog - Cleanup on unmount, isOpen:", isOpen);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, initialExercise, resetForm]);
 
-  const handleDialogChange = (open: boolean) => {
+  const handleDialogChange = useCallback((open: boolean) => {
     console.log("ExerciseFormDialog - Dialog state changed to:", open);
     
     if (!open) {
-      console.log("ExerciseFormDialog - Calling onClose because dialog is closing");
-      onClose();
+      safeClose();
     }
-  };
+  }, [safeClose]);
+
+  // Add debug info for rendering decision
+  console.log("ExerciseFormDialog render check - isOpen:", isOpen);
   
   // If dialog is not open, don't render anything
   if (!isOpen) {
@@ -75,7 +86,11 @@ export const ExerciseFormDialog = ({
   console.log("ExerciseFormDialog - Rendering dialog content with initialExercise:", initialExercise?.id);
   
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogChange} modal={true}>
+    <Dialog 
+      open={true} 
+      onOpenChange={handleDialogChange} 
+      modal={true}
+    >
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -113,7 +128,7 @@ export const ExerciseFormDialog = ({
             variant="outline" 
             onClick={() => {
               console.log("ExerciseFormDialog - Cancel button clicked");
-              onClose();
+              safeClose();
             }} 
             disabled={isSubmitting}
             type="button"
