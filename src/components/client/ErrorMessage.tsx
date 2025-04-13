@@ -1,27 +1,34 @@
 
+import { AlertCircle, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface ErrorMessageProps {
   error: string;
-  showLoginButton?: boolean;
+  onRetry?: () => void;
 }
 
-export const ErrorMessage = ({ error, showLoginButton = true }: ErrorMessageProps) => {
+export const ErrorMessage = ({ error, onRetry }: ErrorMessageProps) => {
   return (
-    <div className="flex flex-col items-center py-4 text-center">
-      <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
-      <p>{error}</p>
-      {showLoginButton && window.location.pathname !== "/client-login" && (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="mt-3"
-          onClick={() => window.location.href = '/client-login'}
-        >
-          Ir a acceso para clientes
-        </Button>
-      )}
-    </div>
+    <Alert variant="destructive">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Error</AlertTitle>
+      <AlertDescription className="mt-2">
+        <div className="space-y-2">
+          <p>{error}</p>
+          {onRetry && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onRetry}
+              className="mt-2"
+            >
+              <RefreshCcw className="mr-2 h-3 w-3" />
+              Reintentar
+            </Button>
+          )}
+        </div>
+      </AlertDescription>
+    </Alert>
   );
 };

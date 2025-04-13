@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { TrainerInvitation } from "@/components/client/types";
@@ -14,7 +14,7 @@ export function useInvitations() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchPendingInvitations = async () => {
+  const fetchPendingInvitations = useCallback(async () => {
     if (!user?.email) {
       console.log("No user email in fetchPendingInvitations, aborting");
       setLoading(false);
@@ -29,6 +29,7 @@ export function useInvitations() {
       console.log("Fetching invitations for email:", userEmail);
       
       const formattedInvitations = await fetchPendingInvitationsByEmail(userEmail);
+      console.log("Invitations received:", formattedInvitations);
       setInvitations(formattedInvitations);
       
     } catch (error: any) {
@@ -42,7 +43,7 @@ export function useInvitations() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.email, toast]);
 
   useEffect(() => {
     if (user?.email) {
@@ -55,7 +56,7 @@ export function useInvitations() {
         setError("Debes iniciar sesión para ver invitaciones");
       }
     }
-  }, [user?.email]);
+  }, [user?.email, fetchPendingInvitations]);
 
   const handleAcceptInvitation = async (invitationId: string, trainerId: string) => {
     if (!user?.email || !user?.id) {

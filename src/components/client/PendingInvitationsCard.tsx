@@ -5,7 +5,8 @@ import {
   CardContent, 
   CardHeader, 
   CardTitle,
-  CardDescription
+  CardDescription,
+  CardFooter
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useInvitations } from "@/hooks/client/useInvitations";
@@ -72,6 +73,19 @@ const PendingInvitationsCard = () => {
           <EmptyInvitations />
         )}
       </CardContent>
+      {!loading && !error && invitations.length === 0 && (
+        <CardFooter className="text-center text-sm text-muted-foreground">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={refreshInvitations}
+            className="mx-auto"
+          >
+            <RefreshCcw className="mr-2 h-3 w-3" />
+            Comprobar nuevas invitaciones
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 };

@@ -5,11 +5,15 @@ import { TrainerInvitation } from "@/components/client/types";
 export const fetchPendingInvitationsByEmail = async (email: string): Promise<TrainerInvitation[]> => {
   console.log("Fetching invitations for email:", email);
   
-  // First, get the invitations data
+  // Asegurarse de que el email esté en minúsculas para la comparación
+  const normalizedEmail = email.toLowerCase().trim();
+  console.log("Normalized email for query:", normalizedEmail);
+  
+  // Obtener las invitaciones con un filtro más preciso
   const { data: invitationsData, error: invitationsError } = await supabase
     .from("client_invitations")
     .select("id, email, trainer_id, created_at, status")
-    .eq("email", email)
+    .ilike("email", normalizedEmail) // Usando ilike para una búsqueda insensible a mayúsculas
     .eq("status", "pending");
   
   console.log("Raw query result:", invitationsData, "Error:", invitationsError);
@@ -19,16 +23,16 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
     throw invitationsError;
   }
 
-  // If we have invitations, fetch the trainer names separately
+  // Si tenemos invitaciones, obtener los nombres de los entrenadores
   if (invitationsData && invitationsData.length > 0) {
     const formattedInvitations: TrainerInvitation[] = [];
     
-    // Get all trainer IDs
+    // Obtener todos los IDs de entrenadores
     const trainerIds = invitationsData.map(inv => inv.trainer_id);
     
     console.log("Found trainer IDs:", trainerIds);
     
-    // Fetch trainer profiles in a single query
+    // Obtener perfiles de entrenadores en una sola consulta
     const { data: trainerProfiles, error: trainersError } = await supabase
       .from("profiles")
       .select("id, name")
@@ -41,7 +45,7 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
     
     console.log("Trainer profiles found:", trainerProfiles);
     
-    // Map trainer names to invitations
+    // Mapear nombres de entrenadores a las invitaciones
     for (const invitation of invitationsData) {
       const trainer = trainerProfiles?.find(t => t.id === invitation.trainer_id);
       formattedInvitations.push({
@@ -65,7 +69,7 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
 export const acceptInvitation = async (invitationId: string, trainerId: string, userId: string, userEmail: string): Promise<void> => {
   console.log("Accepting invitation:", invitationId, "for trainer:", trainerId);
   
-  // Update the status to 'accepted' instead of the 'accepted' boolean
+  // Actualizar el estado a 'accepted' en lugar del booleano 'accepted'
   const { error: updateError } = await supabase
     .from("client_invitations")
     .update({ status: "accepted" })
@@ -76,13 +80,13 @@ export const acceptInvitation = async (invitationId: string, trainerId: string, 
   const { data: existingClient, error: clientError } = await supabase
     .from("clients")
     .select("*")
-    .eq("email", userEmail.toLowerCase())
+    .ilike("email", userEmail.toLowerCase())
     .maybeSingle();
 
   if (clientError && clientError.code !== 'PGRST116') throw clientError;
 
   if (existingClient) {
-    // Add relationship in the new client_trainer_relationships table
+    // Añadir relación en la tabla client_trainer_relationships
     await supabase
       .from("client_trainer_relationships")
       .insert({
@@ -92,7 +96,7 @@ export const acceptInvitation = async (invitationId: string, trainerId: string, 
       })
       .select();
     
-    // If no primary trainer yet, also update the client record
+    // Si aún no hay un entrenador principal, actualizar el registro del cliente
     if (!existingClient.trainer_id) {
       await supabase
         .from("clients")
@@ -100,7 +104,7 @@ export const acceptInvitation = async (invitationId: string, trainerId: string, 
         .eq("id", existingClient.id);
     }
   } else {
-    // Create new client record
+    // Crear un nuevo registro de cliente
     const { data: newClient, error: insertError } = await supabase
       .from("clients")
       .insert({
@@ -114,7 +118,7 @@ export const acceptInvitation = async (invitationId: string, trainerId: string, 
       
     if (insertError) throw insertError;
       
-    // Also add relationship to the junction table
+    // También añadir la relación a la tabla de unión
     if (newClient && newClient.length > 0) {
       await supabase
         .from("client_trainer_relationships")
@@ -130,7 +134,7 @@ export const acceptInvitation = async (invitationId: string, trainerId: string, 
 export const rejectInvitation = async (invitationId: string): Promise<void> => {
   console.log("Rejecting invitation:", invitationId);
   
-  // Update the status to 'rejected' instead of deleting
+  // Actualizar el estado a 'rejected' en lugar de eliminar
   const { error } = await supabase
     .from("client_invitations")
     .update({ status: "rejected" })
