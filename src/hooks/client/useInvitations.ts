@@ -25,16 +25,20 @@ export function useInvitations() {
       return;
     }
     
+    console.log("=== STARTING INVITATION FETCH PROCESS ===");
+    console.log("User auth object:", user);
+    console.log("Current route:", window.location.pathname);
+    
     setLoading(true);
     setError(null);
     
     try {
       // Make sure email is normalized before sending to the service
       const userEmail = user.email.toLowerCase().trim();
-      console.log("Fetching invitations for email:", userEmail);
+      console.log("fetchPendingInvitations - About to call API with email:", userEmail);
       
       const formattedInvitations = await fetchPendingInvitationsByEmail(userEmail);
-      console.log("Invitations received:", formattedInvitations);
+      console.log("fetchPendingInvitations - API call completed, invitations received:", formattedInvitations.length);
       setInvitations(formattedInvitations);
       
     } catch (error: any) {
@@ -47,6 +51,7 @@ export function useInvitations() {
       });
     } finally {
       setLoading(false);
+      console.log("=== INVITATION FETCH PROCESS COMPLETED ===");
     }
   }, [user?.email, toast]);
 

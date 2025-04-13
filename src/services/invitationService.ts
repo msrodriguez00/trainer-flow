@@ -10,12 +10,16 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
   console.log("Normalized email for query:", normalizedEmail);
   
   // Get pending invitations with more precise email matching
+  console.log("QUERY START: Fetching invitations from client_invitations table");
+  console.log("SQL equivalent: SELECT * FROM client_invitations WHERE email = '" + normalizedEmail + "' AND status = 'pending'");
+  
   const { data: invitationsData, error: invitationsError } = await supabase
     .from("client_invitations")
     .select("id, email, trainer_id, created_at, status")
     .eq("email", normalizedEmail) // Using exact match with normalized email
     .eq("status", "pending");
   
+  console.log("QUERY END: Response received from database");
   console.log("Raw query result:", invitationsData, "Error:", invitationsError);
 
   if (invitationsError) {
@@ -33,11 +37,16 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
     console.log("Found trainer IDs:", trainerIds);
     
     // Get trainer profiles in a single query
+    console.log("QUERY START: Fetching trainer profiles");
+    console.log("SQL equivalent: SELECT id, name FROM profiles WHERE id IN (" + trainerIds.join(",") + ")");
+    
     const { data: trainerProfiles, error: trainersError } = await supabase
       .from("profiles")
       .select("id, name")
       .in("id", trainerIds);
-      
+    
+    console.log("QUERY END: Trainer profiles response received");
+    
     if (trainersError) {
       console.error("Error fetching trainer profiles:", trainersError);
       throw trainersError;
