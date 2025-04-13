@@ -3,7 +3,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { TrainerInvitation } from "@/components/client/types";
-import { fetchPendingInvitationsByEmail, acceptInvitation, rejectInvitation } from "@/services/invitationService";
+import { 
+  fetchPendingInvitationsByEmail, 
+  acceptInvitation, 
+  rejectInvitation 
+} from "@/services/invitationService";
 import { formatDate } from "@/utils/dateUtils";
 
 export function useInvitations() {
@@ -25,7 +29,8 @@ export function useInvitations() {
     setError(null);
     
     try {
-      const userEmail = user.email.toLowerCase();
+      // Make sure email is normalized before sending to the service
+      const userEmail = user.email.toLowerCase().trim();
       console.log("Fetching invitations for email:", userEmail);
       
       const formattedInvitations = await fetchPendingInvitationsByEmail(userEmail);

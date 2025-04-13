@@ -53,14 +53,14 @@ const PendingInvitationsCard = () => {
           disabled={loading}
           title="Actualizar invitaciones"
         >
-          <RefreshCcw className="h-4 w-4" />
+          <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </CardHeader>
       <CardContent>
         {loading ? (
           <LoadingInvitations />
         ) : error ? (
-          <ErrorMessage error={error} />
+          <ErrorMessage error={error} onRetry={refreshInvitations} />
         ) : invitations.length > 0 ? (
           <InvitationsList 
             invitations={invitations} 
