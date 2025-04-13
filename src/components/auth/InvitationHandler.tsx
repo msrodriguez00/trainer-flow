@@ -38,16 +38,27 @@ export const InvitationHandler = ({ onInvitationLoaded }: InvitationHandlerProps
     if (token && email) {
       const fetchInvitationData = async () => {
         try {
-          const { data, error } = await supabase
+          // First fetch the invitation
+          const { data: invitationData, error: invitationError } = await supabase
             .from("client_invitations")
-            .select("*, trainer:trainer_id(name)")
+            .select("*")
             .eq("token", token)
             .eq("email", email)
             .single();
             
-          if (error) throw error;
+          if (invitationError) throw invitationError;
           
-          if (data) {
+          if (invitationData) {
+            // Then fetch the trainer separately
+            const { data: trainerData, error: trainerError } = await supabase
+              .from("profiles")
+              .select("name")
+              .eq("id", invitationData.trainer_id)
+              .single();
+              
+            if (trainerError) throw trainerError;
+            
+            // Check for existing clients with this email
             const { data: existingClients, error: existingClientsError } = await supabase
               .from("clients")
               .select("*")
@@ -64,20 +75,29 @@ export const InvitationHandler = ({ onInvitationLoaded }: InvitationHandlerProps
               return;
             }
             
+            // Fetch trainer profiles for dropdown
             const { data: trainerProfiles, error: trainerProfilesError } = await supabase
               .from("profiles")
               .select("id, name")
-              .in("id", [data.trainer_id]);
+              .in("id", [invitationData.trainer_id]);
               
             if (trainerProfilesError) throw trainerProfilesError;
             
             const trainers: Trainer[] = trainerProfiles || [];
             
+            // Combine invitation and trainer data
+            const combinedInvitationData: InvitationData = {
+              ...invitationData,
+              trainer: {
+                name: trainerData?.name || "Unnamed Trainer"
+              }
+            };
+            
             onInvitationLoaded({
               email,
-              trainerId: data.trainer_id,
+              trainerId: invitationData.trainer_id,
               trainers,
-              invitationData: data,
+              invitationData: combinedInvitationData,
             });
           }
         } catch (error) {
