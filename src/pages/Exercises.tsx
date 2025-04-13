@@ -138,7 +138,9 @@ const Exercises = () => {
     if (!editExercise || !user) return;
     
     try {
-      // Update the exercise
+      console.log("Updating exercise:", editExercise.id, updatedExercise);
+      
+      // Step 1: Update the exercise basic info
       const { error: exerciseError } = await supabase
         .from("exercises")
         .update({
@@ -148,29 +150,34 @@ const Exercises = () => {
         .eq("id", editExercise.id);
 
       if (exerciseError) throw exerciseError;
+      
+      // Step 2: Delete existing levels one by one
+      for (const level of editExercise.levels) {
+        if (typeof level.id === 'string') {
+          const { error: deleteError } = await supabase
+            .from("exercise_levels")
+            .delete()
+            .eq("id", level.id);
+          
+          if (deleteError) throw deleteError;
+        }
+      }
 
-      // Delete existing levels
-      const { error: deleteError } = await supabase
-        .from("exercise_levels")
-        .delete()
-        .eq("exercise_id", editExercise.id);
-
-      if (deleteError) throw deleteError;
-
-      // Insert new levels
-      const levelsToInsert = updatedExercise.levels.map((level, idx) => ({
-        exercise_id: editExercise.id,
-        level: idx + 1,
-        video: level.video,
-        repetitions: level.repetitions,
-        weight: level.weight
-      }));
-
-      const { error: levelsError } = await supabase
-        .from("exercise_levels")
-        .insert(levelsToInsert);
-
-      if (levelsError) throw levelsError;
+      // Step 3: Insert new levels one by one
+      for (let i = 0; i < updatedExercise.levels.length; i++) {
+        const level = updatedExercise.levels[i];
+        const { error: insertError } = await supabase
+          .from("exercise_levels")
+          .insert({
+            exercise_id: editExercise.id,
+            level: i + 1,
+            video: level.video,
+            repetitions: level.repetitions,
+            weight: level.weight
+          });
+        
+        if (insertError) throw insertError;
+      }
 
       toast({
         title: "Ejercicio actualizado",
