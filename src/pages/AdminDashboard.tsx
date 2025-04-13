@@ -8,41 +8,16 @@ import Navbar from "@/components/Navbar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Shield, MoreHorizontal, UserCog, UserPlus, Trash2, Edit, AlertCircle } from "lucide-react";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Shield, UserPlus } from "lucide-react";
+import { Dialog } from "@/components/ui/dialog";
 
-type User = {
+// Import refactored components
+import UserTable from "@/components/admin/UserTable";
+import StatsCards from "@/components/admin/StatsCards";
+import UserDialogs from "@/components/admin/UserDialogs";
+import { UserFormValues } from "@/components/admin/UserForm";
+
+export type User = {
   id: string;
   email: string;
   name: string | null;
@@ -50,17 +25,6 @@ type User = {
   role: string | null;
   isAdmin: boolean;
 };
-
-// Esquema de validación para el formulario de creación/edición de usuarios
-const userFormSchema = z.object({
-  email: z.string().email("Ingrese un correo electrónico válido"),
-  name: z.string().min(1, "El nombre es requerido"),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").optional(),
-  role: z.enum(["client", "trainer", ""]).optional(),
-  isAdmin: z.boolean().optional(),
-});
-
-type UserFormValues = z.infer<typeof userFormSchema>;
 
 const AdminDashboard = () => {
   const { isAdmin, isLoading } = useAuth();
@@ -73,18 +37,6 @@ const AdminDashboard = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
-
-  // Formulario para creación y edición de usuarios
-  const form = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema),
-    defaultValues: {
-      email: "",
-      name: "",
-      password: "",
-      role: "",
-      isAdmin: false,
-    },
-  });
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
@@ -102,18 +54,6 @@ const AdminDashboard = () => {
       fetchUsers();
     }
   }, [isAdmin]);
-
-  // Efecto para actualizar el formulario cuando se selecciona un usuario para editar
-  useEffect(() => {
-    if (currentUser && isEditing) {
-      form.reset({
-        email: currentUser.email,
-        name: currentUser.name || "",
-        role: (currentUser.role as any) || "",
-        isAdmin: currentUser.isAdmin,
-      });
-    }
-  }, [currentUser, isEditing, form]);
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
@@ -133,7 +73,6 @@ const AdminDashboard = () => {
 
       const usersWithAdminStatus = await Promise.all(
         (profiles || []).map(async (profile) => {
-          // Usar is_admin_user en lugar de check_if_admin
           const { data: isAdminUser, error: adminCheckError } = await supabase
             .rpc('is_admin_user', { user_id: profile.id });
             
@@ -283,7 +222,6 @@ const AdminDashboard = () => {
         // Actualizar la lista de usuarios
         fetchUsers();
         setIsCreating(false);
-        form.reset();
       }
     } catch (error: any) {
       console.error("Error in handleCreateUser:", error);
@@ -334,7 +272,6 @@ const AdminDashboard = () => {
       fetchUsers();
       setIsEditing(false);
       setCurrentUser(null);
-      form.reset();
     } catch (error: any) {
       console.error("Error in handleUpdateUser:", error);
       toast({
@@ -383,17 +320,6 @@ const AdminDashboard = () => {
     setDeleteDialogOpen(true);
   };
 
-  const getInitials = (name: string | null, email: string) => {
-    if (name) {
-      return name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase();
-    }
-    return email.substring(0, 2).toUpperCase();
-  };
-
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">Cargando...</div>;
   }
@@ -422,120 +348,20 @@ const AdminDashboard = () => {
                     Gestiona los roles y permisos de los usuarios.
                   </CardDescription>
                 </div>
-                <Button onClick={() => {
-                  form.reset({
-                    email: "",
-                    name: "",
-                    password: "",
-                    role: "",
-                    isAdmin: false,
-                  });
-                  setIsCreating(true);
-                }} className="flex items-center">
+                <Button onClick={() => setIsCreating(true)} className="flex items-center">
                   <UserPlus className="mr-2 h-4 w-4" />
                   Crear Usuario
                 </Button>
               </CardHeader>
               <CardContent>
-                {loadingUsers ? (
-                  <div className="text-center py-6">Cargando usuarios...</div>
-                ) : users.length === 0 ? (
-                  <div className="text-center py-6">No se encontraron usuarios</div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Usuario</TableHead>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Rol</TableHead>
-                        <TableHead>Admin</TableHead>
-                        <TableHead className="w-[150px]">Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={user.avatar_url || undefined} />
-                              <AvatarFallback>
-                                {getInitials(user.name, user.id)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span>{user.name || "Sin nombre"}</span>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs truncate max-w-[100px]">{user.id}</TableCell>
-                          <TableCell>
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              user.role === 'trainer'
-                                ? 'bg-blue-100 text-blue-800'
-                                : user.role === 'client'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {user.role || "Sin rol"}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {user.isAdmin ? (
-                              <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
-                                Admin
-                              </span>
-                            ) : (
-                              "-"
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => openEditModal(user)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-destructive hover:text-destructive/90"
-                                onClick={() => openDeleteDialog(user)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleRoleChange(user.id, "client")}
-                                  >
-                                    Establecer como Cliente
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleRoleChange(user.id, "trainer")}
-                                  >
-                                    Establecer como Entrenador
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => toggleAdminStatus(user.id, user.isAdmin)}
-                                  >
-                                    {user.isAdmin ? "Quitar Admin" : "Hacer Admin"}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
+                <UserTable 
+                  users={users}
+                  loadingUsers={loadingUsers}
+                  handleRoleChange={handleRoleChange}
+                  toggleAdminStatus={toggleAdminStatus}
+                  openEditModal={openEditModal}
+                  openDeleteDialog={openDeleteDialog}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -549,300 +375,29 @@ const AdminDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        Total de Usuarios
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{users.length}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        Entrenadores
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {users.filter(u => u.role === "trainer").length}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        Clientes
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {users.filter(u => u.role === "client").length}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                <StatsCards users={users} />
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* User Dialogs Component */}
+        <UserDialogs 
+          isCreating={isCreating}
+          setIsCreating={setIsCreating}
+          isEditing={isEditing}
+          setIsEditing={setIsEditing}
+          currentUser={currentUser}
+          setCurrentUser={setCurrentUser}
+          deleteDialogOpen={deleteDialogOpen}
+          setDeleteDialogOpen={setDeleteDialogOpen}
+          userToDelete={userToDelete}
+          setUserToDelete={setUserToDelete}
+          handleCreateUser={handleCreateUser}
+          handleUpdateUser={handleUpdateUser}
+          handleDeleteUser={handleDeleteUser}
+        />
       </main>
-
-      {/* Modal de creación de usuario */}
-      <Dialog open={isCreating} onOpenChange={(open) => !open && setIsCreating(false)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Crear Nuevo Usuario</DialogTitle>
-            <DialogDescription>
-              Completa el formulario para crear un nuevo usuario en el sistema.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleCreateUser)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Correo Electrónico</FormLabel>
-                    <FormControl>
-                      <Input placeholder="correo@ejemplo.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nombre del usuario" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contraseña</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="******" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rol</FormLabel>
-                    <FormControl>
-                      <select
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                        {...field}
-                      >
-                        <option value="">Selecciona un rol</option>
-                        <option value="client">Cliente</option>
-                        <option value="trainer">Entrenador</option>
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="isAdmin"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={field.onChange}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>Administrador</FormLabel>
-                      <p className="text-sm text-muted-foreground">
-                        Este usuario tendrá acceso completo al panel de administración.
-                      </p>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setIsCreating(false);
-                    form.reset();
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">Crear Usuario</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal de edición de usuario */}
-      <Dialog open={isEditing} onOpenChange={(open) => !open && setIsEditing(false)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Editar Usuario</DialogTitle>
-            <DialogDescription>
-              Actualiza la información del usuario.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleUpdateUser)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Correo Electrónico</FormLabel>
-                    <FormControl>
-                      <Input disabled placeholder="correo@ejemplo.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nombre del usuario" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nueva Contraseña (opcional)</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Dejar en blanco para mantener" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rol</FormLabel>
-                    <FormControl>
-                      <select
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                        {...field}
-                      >
-                        <option value="">Sin rol</option>
-                        <option value="client">Cliente</option>
-                        <option value="trainer">Entrenador</option>
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="isAdmin"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={field.onChange}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>Administrador</FormLabel>
-                      <p className="text-sm text-muted-foreground">
-                        Este usuario tendrá acceso completo al panel de administración.
-                      </p>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setIsEditing(false);
-                    setCurrentUser(null);
-                    form.reset();
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">Actualizar Usuario</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Diálogo de confirmación de eliminación */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              Confirmar eliminación
-            </DialogTitle>
-            <DialogDescription>
-              ¿Estás seguro de que deseas eliminar al usuario {userToDelete?.name || userToDelete?.email}? Esta acción no se puede deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setDeleteDialogOpen(false);
-                setUserToDelete(null);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDeleteUser}
-            >
-              Eliminar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
