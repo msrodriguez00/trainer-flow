@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ChevronLeft, Pencil, Save, UserCircle, Trash2, Loader2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/card";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import PlanExerciseCard from "@/components/plan/PlanExerciseCard";
 
 const PlanDetails = () => {
@@ -75,20 +75,29 @@ const PlanDetails = () => {
           .in("id", exerciseIds);
 
         if (exercisesError) throw exercisesError;
-        setExercises(exercisesData);
+        
+        // Convert string categories to Category type
+        const typedExercises: Exercise[] = exercisesData.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          categories: item.categories,
+          levels: item.levels
+        }));
+        
+        setExercises(typedExercises);
       }
 
       // Format plan exercises
       const formattedExercises: PlanExercise[] = planExercisesData.map((item: any) => ({
         exerciseId: item.exercise_id,
         level: item.level,
-        evaluations: item.evaluations.map((eval: any) => ({
-          timeRating: eval.time_rating,
-          weightRating: eval.weight_rating,
-          repetitionsRating: eval.repetitions_rating,
-          exerciseRating: eval.exercise_rating,
-          comment: eval.comment,
-          date: eval.date
+        evaluations: item.evaluations.map((evaluation: any) => ({
+          timeRating: evaluation.time_rating,
+          weightRating: evaluation.weight_rating,
+          repetitionsRating: evaluation.repetitions_rating,
+          exerciseRating: evaluation.exercise_rating,
+          comment: evaluation.comment,
+          date: evaluation.date
         }))
       }));
 
