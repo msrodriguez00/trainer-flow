@@ -42,65 +42,20 @@ serve(async (req) => {
     
     console.log("Processing invitation acceptance:", { invitationId, trainerId, userId, email });
     
-    // Update the status to 'accepted'
-    const { error: updateError } = await supabaseClient
-      .from("client_invitations")
-      .update({ status: "accepted" })
-      .eq("id", invitationId);
-
-    if (updateError) throw updateError;
-
-    const { data: existingClient, error: clientError } = await supabaseClient
-      .from("clients")
-      .select("*")
-      .eq("email", email)
-      .maybeSingle();
-
-    if (clientError && clientError.code !== 'PGRST116') throw clientError;
-
-    if (existingClient) {
-      // Add relationship in the client_trainer_relationships table
-      await supabaseClient
-        .from("client_trainer_relationships")
-        .insert({
-          client_id: existingClient.id,
-          trainer_id: trainerId,
-          is_primary: !existingClient.trainer_id
-        })
-        .select();
-      
-      // If no primary trainer yet, update the client record
-      if (!existingClient.trainer_id) {
-        await supabaseClient
-          .from("clients")
-          .update({ trainer_id: trainerId })
-          .eq("id", existingClient.id);
+    // Call the database function using RPC instead of direct table operations
+    const { data, error } = await supabaseClient.rpc(
+      'accept_client_invitation',
+      {
+        p_invitation_id: invitationId,
+        p_trainer_id: trainerId,
+        p_user_id: userId,
+        p_email: email
       }
-    } else {
-      // Create new client record
-      const { data: newClient, error: insertError } = await supabaseClient
-        .from("clients")
-        .insert({
-          email: email,
-          name: email.split('@')[0] || 'Cliente',
-          trainer_id: trainerId,
-          trainers: [trainerId],
-          user_id: userId
-        })
-        .select();
-        
-      if (insertError) throw insertError;
-        
-      // Also add relationship to the junction table
-      if (newClient && newClient.length > 0) {
-        await supabaseClient
-          .from("client_trainer_relationships")
-          .insert({
-            client_id: newClient[0].id,
-            trainer_id: trainerId,
-            is_primary: true
-          });
-      }
+    );
+
+    if (error) {
+      console.error("Error calling accept_client_invitation function:", error);
+      throw error;
     }
 
     return new Response(
