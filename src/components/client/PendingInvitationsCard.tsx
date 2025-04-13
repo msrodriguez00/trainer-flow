@@ -11,6 +11,10 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, X, Loader2, UserPlus, AlertCircle } from "lucide-react";
+import { InvitationsList } from "./InvitationsList";
+import { EmptyInvitations } from "./EmptyInvitations";
+import { LoadingInvitations } from "./LoadingInvitations";
+import { AuthRequiredMessage } from "./AuthRequiredMessage";
 
 interface TrainerInvitation {
   id: string;
@@ -149,25 +153,48 @@ const PendingInvitationsCard = () => {
       if (clientError && clientError.code !== 'PGRST116') throw clientError;
 
       if (existingClient) {
-        const updatedTrainers = [...(existingClient.trainers || [])];
-        if (!updatedTrainers.includes(trainerId)) {
-          updatedTrainers.push(trainerId);
-          
+        // Add relationship in the new client_trainer_relationships table
+        await supabase
+          .from("client_trainer_relationships")
+          .insert({
+            client_id: existingClient.id,
+            trainer_id: trainerId,
+            is_primary: !existingClient.trainer_id  // Make primary if no primary trainer
+          })
+          .select();
+        
+        // If no primary trainer yet, also update the client record
+        if (!existingClient.trainer_id) {
           await supabase
             .from("clients")
-            .update({ trainers: updatedTrainers })
+            .update({ trainer_id: trainerId })
             .eq("id", existingClient.id);
         }
       } else {
-        await supabase
+        // Create new client record
+        const { data: newClient, error: insertError } = await supabase
           .from("clients")
           .insert({
-            email: user.email.toLowerCase(), // Ensure email is lowercase
+            email: user.email.toLowerCase(),
             name: user.user_metadata?.name || user.email.split('@')[0],
             trainer_id: trainerId,
             trainers: [trainerId],
             user_id: user.id
-          });
+          })
+          .select();
+          
+        if (insertError) throw insertError;
+          
+        // Also add relationship to the junction table
+        if (newClient && newClient.length > 0) {
+          await supabase
+            .from("client_trainer_relationships")
+            .insert({
+              client_id: newClient[0].id,
+              trainer_id: trainerId,
+              is_primary: true
+            });
+        }
       }
 
       setInvitations(invitations.filter(inv => inv.id !== invitationId));
@@ -227,25 +254,7 @@ const PendingInvitationsCard = () => {
   };
 
   if (window.location.pathname === "/auth") {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <UserPlus className="mr-2 h-5 w-5" />
-            Invitaciones de Entrenadores
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center py-4 text-center">
-            <AlertCircle className="h-8 w-8 text-amber-500 mb-2" />
-            <p className="font-medium">Por favor inicia sesión como cliente</p>
-            <p className="text-sm text-gray-500 mt-1">
-              Para ver invitaciones, usa la página de <a href="/client-login" className="text-blue-500 hover:underline">acceso para clientes</a>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <AuthRequiredMessage />;
   }
 
   return (
@@ -258,9 +267,7 @@ const PendingInvitationsCard = () => {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <LoadingInvitations />
         ) : error ? (
           <div className="flex flex-col items-center py-4 text-center">
             <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
@@ -277,49 +284,15 @@ const PendingInvitationsCard = () => {
             )}
           </div>
         ) : invitations.length > 0 ? (
-          <div className="space-y-4">
-            {invitations.map((invitation) => (
-              <div key={invitation.id} className="border rounded-md p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                  <h3 className="font-medium">{invitation.trainer_name}</h3>
-                  <p className="text-sm text-gray-500">Invitación enviada el {formatDate(invitation.created_at)}</p>
-                </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full sm:w-auto"
-                    disabled={processingIds.includes(invitation.id)}
-                    onClick={() => handleRejectInvitation(invitation.id)}
-                  >
-                    {processingIds.includes(invitation.id) ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : (
-                      <X className="h-4 w-4 mr-1" />
-                    )}
-                    Rechazar
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="w-full sm:w-auto"
-                    disabled={processingIds.includes(invitation.id)}
-                    onClick={() => handleAcceptInvitation(invitation.id, invitation.trainer_id)}
-                  >
-                    {processingIds.includes(invitation.id) ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : (
-                      <Check className="h-4 w-4 mr-1" />
-                    )}
-                    Aceptar
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <InvitationsList 
+            invitations={invitations} 
+            onAccept={handleAcceptInvitation} 
+            onReject={handleRejectInvitation} 
+            processingIds={processingIds}
+            formatDate={formatDate}
+          />
         ) : (
-          <p className="text-center py-4 text-gray-500">
-            No tienes invitaciones pendientes.
-          </p>
+          <EmptyInvitations />
         )}
       </CardContent>
     </Card>

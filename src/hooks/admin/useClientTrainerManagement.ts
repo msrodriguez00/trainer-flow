@@ -17,6 +17,7 @@ export const useClientTrainerManagement = () => {
     setLoadingClients(true);
     
     try {
+      // First get the clients
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
         .select("*");
@@ -26,9 +27,39 @@ export const useClientTrainerManagement = () => {
         throw clientsError;
       }
       
-      console.log("Clientes obtenidos:", clientsData?.length || 0, clientsData);
-      setClients(clientsData || []);
+      console.log("Clientes base obtenidos:", clientsData?.length || 0);
       
+      // Now get the client-trainer relationships to correctly map trainers to clients
+      const { data: relationshipsData, error: relationshipsError } = await supabase
+        .from("client_trainer_relationships")
+        .select("client_id, trainer_id, is_primary");
+        
+      if (relationshipsError) {
+        console.error("Error al obtener relaciones cliente-entrenador:", relationshipsError);
+        throw relationshipsError;
+      }
+      
+      console.log("Relaciones cliente-entrenador obtenidas:", relationshipsData?.length || 0);
+      
+      // Group relationships by client
+      const clientRelationships: Record<string, string[]> = {};
+      relationshipsData?.forEach(rel => {
+        if (!clientRelationships[rel.client_id]) {
+          clientRelationships[rel.client_id] = [];
+        }
+        clientRelationships[rel.client_id].push(rel.trainer_id);
+      });
+      
+      // Merge client data with relationships
+      const clientsWithTrainers = clientsData?.map(client => ({
+        ...client,
+        trainers: clientRelationships[client.id] || client.trainers || []
+      }));
+      
+      setClients(clientsWithTrainers || []);
+      console.log("Clientes procesados con relaciones:", clientsWithTrainers);
+      
+      // Get trainers
       const { data: trainersData, error: trainersError } = await supabase
         .from("profiles")
         .select("id, name")
@@ -39,7 +70,7 @@ export const useClientTrainerManagement = () => {
         throw trainersError;
       }
       
-      console.log("Entrenadores obtenidos:", trainersData?.length || 0, trainersData);
+      console.log("Entrenadores obtenidos:", trainersData?.length || 0);
       setTrainers(trainersData || []);
     } catch (error) {
       console.error("Error fetching clients and trainers:", error);
@@ -57,16 +88,76 @@ export const useClientTrainerManagement = () => {
     try {
       console.log("Actualizando entrenadores para cliente:", clientId, trainerIds);
       
-      const { error } = await supabase
-        .from("clients")
-        .update({ trainers: trainerIds })
-        .eq("id", clientId);
-
-      if (error) {
-        console.error("Error actualizando trainers:", error);
-        throw error;
+      // First, get existing relationships for this client
+      const { data: existingRelationships, error: fetchError } = await supabase
+        .from("client_trainer_relationships")
+        .select("trainer_id")
+        .eq("client_id", clientId);
+        
+      if (fetchError) throw fetchError;
+      
+      const existingTrainerIds = existingRelationships?.map(rel => rel.trainer_id) || [];
+      
+      // Find trainers to add (new trainers) and remove (no longer in the list)
+      const trainersToAdd = trainerIds.filter(id => !existingTrainerIds.includes(id));
+      const trainersToRemove = existingTrainerIds.filter(id => !trainerIds.includes(id));
+      
+      console.log("Trainers to add:", trainersToAdd);
+      console.log("Trainers to remove:", trainersToRemove);
+      
+      // Remove relationships that are no longer valid
+      if (trainersToRemove.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("client_trainer_relationships")
+          .delete()
+          .eq("client_id", clientId)
+          .in("trainer_id", trainersToRemove);
+          
+        if (deleteError) throw deleteError;
+      }
+      
+      // Add new relationships
+      if (trainersToAdd.length > 0) {
+        const newRelationships = trainersToAdd.map(trainerId => ({
+          client_id: clientId,
+          trainer_id: trainerId,
+          is_primary: trainerIds.indexOf(trainerId) === 0 // Make the first trainer primary
+        }));
+        
+        const { error: insertError } = await supabase
+          .from("client_trainer_relationships")
+          .insert(newRelationships);
+          
+        if (insertError) throw insertError;
+      }
+      
+      // Update the primary trainer in the clients table for backward compatibility
+      if (trainerIds.length > 0) {
+        const primaryTrainerId = trainerIds[0]; // First trainer in the list is primary
+        
+        const { error: updateError } = await supabase
+          .from("clients")
+          .update({ 
+            trainer_id: primaryTrainerId,
+            trainers: trainerIds  // Keep this for backward compatibility
+          })
+          .eq("id", clientId);
+          
+        if (updateError) throw updateError;
+      } else {
+        // No trainers - clear the primary trainer
+        const { error: updateError } = await supabase
+          .from("clients")
+          .update({ 
+            trainer_id: null,
+            trainers: []
+          })
+          .eq("id", clientId);
+          
+        if (updateError) throw updateError;
       }
 
+      // Update local state
       setClients(clients.map(client => 
         client.id === clientId ? { ...client, trainers: trainerIds } : client
       ));
