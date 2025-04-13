@@ -1,17 +1,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Check, X, Loader2 } from "lucide-react";
-
-interface Invitation {
-  id: string;
-  email: string;
-  trainer_id: string;
-  trainer_name: string;
-  created_at: string;
-}
+import { TrainerInvitation } from "./types";
 
 interface InvitationsListProps {
-  invitations: Invitation[];
+  invitations: TrainerInvitation[];
   onAccept: (invitationId: string, trainerId: string) => void;
   onReject: (invitationId: string) => void;
   processingIds: string[];
