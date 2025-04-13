@@ -40,8 +40,13 @@ const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false, adm
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  if (adminOnly && !isAdmin) {
-    return <Navigate to="/" replace />;
+  // Debug para la ruta de admin
+  if (adminOnly) {
+    console.log("Ruta protegida de admin:", { isAdmin });
+    if (!isAdmin) {
+      console.log("Acceso denegado: Usuario no es admin");
+      return <Navigate to="/" replace />;
+    }
   }
 
   if (trainerOnly && !isTrainer && !isAdmin) {
@@ -166,6 +171,7 @@ const IndexRedirect = () => {
   console.log("IndexRedirect - User role:", { isClient, isTrainer, isAdmin, profile });
   
   if (isAdmin) {
+    console.log("Redirigiendo admin al panel de administración");
     return <Navigate to="/admin" replace />;
   }
   

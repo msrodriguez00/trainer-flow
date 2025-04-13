@@ -73,10 +73,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Profile fetched:", profileData);
       setProfile(profileData);
       
-      // Changed: Check for admin role in profile
-      setIsAdmin(profileData.role === 'admin');
+      // Debug logs para entender el problema
+      console.log("Rol del usuario:", profileData.role);
       
-      // If user is a trainer, fetch their brand settings
+      // Verificación explícita para el rol de admin
+      const isUserAdmin = profileData.role === 'admin';
+      console.log("¿Es admin?:", isUserAdmin);
+      
+      setIsAdmin(isUserAdmin);
+      
+      // Si el usuario es un entrenador o administrador, obtener configuración de marca
       if (profileData.role === 'trainer' || profileData.role === 'admin') {
         const brandData = await fetchTrainerBrand(userId);
         console.log("Trainer brand fetched:", brandData);

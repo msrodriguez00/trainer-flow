@@ -43,6 +43,7 @@ const UserMenu = () => {
 
   // Ir al panel de administración
   const handleAdminPanel = () => {
+    console.log("Navigating to admin panel, isAdmin:", isAdmin);
     navigate("/admin");
     setIsOpen(false);
   };
@@ -92,6 +93,8 @@ const UserMenu = () => {
     if (isClient) return 'Cliente';
     return 'Usuario';
   };
+
+  console.log("UserMenu - Estado actual:", { isAdmin, role: profile?.role });
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
