@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { TrainerInvitation } from "@/components/client/types";
 
@@ -84,65 +85,22 @@ export const acceptInvitation = async (invitationId: string, trainerId: string, 
   // Normalize email
   const normalizedEmail = userEmail.toLowerCase().trim();
   
-  // Update the status to 'accepted' - RLS policy will ensure user can only update their own invitations
-  const { error: updateError } = await supabase
-    .from("client_invitations")
-    .update({ status: "accepted" })
-    .eq("id", invitationId);
+  try {
+    // Start a Supabase transaction with .rpc() for better error handling
+    const { error: rpcError } = await supabase.rpc('accept_client_invitation', { 
+      p_invitation_id: invitationId,
+      p_trainer_id: trainerId,
+      p_user_id: userId,
+      p_email: normalizedEmail 
+    });
 
-  if (updateError) throw updateError;
-
-  const { data: existingClient, error: clientError } = await supabase
-    .from("clients")
-    .select("*")
-    .eq("email", normalizedEmail)
-    .maybeSingle();
-
-  if (clientError && clientError.code !== 'PGRST116') throw clientError;
-
-  if (existingClient) {
-    // Add relationship in the client_trainer_relationships table
-    await supabase
-      .from("client_trainer_relationships")
-      .insert({
-        client_id: existingClient.id,
-        trainer_id: trainerId,
-        is_primary: !existingClient.trainer_id
-      })
-      .select();
-    
-    // If no primary trainer yet, update the client record
-    if (!existingClient.trainer_id) {
-      await supabase
-        .from("clients")
-        .update({ trainer_id: trainerId })
-        .eq("id", existingClient.id);
+    if (rpcError) {
+      console.error("RPC error accepting invitation:", rpcError);
+      throw rpcError;
     }
-  } else {
-    // Create new client record
-    const { data: newClient, error: insertError } = await supabase
-      .from("clients")
-      .insert({
-        email: normalizedEmail,
-        name: userId ? userId.split('@')[0] : normalizedEmail.split('@')[0],
-        trainer_id: trainerId,
-        trainers: [trainerId],
-        user_id: userId
-      })
-      .select();
-      
-    if (insertError) throw insertError;
-      
-    // Also add relationship to the junction table
-    if (newClient && newClient.length > 0) {
-      await supabase
-        .from("client_trainer_relationships")
-        .insert({
-          client_id: newClient[0].id,
-          trainer_id: trainerId,
-          is_primary: true
-        });
-    }
+  } catch (error) {
+    console.error("Error in acceptInvitation:", error);
+    throw error;
   }
 };
 
