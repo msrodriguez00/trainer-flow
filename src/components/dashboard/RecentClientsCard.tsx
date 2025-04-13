@@ -14,6 +14,12 @@ interface RecentClientsCardProps {
 
 const RecentClientsCard = ({ clients, loading, onAddClient }: RecentClientsCardProps) => {
   const navigate = useNavigate();
+  
+  // Función para manejar errores de carga de imágenes
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.target as HTMLImageElement;
+    target.src = "https://via.placeholder.com/150";
+  };
 
   return (
     <Card>
@@ -40,9 +46,10 @@ const RecentClientsCard = ({ clients, loading, onAddClient }: RecentClientsCardP
                   onClick={() => navigate(`/clients/${client.id}`)}
                 >
                   <img
-                    src={client.avatar || "https://i.pravatar.cc/150"}
+                    src={client.avatar || "https://via.placeholder.com/150"}
                     alt={client.name}
-                    className="h-10 w-10 rounded-full mr-3"
+                    className="h-10 w-10 rounded-full mr-3 object-cover"
+                    onError={handleImageError}
                   />
                   <div>
                     <h3 className="font-medium">{client.name}</h3>

@@ -19,6 +19,12 @@ interface ClientCardProps {
 
 const ClientCard = ({ client, onEdit, onDelete }: ClientCardProps) => {
   const navigate = useNavigate();
+  
+  // Función para manejar errores de carga de imágenes
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.target as HTMLImageElement;
+    target.src = "https://via.placeholder.com/150";
+  };
 
   return (
     <Card className="h-full">
@@ -26,9 +32,10 @@ const ClientCard = ({ client, onEdit, onDelete }: ClientCardProps) => {
         <div className="flex justify-between items-start">
           <div className="flex items-center">
             <img
-              src={client.avatar}
+              src={client.avatar || "https://via.placeholder.com/150"}
               alt={client.name}
-              className="h-10 w-10 rounded-full mr-3"
+              className="h-10 w-10 rounded-full mr-3 object-cover"
+              onError={handleImageError}
             />
             <div>
               <CardTitle className="text-lg">{client.name}</CardTitle>
