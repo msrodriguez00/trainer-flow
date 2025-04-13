@@ -1,7 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { TrainerInvitation } from "@/components/client/types";
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "@/integrations/supabase/client";
 
 export const fetchPendingInvitationsByEmail = async (email: string): Promise<TrainerInvitation[]> => {
   console.log("=== DETAILED INVITATIONS DEBUG ===");
@@ -11,40 +9,49 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
   const normalizedEmail = email.toLowerCase().trim();
   console.log("Normalized email for query:", normalizedEmail);
   
-  // Get auth token for authenticated requests
-  const { data: { session } } = await supabase.auth.getSession();
-  const authToken = session?.access_token;
+  // Log relevant request information without accessing protected properties
+  console.log("Fetching invitations for email:", normalizedEmail);
+  console.log("QUERY START: Fetching invitations from client_invitations table");
+  console.log("SQL equivalent: SELECT * FROM client_invitations WHERE email = '" + normalizedEmail + "' AND status = 'pending'");
   
   try {
-    console.log("USING DIRECT REST API CALL");
-    console.log("Endpoint: GET /rest/v1/client_invitations");
-    console.log("Querying for email:", normalizedEmail);
+    // First attempt to get data with select and filter methods
+    const { data: invitationsData, error: invitationsError } = await supabase
+      .from("client_invitations")
+      .select("id, email, trainer_id, created_at, status")
+      .eq("email", normalizedEmail)
+      .eq("status", "pending");
     
-    // Make direct REST API call
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/client_invitations?email=eq.${encodeURIComponent(normalizedEmail)}&status=eq.pending&select=id,email,trainer_id,created_at,status`, {
-      method: 'GET',
-      headers: {
-        'apikey': SUPABASE_PUBLISHABLE_KEY,
-        'Authorization': authToken ? `Bearer ${authToken}` : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Prefer': 'return=representation'
-      }
-    });
-    
-    console.log("REST API Status Code:", response.status);
-    
-    // Check if response is ok (status code 200-299)
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("REST API Error:", errorText);
-      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    console.log("QUERY END: Response received from database");
+    console.log("Raw query result:", invitationsData);
+    console.log("Error:", invitationsError);
+
+    // Verify the response is not null
+    if (invitationsError) {
+      console.error("Error fetching invitations:", invitationsError);
+      throw invitationsError;
     }
-    
-    // Parse response body
-    const invitationsData = await response.json();
-    console.log("REST API Response:", invitationsData);
-    
+
+    // Try a direct RPC call as alternative if available data is empty
+    if (!invitationsData || invitationsData.length === 0) {
+      console.log("No data found with regular query, trying direct SQL query via RPC if available");
+      
+      // For debugging purposes, also try to count total invitations
+      const { data: countData } = await supabase
+        .from("client_invitations")
+        .select("id", { count: "exact" });
+      
+      console.log("Total invitations in database:", countData?.length || 0);
+      
+      // Check if there are any invitations with this email regardless of status
+      const { data: anyInvitations } = await supabase
+        .from("client_invitations")
+        .select("id, email, status")
+        .eq("email", normalizedEmail);
+      
+      console.log("Any invitations for this email:", anyInvitations);
+    }
+
     // If we have invitations, obtain the names of the trainers
     if (invitationsData && invitationsData.length > 0) {
       const formattedInvitations: TrainerInvitation[] = [];
@@ -53,18 +60,17 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
       const trainerIds = invitationsData.map(inv => inv.trainer_id);
       console.log("Found trainer IDs:", trainerIds);
       
-      // Get trainer profiles using REST API
-      const trainersResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=in.(${trainerIds.join(',')})&select=id,name`, {
-        method: 'GET',
-        headers: {
-          'apikey': SUPABASE_PUBLISHABLE_KEY,
-          'Authorization': authToken ? `Bearer ${authToken}` : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
+      // Get trainer profiles in a single query
+      const { data: trainerProfiles, error: trainersError } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .in("id", trainerIds);
       
-      const trainerProfiles = await trainersResponse.json();
+      if (trainersError) {
+        console.error("Error fetching trainer profiles:", trainersError);
+        throw trainersError;
+      }
+      
       console.log("Trainer profiles found:", trainerProfiles);
       
       // Map trainer names to invitations
@@ -97,146 +103,79 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
 export const acceptInvitation = async (invitationId: string, trainerId: string, userId: string, userEmail: string): Promise<void> => {
   console.log("Accepting invitation:", invitationId, "for trainer:", trainerId);
   
-  // Get auth token for authenticated requests
-  const { data: { session } } = await supabase.auth.getSession();
-  const authToken = session?.access_token;
-  
   // Normalize email
   const normalizedEmail = userEmail.toLowerCase().trim();
   
-  try {
-    // Update the status to 'accepted' using REST API
-    const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/client_invitations?id=eq.${invitationId}`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': SUPABASE_PUBLISHABLE_KEY,
-        'Authorization': authToken ? `Bearer ${authToken}` : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ status: "accepted" })
-    });
+  // Update the status to 'accepted'
+  const { error: updateError } = await supabase
+    .from("client_invitations")
+    .update({ status: "accepted" })
+    .eq("id", invitationId);
+
+  if (updateError) throw updateError;
+
+  const { data: existingClient, error: clientError } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (clientError && clientError.code !== 'PGRST116') throw clientError;
+
+  if (existingClient) {
+    // Add relationship in the client_trainer_relationships table
+    await supabase
+      .from("client_trainer_relationships")
+      .insert({
+        client_id: existingClient.id,
+        trainer_id: trainerId,
+        is_primary: !existingClient.trainer_id
+      })
+      .select();
     
-    if (!updateResponse.ok) {
-      const errorText = await updateResponse.text();
-      throw new Error(`Error updating invitation: ${errorText}`);
+    // If no primary trainer yet, update the client record
+    if (!existingClient.trainer_id) {
+      await supabase
+        .from("clients")
+        .update({ trainer_id: trainerId })
+        .eq("id", existingClient.id);
     }
-    
-    // Check if client already exists
-    const clientResponse = await fetch(`${SUPABASE_URL}/rest/v1/clients?email=eq.${encodeURIComponent(normalizedEmail)}&select=*`, {
-      headers: {
-        'apikey': SUPABASE_PUBLISHABLE_KEY,
-        'Authorization': authToken ? `Bearer ${authToken}` : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    const existingClients = await clientResponse.json();
-    const existingClient = existingClients.length > 0 ? existingClients[0] : null;
-    
-    if (existingClient) {
-      // Add relationship in the client_trainer_relationships table
-      await fetch(`${SUPABASE_URL}/rest/v1/client_trainer_relationships`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_PUBLISHABLE_KEY,
-          'Authorization': authToken ? `Bearer ${authToken}` : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
-          client_id: existingClient.id,
+  } else {
+    // Create new client record
+    const { data: newClient, error: insertError } = await supabase
+      .from("clients")
+      .insert({
+        email: normalizedEmail,
+        name: userId ? userId.split('@')[0] : normalizedEmail.split('@')[0],
+        trainer_id: trainerId,
+        trainers: [trainerId],
+        user_id: userId
+      })
+      .select();
+      
+    if (insertError) throw insertError;
+      
+    // Also add relationship to the junction table
+    if (newClient && newClient.length > 0) {
+      await supabase
+        .from("client_trainer_relationships")
+        .insert({
+          client_id: newClient[0].id,
           trainer_id: trainerId,
-          is_primary: !existingClient.trainer_id
-        })
-      });
-      
-      // If no primary trainer yet, update the client record
-      if (!existingClient.trainer_id) {
-        await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${existingClient.id}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_PUBLISHABLE_KEY,
-            'Authorization': authToken ? `Bearer ${authToken}` : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({ trainer_id: trainerId })
+          is_primary: true
         });
-      }
-    } else {
-      // Create new client record
-      const clientName = userId ? userId.split('@')[0] : normalizedEmail.split('@')[0];
-      
-      const newClientResponse = await fetch(`${SUPABASE_URL}/rest/v1/clients`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_PUBLISHABLE_KEY,
-          'Authorization': authToken ? `Bearer ${authToken}` : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
-          email: normalizedEmail,
-          name: clientName,
-          trainer_id: trainerId,
-          trainers: [trainerId],
-          user_id: userId
-        })
-      });
-      
-      if (!newClientResponse.ok) {
-        const errorText = await newClientResponse.text();
-        throw new Error(`Error creating client: ${errorText}`);
-      }
-      
-      const newClient = await newClientResponse.json();
-      
-      // Also add relationship to the junction table
-      if (newClient && newClient.length > 0) {
-        await fetch(`${SUPABASE_URL}/rest/v1/client_trainer_relationships`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_PUBLISHABLE_KEY,
-            'Authorization': authToken ? `Bearer ${authToken}` : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({
-            client_id: newClient[0].id,
-            trainer_id: trainerId,
-            is_primary: true
-          })
-        });
-      }
     }
-  } catch (error) {
-    console.error("Error in acceptInvitation:", error);
-    throw error;
   }
 };
 
 export const rejectInvitation = async (invitationId: string): Promise<void> => {
   console.log("Rejecting invitation:", invitationId);
   
-  // Get auth token for authenticated requests
-  const { data: { session } } = await supabase.auth.getSession();
-  const authToken = session?.access_token;
-  
-  // Update the status to 'rejected' using REST API
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/client_invitations?id=eq.${invitationId}`, {
-    method: 'PATCH',
-    headers: {
-      'apikey': SUPABASE_PUBLISHABLE_KEY,
-      'Authorization': authToken ? `Bearer ${authToken}` : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({ status: "rejected" })
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Error rejecting invitation: ${errorText}`);
-  }
+  // Update the status to 'rejected'
+  const { error } = await supabase
+    .from("client_invitations")
+    .update({ status: "rejected" })
+    .eq("id", invitationId);
+
+  if (error) throw error;
 };
