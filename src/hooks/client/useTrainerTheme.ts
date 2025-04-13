@@ -23,6 +23,7 @@ export const useTrainerTheme = () => {
 
   // Apply theme to document
   const applyThemeToDocument = (branding: any) => {
+    console.log("Applying theme to document:", branding);
     document.documentElement.style.setProperty('--client-primary', branding.primary_color);
     document.documentElement.style.setProperty('--client-secondary', branding.secondary_color);
     document.documentElement.style.setProperty('--client-accent', branding.accent_color);
@@ -31,6 +32,7 @@ export const useTrainerTheme = () => {
   // Apply a trainer's theme
   const applyTrainerTheme = (trainer: Trainer) => {
     if (trainer.branding) {
+      console.log("Setting trainer theme:", trainer.name, trainer.branding);
       sessionStorage.setItem('selected_trainer_branding', JSON.stringify(trainer.branding));
       applyThemeToDocument(trainer.branding);
     }
