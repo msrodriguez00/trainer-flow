@@ -1,4 +1,3 @@
-
 import PendingInvitationsCard from "../PendingInvitationsCard";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";

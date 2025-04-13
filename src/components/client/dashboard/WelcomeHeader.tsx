@@ -1,5 +1,4 @@
 
-import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TrainerSelector from "./TrainerSelector";
 import { useTrainerSelection } from "@/hooks/client/useTrainerSelection";
@@ -20,14 +19,6 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
     handleTrainerSelect
   } = useTrainerSelection(onTrainerChange);
 
-  console.log("WelcomeHeader rendered with trainers:", trainers);
-  
-  useEffect(() => {
-    if (user) {
-      console.log("WelcomeHeader - Usuario autenticado:", user.id, "Role:", user.app_metadata?.role);
-    }
-  }, [user]);
-
   return (
     <Card className="bg-gradient-to-r from-primary/10 to-secondary/30 border-none">
       <CardHeader className="pb-2">
@@ -43,16 +34,6 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
             loading={loading}
             onTrainerSelect={handleTrainerSelect}
           />
-
-          {/* Debug info - only visible during development */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="text-xs text-gray-400 mt-4 border-t pt-2">
-              <p>Debug: User ID: {user?.id || 'No user'}</p>
-              <p>Debug: Email: {userEmail}</p>
-              <p>Debug: Trainers loaded: {trainers.length}</p>
-              <p>Debug: User metadata: {JSON.stringify(user?.user_metadata)}</p>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
