@@ -23,31 +23,51 @@ const AvatarUploader = ({ userId, avatarUrl, onAvatarChange }: AvatarUploaderPro
     
     const file = event.target.files[0];
     const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/avatars/${Date.now()}.${fileExt}`;
+    const filePath = `${userId}/${Date.now()}.${fileExt}`;
 
     setUploadingAvatar(true);
 
     try {
-      const { error: uploadError } = await supabase.storage
+      console.log("Starting avatar upload to bucket 'avatars'");
+      
+      // Upload file to avatars bucket
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, {
+        .upload(filePath, file, {
           upsert: true,
           contentType: file.type
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
+      }
 
+      console.log("Upload successful, getting public URL");
+
+      // Get the public URL for the uploaded file
       const { data: publicUrlData } = supabase.storage
         .from('avatars')
-        .getPublicUrl(fileName);
+        .getPublicUrl(filePath);
 
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        throw new Error("Failed to get public URL for the uploaded avatar");
+      }
+
+      console.log("Public URL obtained:", publicUrlData.publicUrl);
+
+      // Update user profile with new avatar URL
       const { error: profileError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrlData.publicUrl })
         .eq("id", userId);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Profile update error:", profileError);
+        throw profileError;
+      }
 
+      // Update local state
       onAvatarChange(publicUrlData.publicUrl);
 
       toast({
@@ -55,6 +75,7 @@ const AvatarUploader = ({ userId, avatarUrl, onAvatarChange }: AvatarUploaderPro
         description: "Tu avatar se ha subido correctamente.",
       });
     } catch (error: any) {
+      console.error("Avatar upload failed:", error);
       toast({
         variant: "destructive",
         title: "Error al subir el avatar",
@@ -95,7 +116,12 @@ const AvatarUploader = ({ userId, avatarUrl, onAvatarChange }: AvatarUploaderPro
               disabled={uploadingAvatar}
             />
           </Label>
-          {uploadingAvatar && <p className="text-sm text-gray-500">Subiendo...</p>}
+          {uploadingAvatar && (
+            <div className="flex items-center text-sm text-gray-500 mt-2">
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              <span>Subiendo...</span>
+            </div>
+          )}
           <p className="text-xs text-gray-500 mt-1">
             Formatos recomendados: PNG, JPG. Tamaño máximo: 5MB
           </p>
