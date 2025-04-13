@@ -29,6 +29,13 @@ const ClientTrainerEditDialog = ({
     client.trainers || []
   );
 
+  console.log("Dialog inicializado con:", { 
+    clientName: client.name, 
+    clientTrainers: client.trainers, 
+    availableTrainers: trainers.length,
+    selectedTrainers
+  });
+
   const handleTrainerToggle = (trainerId: string) => {
     setSelectedTrainers((prev) =>
       prev.includes(trainerId)
@@ -38,6 +45,7 @@ const ClientTrainerEditDialog = ({
   };
 
   const handleSave = () => {
+    console.log("Guardando entrenadores:", selectedTrainers);
     onSave(client.id, selectedTrainers);
   };
 

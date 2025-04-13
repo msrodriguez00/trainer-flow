@@ -39,6 +39,8 @@ const ClientTable = ({ clients, trainers, loading, onEditClient }: ClientTablePr
     return <div className="text-center py-6">No se encontraron clientes</div>;
   }
 
+  console.log("Renderizando tabla de clientes:", { clients, trainers });
+
   return (
     <Table>
       <TableHeader>
@@ -72,6 +74,7 @@ const ClientTable = ({ clients, trainers, loading, onEditClient }: ClientTablePr
                 variant="ghost"
                 size="icon"
                 onClick={() => onEditClient(client)}
+                title="Editar entrenadores asignados"
               >
                 <Edit className="h-4 w-4" />
               </Button>

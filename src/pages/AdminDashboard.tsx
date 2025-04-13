@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,6 +59,7 @@ const AdminDashboard = () => {
   const [loadingClients, setLoadingClients] = useState(true);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
+  const [activeTab, setActiveTab] = useState("users");
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
@@ -117,7 +117,9 @@ const AdminDashboard = () => {
   };
 
   const fetchClientsAndTrainers = async () => {
+    console.log("Cargando clientes y entrenadores...");
     setLoadingClients(true);
+    
     try {
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
@@ -128,7 +130,7 @@ const AdminDashboard = () => {
         throw clientsError;
       }
       
-      console.log("Clientes obtenidos:", clientsData?.length || 0);
+      console.log("Clientes obtenidos:", clientsData?.length || 0, clientsData);
       setClients(clientsData || []);
       
       const { data: trainersData, error: trainersError } = await supabase
@@ -141,7 +143,7 @@ const AdminDashboard = () => {
         throw trainersError;
       }
       
-      console.log("Entrenadores obtenidos:", trainersData?.length || 0);
+      console.log("Entrenadores obtenidos:", trainersData?.length || 0, trainersData);
       setTrainers(trainersData || []);
     } catch (error) {
       console.error("Error fetching clients and trainers:", error);
@@ -349,12 +351,17 @@ const AdminDashboard = () => {
 
   const handleUpdateClientTrainers = async (clientId: string, trainerIds: string[]) => {
     try {
+      console.log("Actualizando entrenadores para cliente:", clientId, trainerIds);
+      
       const { error } = await supabase
         .from("clients")
         .update({ trainers: trainerIds })
         .eq("id", clientId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error actualizando trainers:", error);
+        throw error;
+      }
 
       setClients(clients.map(client => 
         client.id === clientId ? { ...client, trainers: trainerIds } : client
@@ -388,8 +395,17 @@ const AdminDashboard = () => {
   };
 
   const openEditClientModal = (client: Client) => {
+    console.log("Abriendo modal para editar cliente:", client);
     setCurrentClient(client);
     setIsEditingClient(true);
+  };
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    
+    if (value === "clients") {
+      fetchClientsAndTrainers();
+    }
   };
 
   if (isLoading) {
@@ -405,7 +421,7 @@ const AdminDashboard = () => {
           <h1 className="text-3xl font-bold">Panel de Administración</h1>
         </div>
 
-        <Tabs defaultValue="users" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="users">Gestión de Usuarios</TabsTrigger>
             <TabsTrigger value="clients">Gestión de Clientes</TabsTrigger>
@@ -490,20 +506,16 @@ const AdminDashboard = () => {
         />
 
         <Dialog open={isEditingClient} onOpenChange={(open) => !open && setIsEditingClient(false)}>
-          {currentClient && (
-            <div>
-              {trainers && (
-                <ClientTrainerEditDialog
-                  client={currentClient}
-                  trainers={trainers}
-                  onCancel={() => {
-                    setIsEditingClient(false);
-                    setCurrentClient(null);
-                  }}
-                  onSave={handleUpdateClientTrainers}
-                />
-              )}
-            </div>
+          {currentClient && trainers && (
+            <ClientTrainerEditDialog
+              client={currentClient}
+              trainers={trainers}
+              onCancel={() => {
+                setIsEditingClient(false);
+                setCurrentClient(null);
+              }}
+              onSave={handleUpdateClientTrainers}
+            />
           )}
         </Dialog>
       </main>
