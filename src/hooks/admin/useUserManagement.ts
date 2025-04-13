@@ -225,12 +225,18 @@ export const useUserManagement = () => {
       
       setIsDeletingUser(true);
       
-      // Use edge function instead of direct API call
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`, {
+      // Get current session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        throw new Error("No active session found. Please login again.");
+      }
+      
+      // Use edge function with proper authorization
+      const response = await fetch(`https://bhmnazydmfklmhsunafx.supabase.co/functions/v1/delete-user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          "Authorization": `Bearer ${sessionData.session.access_token}`,
         },
         body: JSON.stringify({ userId: userToDelete.id }),
       });
@@ -238,6 +244,7 @@ export const useUserManagement = () => {
       const result = await response.json();
       
       if (!response.ok) {
+        console.error("Error response:", result);
         throw new Error(result.error || "Error al eliminar usuario");
       }
 

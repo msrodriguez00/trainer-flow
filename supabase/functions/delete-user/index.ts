@@ -18,6 +18,17 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || ""
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     
+    if (!supabaseServiceKey) {
+      console.error("Missing SUPABASE_SERVICE_ROLE_KEY")
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      )
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
     // Get request body
@@ -32,6 +43,8 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log(`Attempting to delete user with ID: ${userId}`)
     
     // Delete the user using admin API
     const { error } = await supabase.auth.admin.deleteUser(userId)
@@ -46,6 +59,8 @@ serve(async (req) => {
         }
       )
     }
+    
+    console.log(`Successfully deleted user with ID: ${userId}`)
     
     // Return success response
     return new Response(
