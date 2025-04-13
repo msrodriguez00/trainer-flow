@@ -64,52 +64,83 @@ const TrainingPlansList = () => {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Modificamos la consulta para evitar referencias a relaciones inexistentes
+      const { data: plansData, error: plansError } = await supabase
         .from("plans")
         .select(`
           id,
           name,
           client_id,
-          created_at,
-          plan_exercises:plan_exercises(
-            id,
-            exercise_id,
-            level,
-            exercises:exercise_id(
-              id,
-              name
-            )
-          )
+          created_at
         `)
         .eq("client_id", clientId)
         .order("created_at", { ascending: false });
 
-      if (error) {
+      if (plansError) {
         toast({
           title: "Error",
           description: "No se pudieron cargar los planes",
           variant: "destructive",
         });
-        console.error("Error fetching plans:", error);
+        console.error("Error fetching plans:", plansError);
         setLoading(false);
         return;
       }
 
-      console.log("Plans data:", data);
+      console.log("Plans data:", plansData);
 
-      if (data && data.length > 0) {
-        const formattedPlans: Plan[] = data.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          clientId: item.client_id,
-          createdAt: item.created_at,
-          exercises: item.plan_exercises.map((ex: any) => ({
-            exerciseId: ex.exercise_id,
-            exerciseName: ex.exercises?.name || "Ejercicio",
-            level: ex.level,
-            evaluations: []
-          }))
-        }));
+      if (plansData && plansData.length > 0) {
+        // Obtener los ejercicios de cada plan en consultas separadas
+        const formattedPlans: Plan[] = [];
+        
+        for (const plan of plansData) {
+          // Consulta para obtener los ejercicios del plan
+          const { data: planExercises, error: exercisesError } = await supabase
+            .from("plan_exercises")
+            .select(`
+              id,
+              exercise_id,
+              level
+            `)
+            .eq("plan_id", plan.id);
+            
+          if (exercisesError) {
+            console.error("Error fetching exercises for plan:", plan.id, exercisesError);
+            continue;
+          }
+          
+          // Para cada plan_exercise, obtener los datos del ejercicio
+          const exercisesWithNames = [];
+          
+          for (const planExercise of (planExercises || [])) {
+            const { data: exerciseData, error: exerciseError } = await supabase
+              .from("exercises")
+              .select("name")
+              .eq("id", planExercise.exercise_id)
+              .maybeSingle();
+              
+            if (exerciseError) {
+              console.error("Error fetching exercise:", planExercise.exercise_id, exerciseError);
+              continue;
+            }
+            
+            exercisesWithNames.push({
+              exerciseId: planExercise.exercise_id,
+              exerciseName: exerciseData?.name || "Ejercicio sin nombre",
+              level: planExercise.level,
+              evaluations: []
+            });
+          }
+          
+          // Añadir el plan con sus ejercicios al array
+          formattedPlans.push({
+            id: plan.id,
+            name: plan.name,
+            clientId: plan.client_id,
+            createdAt: plan.created_at,
+            exercises: exercisesWithNames
+          });
+        }
 
         setPlans(formattedPlans);
       } else {
