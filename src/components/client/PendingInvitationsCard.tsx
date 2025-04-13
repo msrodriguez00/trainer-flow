@@ -28,16 +28,21 @@ const PendingInvitationsCard = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
+    if (user?.email) {
       fetchPendingInvitations();
+    } else {
+      // If no user email, clear loading state to prevent endless loading
+      setLoading(false);
     }
   }, [user]);
 
   const fetchPendingInvitations = async () => {
-    if (!user) return;
+    if (!user?.email) return;
     
     setLoading(true);
     try {
+      console.log("Fetching invitations for email:", user.email);
+      
       // Obtener las invitaciones pendientes para el correo del usuario
       const { data: invitationsData, error: invitationsError } = await supabase
         .from("client_invitations")
@@ -52,7 +57,12 @@ const PendingInvitationsCard = () => {
         .eq("accepted", false)
         .order("created_at", { ascending: false });
 
-      if (invitationsError) throw invitationsError;
+      if (invitationsError) {
+        console.error("Error fetching invitations:", invitationsError);
+        throw invitationsError;
+      }
+
+      console.log("Invitations data:", invitationsData);
 
       // Transformar los datos para incluir el nombre del entrenador
       const formattedInvitations: TrainerInvitation[] = invitationsData.map((inv: any) => ({
@@ -77,10 +87,12 @@ const PendingInvitationsCard = () => {
   };
 
   const handleAcceptInvitation = async (invitationId: string, trainerId: string) => {
-    if (!user) return;
+    if (!user?.email) return;
     
     setProcessingIds(prev => [...prev, invitationId]);
     try {
+      console.log("Accepting invitation:", invitationId, "for trainer:", trainerId);
+      
       // Marcar la invitación como aceptada
       const { error: updateError } = await supabase
         .from("client_invitations")
@@ -144,6 +156,8 @@ const PendingInvitationsCard = () => {
   const handleRejectInvitation = async (invitationId: string) => {
     setProcessingIds(prev => [...prev, invitationId]);
     try {
+      console.log("Rejecting invitation:", invitationId);
+      
       // Eliminar la invitación
       const { error } = await supabase
         .from("client_invitations")
