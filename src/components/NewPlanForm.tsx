@@ -86,36 +86,26 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
     if (!user) return;
 
     try {
+      console.log("Fetching exercises...");
+      // Updated query to correctly handle the levels JSON field
       const { data, error } = await supabase
         .from("exercises")
-        .select(`
-          id,
-          name,
-          categories,
-          exercise_levels:exercise_levels(
-            id,
-            level,
-            video,
-            repetitions,
-            weight
-          )
-        `)
+        .select("id, name, categories, levels")
         .order("name");
 
       if (error) throw error;
 
+      console.log("Exercises data received:", data);
+
+      // Format exercises using the direct levels JSON from the exercises table
       const formattedExercises: Exercise[] = data.map((item: any) => ({
         id: item.id,
         name: item.name,
-        categories: item.categories,
-        levels: item.exercise_levels.map((level: any) => ({
-          level: level.level,
-          video: level.video,
-          repetitions: level.repetitions,
-          weight: level.weight
-        }))
+        categories: item.categories || [],
+        levels: Array.isArray(item.levels) ? item.levels : []
       }));
 
+      console.log("Formatted exercises:", formattedExercises);
       setExercises(formattedExercises);
       setLoading(false);
     } catch (error) {
@@ -203,6 +193,15 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
         })),
       });
 
+      // Show success toast
+      toast({
+        title: "Plan creado",
+        description: `El plan "${name}" ha sido creado exitosamente.`,
+      });
+
+      // Navigate back after successful creation
+      navigate(-1);
+
     } catch (error) {
       console.error("Error creating plan:", error);
       toast({
@@ -215,8 +214,15 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
 
   const getAvailableLevels = (exerciseId: string): number[] => {
     if (!exerciseId) return [1];
+    
     const exercise = exercises.find((ex) => ex.id === exerciseId);
-    return exercise ? exercise.levels.map((l) => l.level) : [1];
+    console.log("Getting levels for exercise:", exerciseId, "Found:", exercise);
+    
+    if (!exercise || !exercise.levels || exercise.levels.length === 0) {
+      return [1]; // Default to level 1 if no levels found
+    }
+    
+    return exercise.levels.map((l) => l.level);
   };
 
   if (loading) {
