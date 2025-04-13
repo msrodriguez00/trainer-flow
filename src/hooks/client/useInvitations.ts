@@ -19,6 +19,7 @@ export function useInvitations() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Remove lastRefresh from the dependencies array to prevent infinite loop
   const fetchPendingInvitations = useCallback(async () => {
     if (!user?.email) {
       console.log("No user email in fetchPendingInvitations, aborting");
@@ -31,8 +32,6 @@ export function useInvitations() {
     console.log("Current route:", window.location.pathname);
     console.log("Last refresh timestamp:", lastRefresh);
     
-    // Update the last refresh timestamp
-    setLastRefresh(Date.now());
     setLoading(true);
     setError(null);
     
@@ -75,11 +74,21 @@ export function useInvitations() {
       setLoading(false);
       console.log("=== INVITATION FETCH PROCESS COMPLETED ===");
     }
-  }, [user?.email, toast, invitations, lastRefresh]);
+  }, [user?.email, toast, invitations]); // Removed lastRefresh from dependencies
+
+  // Separate function to refresh invitations and update lastRefresh
+  const refreshInvitations = useCallback(() => {
+    console.log("Manual refresh triggered");
+    // Update lastRefresh outside the fetchPendingInvitations function
+    setLastRefresh(Date.now());
+    return fetchPendingInvitations();
+  }, [fetchPendingInvitations]);
 
   useEffect(() => {
     if (user?.email) {
       console.log("Client user is available, fetching invitations for:", user.email);
+      // Update lastRefresh here, outside of fetchPendingInvitations
+      setLastRefresh(prev => prev === 0 ? Date.now() : prev);
       fetchPendingInvitations();
     } else {
       console.log("No user email available, skipping invitation fetch");
@@ -147,12 +156,6 @@ export function useInvitations() {
       setProcessingIds(prev => prev.filter(id => id !== invitationId));
     }
   };
-
-  // Force refresh invitations on demand
-  const refreshInvitations = useCallback(() => {
-    console.log("Manual refresh triggered");
-    return fetchPendingInvitations();
-  }, [fetchPendingInvitations]);
 
   return {
     invitations,
