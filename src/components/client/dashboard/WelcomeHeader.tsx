@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TrainerSelector from "./TrainerSelector";
 import { useTrainerSelection } from "@/hooks/client/useTrainerSelection";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTrainerTheme } from "@/hooks/client/useTrainerTheme";
 
 interface WelcomeHeaderProps {
@@ -21,6 +21,8 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
     accent: ''
   });
   
+  const themeCheckRef = useRef(false);
+  
   const {
     trainers,
     loading,
@@ -28,8 +30,11 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
     handleTrainerSelect
   } = useTrainerSelection(onTrainerChange);
 
-  // Update theme colors for display whenever they change
+  // Update theme colors for display only once on mount and when theme actually changes
   useEffect(() => {
+    // Skip if we've already run this effect and currentTheme hasn't actually changed
+    if (themeCheckRef.current && !currentTheme) return;
+    
     const root = document.documentElement;
     const colors = {
       primary: getComputedStyle(root).getPropertyValue('--client-primary').trim(),
@@ -37,21 +42,16 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
       accent: getComputedStyle(root).getPropertyValue('--client-accent').trim()
     };
     
-    console.log("WelcomeHeader - Current CSS variables:", colors);
-    setThemeColors(colors);
-    
-    const storedBranding = sessionStorage.getItem('selected_trainer_branding');
-    if (storedBranding) {
-      console.log("WelcomeHeader - stored branding:", JSON.parse(storedBranding));
+    if (colors.primary) {
+      console.log("WelcomeHeader - Current CSS variables:", colors);
+      setThemeColors(colors);
+      themeCheckRef.current = true;
     }
     
-    // Verify card styles
-    const cardElement = document.querySelector('.welcome-header-card');
-    if (cardElement) {
-      console.log("WelcomeHeader card computed styles:", {
-        borderColor: getComputedStyle(cardElement).borderColor,
-        backgroundColor: getComputedStyle(cardElement).backgroundColor
-      });
+    // Only log these if they exist (prevents unnecessary re-renders)
+    const storedBranding = sessionStorage.getItem('selected_trainer_branding');
+    if (storedBranding && !themeCheckRef.current) {
+      console.log("WelcomeHeader - stored branding:", JSON.parse(storedBranding));
     }
   }, [currentTheme]);
 

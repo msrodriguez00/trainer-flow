@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Trainer } from "@/components/client/dashboard/types";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,9 +11,14 @@ export const useTrainerTheme = () => {
   const [currentTheme, setCurrentTheme] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const themeInitializedRef = useRef(false);
   
   // Load theme from session storage on initial mount with error handling
   useEffect(() => {
+    // Skip if we've already initialized
+    if (themeInitializedRef.current) return;
+    themeInitializedRef.current = true;
+    
     try {
       console.log("useTrainerTheme: Initializing");
       

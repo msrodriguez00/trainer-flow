@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth"; 
 import Navbar from "@/components/Navbar";
 import { useTrainerTheme } from "@/hooks/client/useTrainerTheme";
@@ -14,9 +14,14 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   const { currentTheme, fetchTrainerTheme, resetTheme } = useTrainerTheme();
   const { toast } = useToast();
   const [themeVerified, setThemeVerified] = useState(false);
+  const themeInitializedRef = useRef(false);
   
-  // Apply and verify theme on initial load
+  // Apply and verify theme only once on initial load
   useEffect(() => {
+    // Skip if we've already initialized the theme
+    if (themeInitializedRef.current) return;
+    themeInitializedRef.current = true;
+    
     const verifyAndApplyTheme = async () => {
       console.log("MainLayout: Verifying theme");
       
@@ -111,7 +116,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     };
     
     verifyAndApplyTheme();
-  }, [fetchTrainerTheme, resetTheme]);
+  }, []);
   
   return (
     <div className="min-h-screen bg-gray-50">
