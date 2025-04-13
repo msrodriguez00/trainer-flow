@@ -17,6 +17,7 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
   const { toast } = useToast();
   const { applyTrainerTheme } = useTrainerTheme();
 
+  // Load trainers on initial mount
   useEffect(() => {
     loadTrainers();
   }, []);
@@ -24,131 +25,151 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
   // Main function to load trainers
   const loadTrainers = async () => {
     setLoading(true);
+    console.log("useTrainerSelection: Loading trainers");
+    
     try {
-      const currentUser = await getCurrentUser();
+      // Get current user data
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (!currentUser?.email) {
+      if (!user?.email) {
+        console.error("No user email available");
         throw new Error("No se pudo determinar el usuario actual");
       }
       
-      const clientData = await fetchClientData(currentUser.email);
+      console.log("Loading trainers for user email:", user.email);
+      
+      // Fetch client data
+      const { data: clientData, error: clientError } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("email", user.email.toLowerCase())
+        .maybeSingle();
+      
+      if (clientError && clientError.code !== 'PGRST116') {
+        console.error("Error fetching client data:", clientError);
+        throw clientError;
+      }
       
       if (!clientData) {
+        console.log("No client data found for email:", user.email);
         handleNoClientData();
         return;
       }
-
-      const trainerIds = getTrainerIds(clientData);
+      
+      console.log("Client data loaded:", clientData);
+      
+      // Extract trainer IDs
+      let trainerIds: string[] = [];
+      
+      if (clientData.trainers && clientData.trainers.length > 0) {
+        trainerIds = clientData.trainers;
+      } else if (clientData.trainer_id) {
+        trainerIds = [clientData.trainer_id];
+      }
+      
+      console.log("Trainer IDs from client data:", trainerIds);
       
       if (trainerIds.length > 0) {
-        const trainersData = await fetchTrainersData(trainerIds);
+        // Fetch trainers data
+        const { data: trainersData, error: trainersError } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in("id", trainerIds);
+        
+        if (trainersError) {
+          console.error("Error fetching trainers data:", trainersError);
+          throw trainersError;
+        }
+        
+        console.log("Trainer profiles loaded:", trainersData);
         
         if (!trainersData || trainersData.length === 0) {
+          console.log("No trainer profiles found for IDs:", trainerIds);
           handleNoTrainersFound();
           return;
         }
         
-        const trainersWithBranding = await attachBrandingToTrainers(trainersData);
+        // Fetch branding for each trainer
+        const trainersWithBranding: Trainer[] = [];
+        
+        for (const trainer of trainersData) {
+          console.log("Fetching branding for trainer:", trainer.id);
+          
+          const { data: brandData, error: brandError } = await supabase
+            .from("trainer_brands")
+            .select("*")
+            .eq("trainer_id", trainer.id)
+            .maybeSingle();
+          
+          if (brandError) {
+            console.warn("Error fetching branding for trainer:", trainer.id, brandError);
+            // Continue with other trainers even if one fails
+          }
+          
+          console.log("Branding data for trainer:", trainer.id, brandData);
+          
+          trainersWithBranding.push({
+            id: trainer.id,
+            name: trainer.name || "Entrenador sin nombre",
+            branding: brandData ? {
+              logo_url: brandData.logo_url,
+              primary_color: brandData.primary_color || "#9b87f5",
+              secondary_color: brandData.secondary_color || "#E5DEFF",
+              accent_color: brandData.accent_color || "#7E69AB"
+            } : {
+              logo_url: null,
+              primary_color: "#9b87f5",
+              secondary_color: "#E5DEFF",
+              accent_color: "#7E69AB"
+            }
+          });
+        }
+        
+        console.log("Final trainers with branding:", trainersWithBranding);
         setTrainers(trainersWithBranding);
         
-        handleTrainerSelection(trainersWithBranding);
+        // Handle trainer selection
+        if (!selectedTrainerId && trainersWithBranding.length > 0) {
+          console.log("No trainer selected, selecting first one:", trainersWithBranding[0].id);
+          handleTrainerSelect(trainersWithBranding[0].id);
+        } else if (selectedTrainerId) {
+          console.log("Verifying selected trainer exists:", selectedTrainerId);
+          const selectedTrainer = trainersWithBranding.find(t => t.id === selectedTrainerId);
+          
+          if (selectedTrainer) {
+            console.log("Selected trainer found, applying theme:", selectedTrainer);
+            applyTrainerTheme(selectedTrainer);
+          } else if (trainersWithBranding.length > 0) {
+            console.log("Selected trainer not found in data, selecting first one");
+            handleTrainerSelect(trainersWithBranding[0].id);
+          }
+        }
       } else {
+        console.log("No trainer IDs available, setting default trainer");
         setDefaultTrainer();
       }
     } catch (error: any) {
+      console.error("Error loading trainers:", error);
       handleLoadError();
     } finally {
       setLoading(false);
     }
   };
 
-  // Get the current authenticated user
-  const getCurrentUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    return data.user;
-  };
-
-  // Fetch client data from the database
-  const fetchClientData = async (email: string) => {
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("email", email.toLowerCase())
-      .maybeSingle();
-      
-    if (error) {
-      throw error;
-    }
-    
-    return data;
-  };
-
-  // Extract trainer IDs from client data
-  const getTrainerIds = (clientData: any) => {
-    let trainerIds: string[] = [];
-    
-    if (clientData.trainers && clientData.trainers.length > 0) {
-      trainerIds = clientData.trainers;
-    } else if (clientData.trainer_id) {
-      trainerIds = [clientData.trainer_id];
-    }
-    
-    return trainerIds;
-  };
-
-  // Fetch trainers' data from the database
-  const fetchTrainersData = async (trainerIds: string[]) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, name")
-      .in("id", trainerIds);
-      
-    if (error) {
-      throw error;
-    }
-    
-    return data;
-  };
-
-  // Attach branding information to trainers
-  const attachBrandingToTrainers = async (trainersData: any[]) => {
-    const trainersWithBranding: Trainer[] = [];
-    
-    for (const trainer of trainersData) {
-      const { data: brandData } = await supabase
-        .from("trainer_brands")
-        .select("*")
-        .eq("trainer_id", trainer.id)
-        .maybeSingle();
-      
-      trainersWithBranding.push(createTrainerWithBranding(trainer, brandData));
-    }
-    
-    return trainersWithBranding;
-  };
-
-  // Create a trainer object with branding information
-  const createTrainerWithBranding = (trainer: any, brandData: any): Trainer => {
-    return {
-      id: trainer.id,
-      name: trainer.name || "Entrenador sin nombre",
-      branding: brandData ? {
-        logo_url: brandData.logo_url,
-        primary_color: brandData.primary_color || "#9b87f5",
-        secondary_color: brandData.secondary_color || "#E5DEFF",
-        accent_color: brandData.accent_color || "#7E69AB"
-      } : {
+  // Handle case when no client data is found
+  const handleNoClientData = () => {
+    console.log("No client data found, creating default trainer");
+    const defaultTrainer: Trainer = {
+      id: "default-trainer",
+      name: "Entrenador Predeterminado",
+      branding: {
         logo_url: null,
         primary_color: "#9b87f5",
         secondary_color: "#E5DEFF",
         accent_color: "#7E69AB"
       }
     };
-  };
-
-  // Handle case when no client data is found
-  const handleNoClientData = () => {
-    const defaultTrainer: Trainer = createDefaultTrainer("default-trainer", "Entrenador Predeterminado");
+    
     setTrainers([defaultTrainer]);
     handleTrainerSelect(defaultTrainer.id);
     
@@ -161,42 +182,10 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
 
   // Handle case when no trainers are found
   const handleNoTrainersFound = () => {
-    toast({
-      title: "No se encontraron entrenadores",
-      description: "Contacta con soporte para asignar entrenadores",
-      variant: "default"
-    });
-    
-    const fallbackTrainer: Trainer = createDefaultTrainer("fallback-trainer", "Entrenador Predeterminado");
-    setTrainers([fallbackTrainer]);
-    handleTrainerSelect(fallbackTrainer.id);
-  };
-
-  // Set a default demo trainer
-  const setDefaultTrainer = () => {
-    const demoTrainer: Trainer = createDefaultTrainer("demo-trainer", "Entrenador Demo");
-    setTrainers([demoTrainer]);
-    handleTrainerSelect(demoTrainer.id);
-  };
-
-  // Handle errors during trainer loading
-  const handleLoadError = () => {
-    toast({
-      title: "No se pudieron cargar entrenadores",
-      description: "Estamos experimentando dificultades técnicas. Por favor, inténtalo más tarde.",
-      variant: "destructive"
-    });
-    
-    const fallbackTrainer: Trainer = createDefaultTrainer("fallback-trainer", "Entrenador Predeterminado");
-    setTrainers([fallbackTrainer]);
-    handleTrainerSelect(fallbackTrainer.id);
-  };
-
-  // Create a default trainer object
-  const createDefaultTrainer = (id: string, name: string): Trainer => {
-    return {
-      id,
-      name,
+    console.log("No trainers found, creating fallback trainer");
+    const fallbackTrainer: Trainer = {
+      id: "fallback-trainer",
+      name: "Entrenador Predeterminado",
       branding: {
         logo_url: null,
         primary_color: "#9b87f5",
@@ -204,37 +193,83 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
         accent_color: "#7E69AB"
       }
     };
+    
+    setTrainers([fallbackTrainer]);
+    handleTrainerSelect(fallbackTrainer.id);
+    
+    toast({
+      title: "No se encontraron entrenadores",
+      description: "Contacta con soporte para asignar entrenadores",
+      variant: "default"
+    });
   };
 
-  // Handle initial trainer selection logic
-  const handleTrainerSelection = (availableTrainers: Trainer[]) => {
-    if (!selectedTrainerId && availableTrainers.length > 0) {
-      const firstTrainer = availableTrainers[0];
-      handleTrainerSelect(firstTrainer.id);
-    } else if (selectedTrainerId) {
-      const selectedTrainer = availableTrainers.find(t => t.id === selectedTrainerId);
-      if (selectedTrainer) {
-        applyTrainerTheme(selectedTrainer);
-      } else if (availableTrainers.length > 0) {
-        handleTrainerSelect(availableTrainers[0].id);
+  // Set a default demo trainer
+  const setDefaultTrainer = () => {
+    console.log("Setting default demo trainer");
+    const demoTrainer: Trainer = {
+      id: "demo-trainer",
+      name: "Entrenador Demo",
+      branding: {
+        logo_url: null,
+        primary_color: "#9b87f5",
+        secondary_color: "#E5DEFF",
+        accent_color: "#7E69AB"
       }
-    }
+    };
+    
+    setTrainers([demoTrainer]);
+    handleTrainerSelect(demoTrainer.id);
+  };
+
+  // Handle errors during trainer loading
+  const handleLoadError = () => {
+    console.log("Error loading trainers, creating fallback trainer");
+    const fallbackTrainer: Trainer = {
+      id: "fallback-trainer",
+      name: "Entrenador Predeterminado",
+      branding: {
+        logo_url: null,
+        primary_color: "#9b87f5",
+        secondary_color: "#E5DEFF",
+        accent_color: "#7E69AB"
+      }
+    };
+    
+    setTrainers([fallbackTrainer]);
+    handleTrainerSelect(fallbackTrainer.id);
+    
+    toast({
+      title: "No se pudieron cargar entrenadores",
+      description: "Estamos experimentando dificultades técnicas. Por favor, inténtalo más tarde.",
+      variant: "destructive"
+    });
   };
 
   // Handle trainer selection from UI
   const handleTrainerSelect = (trainerId: string) => {
+    console.log("Trainer selected manually:", trainerId);
     const selected = trainers.find(t => t.id === trainerId);
+    
     if (selected) {
+      console.log("Applying theme for selected trainer:", selected);
       setSelectedTrainerId(trainerId);
       setTrainerName(selected.name);
+      
+      // Save to session storage
       sessionStorage.setItem('selected_trainer_id', trainerId);
       sessionStorage.setItem('selected_trainer_name', selected.name);
       
-      applyTrainerTheme(selected);
+      // Apply theme
+      const success = applyTrainerTheme(selected);
+      console.log("Theme application result:", success);
       
+      // Notify parent component if callback provided
       if (onTrainerChange) {
         onTrainerChange(selected.id, selected.name, selected.branding);
       }
+    } else {
+      console.error("Selected trainer not found in trainers list:", trainerId);
     }
   };
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +18,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InvitationResponseModal } from "@/components/client/InvitationResponseModal";
 import { TrainerInvitation } from "@/components/client/types";
+import { useTrainerTheme } from "@/hooks/client/useTrainerTheme";
 
 interface Trainer {
   id: string;
@@ -43,6 +45,7 @@ const ClientLogin = () => {
   const navigate = useNavigate();
   const { user, isClient } = useAuth();
   const { toast } = useToast();
+  const { applyThemeToDocument } = useTrainerTheme();
 
   // Check for email in the URL
   const emailParam = searchParams.get("email");
@@ -112,6 +115,7 @@ const ClientLogin = () => {
 
   const handleTrainerSelectionAfterLogin = async () => {
     try {
+      console.log("Handling trainer selection after login");
       if (!user?.email) return;
       
       // Find trainers for this client
@@ -124,6 +128,8 @@ const ClientLogin = () => {
       if (clientError && clientError.code !== 'PGRST116') throw clientError;
         
       if (clientData && clientData.trainers && clientData.trainers.length > 0) {
+        console.log("Client has trainers:", clientData.trainers);
+        
         // Fetch trainer information
         const { data: trainerData, error: trainerError } = await supabase
           .from("profiles")
@@ -132,14 +138,25 @@ const ClientLogin = () => {
           
         if (trainerError) throw trainerError;
         
+        console.log("Trainer profiles loaded:", trainerData);
+        
         const trainersWithBranding: Trainer[] = [];
         
+        // Fetch branding data for each trainer
         for (const trainer of trainerData || []) {
-          const { data: brandData } = await supabase
+          console.log("Fetching branding for trainer:", trainer.id);
+          
+          const { data: brandData, error: brandError } = await supabase
             .from("trainer_brands")
             .select("*")
             .eq("trainer_id", trainer.id)
             .maybeSingle();
+          
+          if (brandError) {
+            console.warn("Error fetching branding:", brandError);
+          }
+          
+          console.log("Branding data for trainer:", trainer.id, brandData);
           
           trainersWithBranding.push({
             id: trainer.id,
@@ -153,15 +170,18 @@ const ClientLogin = () => {
           });
         }
         
+        console.log("Final trainers with branding:", trainersWithBranding);
         setTrainers(trainersWithBranding);
         
         // If only one trainer, auto-select and proceed
         if (trainersWithBranding.length === 1) {
+          console.log("Only one trainer, auto-selecting:", trainersWithBranding[0].id);
           setSelectedTrainer(trainersWithBranding[0].id);
           applyTrainerTheme(trainersWithBranding[0]);
           navigateToClientDashboard();
         } else if (trainersWithBranding.length > 1) {
           // Show modal for trainer selection
+          console.log("Multiple trainers, showing selection modal");
           setShowTrainerModal(true);
         } else {
           throw new Error("No hay entrenadores asignados a esta cuenta.");
@@ -170,6 +190,7 @@ const ClientLogin = () => {
         throw new Error("No hay entrenadores asignados a esta cuenta.");
       }
     } catch (error: any) {
+      console.error("Error in trainer selection:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -325,21 +346,36 @@ const ClientLogin = () => {
   };
 
   const applyTrainerTheme = (trainer: Trainer) => {
+    console.log("ClientLogin: Applying trainer theme:", trainer);
     if (trainer.branding) {
       setTrainerBranding(trainer.branding);
       
-      // Apply theme to CSS variables
-      document.documentElement.style.setProperty('--client-primary', trainer.branding.primary_color);
-      document.documentElement.style.setProperty('--client-secondary', trainer.branding.secondary_color);
-      document.documentElement.style.setProperty('--client-accent', trainer.branding.accent_color);
+      // Save to session storage for persistence
+      sessionStorage.setItem('selected_trainer_id', trainer.id);
+      sessionStorage.setItem('selected_trainer_name', trainer.name);
+      sessionStorage.setItem('selected_trainer_branding', JSON.stringify(trainer.branding));
+      
+      // Apply theme to CSS variables with !important
+      applyThemeToDocument(trainer.branding);
+      
+      console.log("Theme applied for trainer:", trainer.name);
+      toast.success(`Tema de ${trainer.name} aplicado`, {
+        description: "El tema personalizado del entrenador ha sido aplicado."
+      });
+    } else {
+      console.log("Trainer has no branding data:", trainer);
     }
   };
 
   const handleTrainerSelect = (trainerId: string) => {
+    console.log("Trainer selected from dropdown:", trainerId);
     const selected = trainers.find(t => t.id === trainerId);
     if (selected) {
+      console.log("Selected trainer found:", selected);
       setSelectedTrainer(trainerId);
       applyTrainerTheme(selected);
+    } else {
+      console.error("Selected trainer not found in trainers list");
     }
   };
 
@@ -352,6 +388,7 @@ const ClientLogin = () => {
   };
 
   const confirmTrainerSelection = () => {
+    console.log("Confirming trainer selection:", selectedTrainer);
     if (selectedTrainer) {
       setShowTrainerModal(false);
       navigateToClientDashboard();
