@@ -18,6 +18,7 @@ import Clients from "./pages/Clients";
 import ClientDetails from "./pages/ClientDetails";
 import ClientInvite from "./pages/ClientInvite";
 import Plans from "./pages/Plans";
+import PlanDetails from "./pages/PlanDetails";
 import ClientDashboard from "./pages/ClientDashboard"; 
 import AdminDashboard from "./pages/AdminDashboard";
 import TrainerDashboard from "./pages/TrainerDashboard";
@@ -40,7 +41,6 @@ const ProtectedRoute = ({ children, clientOnly = false, trainerOnly = false, adm
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Debug para la ruta de admin
   if (adminOnly) {
     console.log("Ruta protegida de admin:", { isAdmin });
     if (!isAdmin) {
@@ -150,6 +150,11 @@ const App = () => (
             <Route path="/plans/new" element={
               <ProtectedRoute trainerOnly>
                 <NewPlanPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/plans/:id" element={
+              <ProtectedRoute trainerOnly>
+                <PlanDetails />
               </ProtectedRoute>
             } />
             <Route path="/client-dashboard" element={
