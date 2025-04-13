@@ -60,6 +60,8 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
           
         if (clientError && clientError.code !== 'PGRST116') throw clientError;
         
+        console.log("Client data:", clientData);
+        
         if (clientData?.trainers && clientData.trainers.length > 0) {
           // Obtener información de los entrenadores
           const { data: trainerData, error: trainerError } = await supabase
@@ -68,6 +70,8 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
             .in("id", clientData.trainers);
             
           if (trainerError) throw trainerError;
+          
+          console.log("Trainer data:", trainerData);
           
           // Cargar la información de branding para cada entrenador
           const trainersWithBranding: Trainer[] = [];
@@ -90,6 +94,8 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
               } : undefined
             });
           }
+          
+          console.log("Trainers with branding:", trainersWithBranding);
           
           setTrainers(trainersWithBranding);
           
@@ -168,7 +174,7 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
                 onValueChange={handleTrainerSelect}
                 disabled={loading}
               >
-                <SelectTrigger className="w-full sm:w-[250px]">
+                <SelectTrigger className="w-full sm:w-[250px] bg-white">
                   <SelectValue placeholder="Selecciona un entrenador" />
                 </SelectTrigger>
                 <SelectContent>

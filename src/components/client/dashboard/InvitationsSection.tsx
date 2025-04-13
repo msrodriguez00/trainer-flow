@@ -1,5 +1,5 @@
 
-import PendingInvitationsCard from "@/components/client/PendingInvitationsCard";
+import PendingInvitationsCard from "../PendingInvitationsCard";
 
 const InvitationsSection = () => {
   return <PendingInvitationsCard />;

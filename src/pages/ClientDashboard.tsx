@@ -8,11 +8,13 @@ import InvitationsSection from "@/components/client/dashboard/InvitationsSection
 import TrainingPlansList from "@/components/client/dashboard/TrainingPlansList";
 import ActivityCalendar from "@/components/client/dashboard/ActivityCalendar";
 import LoadingScreen from "@/components/client/common/LoadingScreen";
+import { useToast } from "@/hooks/use-toast";
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
   const { user, profile, isLoading, isClient } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { toast } = useToast();
   
   // Redirect non-clients to main page
   useEffect(() => {
@@ -21,9 +23,18 @@ const ClientDashboard = () => {
     }
   }, [isLoading, isClient, navigate]);
 
+  // Debug para ver si estamos cargando la página correctamente
+  useEffect(() => {
+    console.log("ClientDashboard rendering", { isLoading, isClient, profile });
+  }, [isLoading, isClient, profile]);
+
   // Manejador para cambios de entrenador
   const handleTrainerChange = (trainerId: string, trainerName: string, trainerBranding?: any) => {
     console.log("Entrenador seleccionado:", trainerName, "ID:", trainerId);
+    toast({
+      title: "Entrenador seleccionado",
+      description: `Has seleccionado a ${trainerName} como tu entrenador actual.`,
+    });
     // Aquí podríamos cargar datos específicos del entrenador si fuera necesario
   };
 
