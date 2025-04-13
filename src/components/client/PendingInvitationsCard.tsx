@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,16 +58,11 @@ const PendingInvitationsCard = () => {
       const userEmail = user.email.toLowerCase();
       console.log("Fetching invitations for email:", userEmail);
       
+      // First, fetch the invitations without the join
       const { data: invitationsData, error: invitationsError } = await supabase
         .from("client_invitations")
-        .select(`
-          id,
-          email,
-          trainer_id,
-          created_at,
-          profiles:trainer_id (name)
-        `)
-        .eq("email", userEmail) // Ensure email is lowercase for consistent matching
+        .select("id, email, trainer_id, created_at")
+        .eq("email", userEmail)
         .eq("accepted", false)
         .order("created_at", { ascending: false });
 
@@ -75,17 +71,45 @@ const PendingInvitationsCard = () => {
         throw invitationsError;
       }
 
-      console.log("Invitations data:", invitationsData);
-
-      const formattedInvitations: TrainerInvitation[] = invitationsData.map((inv: any) => ({
-        id: inv.id,
-        email: inv.email,
-        trainer_id: inv.trainer_id,
-        trainer_name: inv.profiles?.name || "Entrenador",
-        created_at: inv.created_at
-      }));
-
-      setInvitations(formattedInvitations);
+      console.log("Raw invitations data:", invitationsData);
+      
+      // If we have invitations, fetch the trainer names separately
+      if (invitationsData && invitationsData.length > 0) {
+        const formattedInvitations: TrainerInvitation[] = [];
+        
+        // Get all trainer IDs
+        const trainerIds = invitationsData.map(inv => inv.trainer_id);
+        
+        // Fetch trainer profiles in a single query
+        const { data: trainerProfiles, error: trainersError } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in("id", trainerIds);
+          
+        if (trainersError) {
+          console.error("Error fetching trainer profiles:", trainersError);
+          throw trainersError;
+        }
+        
+        console.log("Trainer profiles:", trainerProfiles);
+        
+        // Map trainer names to invitations
+        for (const invitation of invitationsData) {
+          const trainer = trainerProfiles?.find(t => t.id === invitation.trainer_id);
+          formattedInvitations.push({
+            id: invitation.id,
+            email: invitation.email,
+            trainer_id: invitation.trainer_id,
+            trainer_name: trainer?.name || "Entrenador",
+            created_at: invitation.created_at
+          });
+        }
+        
+        setInvitations(formattedInvitations);
+      } else {
+        setInvitations([]);
+      }
+      
     } catch (error: any) {
       console.error("Error fetching invitations:", error);
       setError(`No se pudieron cargar las invitaciones: ${error.message || "Error desconocido"}`);
