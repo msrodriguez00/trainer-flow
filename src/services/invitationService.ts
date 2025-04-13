@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { TrainerInvitation } from "@/components/client/types";
 
@@ -87,11 +86,13 @@ export const acceptInvitation = async (invitationId: string, trainerId: string, 
   
   try {
     // Start a Supabase transaction with .rpc() for better error handling
-    const { error: rpcError } = await supabase.rpc('accept_client_invitation', { 
-      p_invitation_id: invitationId,
-      p_trainer_id: trainerId,
-      p_user_id: userId,
-      p_email: normalizedEmail 
+    const { error: rpcError } = await supabase.functions.invoke('accept-invitation', {
+      body: { 
+        invitationId,
+        trainerId,
+        userId,
+        email: normalizedEmail 
+      }
     });
 
     if (rpcError) {
