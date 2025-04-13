@@ -119,24 +119,29 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
         .eq("trainer_id", trainer.id)
         .maybeSingle();
       
-      trainersWithBranding.push({
-        id: trainer.id,
-        name: trainer.name || "Entrenador sin nombre",
-        branding: brandData ? {
-          logo_url: brandData.logo_url,
-          primary_color: brandData.primary_color || "#9b87f5",
-          secondary_color: brandData.secondary_color || "#E5DEFF",
-          accent_color: brandData.accent_color || "#7E69AB"
-        } : {
-          logo_url: null,
-          primary_color: "#9b87f5",
-          secondary_color: "#E5DEFF",
-          accent_color: "#7E69AB"
-        }
-      });
+      trainersWithBranding.push(createTrainerWithBranding(trainer, brandData));
     }
     
     return trainersWithBranding;
+  };
+
+  // Create a trainer object with branding information
+  const createTrainerWithBranding = (trainer: any, brandData: any): Trainer => {
+    return {
+      id: trainer.id,
+      name: trainer.name || "Entrenador sin nombre",
+      branding: brandData ? {
+        logo_url: brandData.logo_url,
+        primary_color: brandData.primary_color || "#9b87f5",
+        secondary_color: brandData.secondary_color || "#E5DEFF",
+        accent_color: brandData.accent_color || "#7E69AB"
+      } : {
+        logo_url: null,
+        primary_color: "#9b87f5",
+        secondary_color: "#E5DEFF",
+        accent_color: "#7E69AB"
+      }
+    };
   };
 
   // Handle case when no client data is found
