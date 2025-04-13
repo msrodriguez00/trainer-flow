@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -8,10 +7,19 @@ import { toast } from "sonner";
 import { Plan, Exercise, Client, PlanExercise } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ChevronLeft, Pencil, Save, UserCircle, Trash2, Loader2 } from "lucide-react";
+import { ChevronLeft, Pencil, Save, UserCircle, Trash2, Loader2, PlusCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import PlanExerciseCard from "@/components/plan/PlanExerciseCard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const PlanDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,20 +29,25 @@ const PlanDetails = () => {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState("");
+  
+  const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
+  const [selectedExerciseId, setSelectedExerciseId] = useState("");
+  const [selectedLevel, setSelectedLevel] = useState<number>(1);
 
   useEffect(() => {
     if (user && id) {
       fetchPlanDetails();
+      fetchAllExercises();
     }
   }, [user, id]);
 
   const fetchPlanDetails = async () => {
     setIsLoading(true);
     try {
-      // Fetch plan data
       const { data: planData, error: planError } = await supabase
         .from("plans")
         .select("*")
@@ -43,7 +56,6 @@ const PlanDetails = () => {
 
       if (planError) throw planError;
       
-      // Fetch plan exercises
       const { data: planExercisesData, error: planExercisesError } = await supabase
         .from("plan_exercises")
         .select(`
@@ -56,7 +68,6 @@ const PlanDetails = () => {
 
       if (planExercisesError) throw planExercisesError;
 
-      // Fetch client data
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
         .select("*")
@@ -65,7 +76,6 @@ const PlanDetails = () => {
 
       if (clientError) throw clientError;
 
-      // Fetch exercises data
       const exerciseIds = planExercisesData.map((item: any) => item.exercise_id);
       
       if (exerciseIds.length > 0) {
@@ -76,7 +86,6 @@ const PlanDetails = () => {
 
         if (exercisesError) throw exercisesError;
         
-        // Convert string categories to Category type
         const typedExercises: Exercise[] = exercisesData.map((item: any) => ({
           id: item.id,
           name: item.name,
@@ -87,7 +96,6 @@ const PlanDetails = () => {
         setExercises(typedExercises);
       }
 
-      // Format plan exercises
       const formattedExercises: PlanExercise[] = planExercisesData.map((item: any) => ({
         exerciseId: item.exercise_id,
         level: item.level,
@@ -101,7 +109,6 @@ const PlanDetails = () => {
         }))
       }));
 
-      // Create the plan object
       const formattedPlan: Plan = {
         id: planData.id,
         name: planData.name,
@@ -118,6 +125,29 @@ const PlanDetails = () => {
       toast.error("Error al cargar el plan");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchAllExercises = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("exercises")
+        .select("*")
+        .order("name");
+
+      if (error) throw error;
+      
+      const typedExercises: Exercise[] = data.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        categories: item.categories,
+        levels: item.levels
+      }));
+      
+      setAvailableExercises(typedExercises);
+    } catch (error) {
+      console.error("Error fetching exercises:", error);
+      toast.error("Error al cargar ejercicios disponibles");
     }
   };
 
@@ -146,7 +176,6 @@ const PlanDetails = () => {
     
     if (confirm("¿Estás seguro de que quieres eliminar este plan?")) {
       try {
-        // Delete plan exercises first (foreign key constraints)
         const { error: planExercisesError } = await supabase
           .from("plan_exercises")
           .delete()
@@ -154,7 +183,6 @@ const PlanDetails = () => {
 
         if (planExercisesError) throw planExercisesError;
 
-        // Then delete the plan
         const { error: planError } = await supabase
           .from("plans")
           .delete()
@@ -171,8 +199,114 @@ const PlanDetails = () => {
     }
   };
 
+  const handleAddExercise = async () => {
+    if (!selectedExerciseId || !plan) return;
+    
+    try {
+      const existingExercise = plan.exercises.find(e => e.exerciseId === selectedExerciseId);
+      
+      if (existingExercise) {
+        toast.error("Este ejercicio ya está en el plan");
+        return;
+      }
+      
+      const { error } = await supabase
+        .from("plan_exercises")
+        .insert({
+          plan_id: plan.id,
+          exercise_id: selectedExerciseId,
+          level: selectedLevel
+        });
+
+      if (error) throw error;
+      
+      fetchPlanDetails();
+      setIsAddExerciseDialogOpen(false);
+      
+      setSelectedExerciseId("");
+      setSelectedLevel(1);
+      
+      toast.success("Ejercicio añadido al plan");
+    } catch (error) {
+      console.error("Error adding exercise to plan:", error);
+      toast.error("Error al añadir ejercicio al plan");
+    }
+  };
+
+  const handleRemoveExercise = async (exerciseId: string) => {
+    if (!plan) return;
+    
+    if (confirm("¿Estás seguro de que quieres eliminar este ejercicio del plan?")) {
+      try {
+        const { data: planExerciseData, error: planExerciseError } = await supabase
+          .from("plan_exercises")
+          .select("id")
+          .eq("plan_id", plan.id)
+          .eq("exercise_id", exerciseId)
+          .single();
+
+        if (planExerciseError) throw planExerciseError;
+        
+        const { error: evalError } = await supabase
+          .from("evaluations")
+          .delete()
+          .eq("plan_exercise_id", planExerciseData.id);
+          
+        if (evalError) throw evalError;
+        
+        const { error } = await supabase
+          .from("plan_exercises")
+          .delete()
+          .eq("plan_id", plan.id)
+          .eq("exercise_id", exerciseId);
+
+        if (error) throw error;
+        
+        fetchPlanDetails();
+        toast.success("Ejercicio eliminado del plan");
+      } catch (error) {
+        console.error("Error removing exercise:", error);
+        toast.error("Error al eliminar el ejercicio");
+      }
+    }
+  };
+
+  const handleUpdateExerciseLevel = async (exerciseId: string, newLevel: number) => {
+    if (!plan) return;
+    
+    try {
+      const { error } = await supabase
+        .from("plan_exercises")
+        .update({ level: newLevel })
+        .eq("plan_id", plan.id)
+        .eq("exercise_id", exerciseId);
+
+      if (error) throw error;
+      
+      const updatedPlan = {...plan};
+      const exerciseIndex = updatedPlan.exercises.findIndex(e => e.exerciseId === exerciseId);
+      if (exerciseIndex !== -1) {
+        updatedPlan.exercises[exerciseIndex].level = newLevel;
+        setPlan(updatedPlan);
+      }
+      
+      toast.success("Nivel del ejercicio actualizado");
+    } catch (error) {
+      console.error("Error updating exercise level:", error);
+      toast.error("Error al actualizar el nivel del ejercicio");
+    }
+  };
+
   const getExerciseById = (id: string): Exercise | undefined => {
     return exercises.find(exercise => exercise.id === id);
+  };
+
+  const getAvailableLevels = (exerciseId: string): number[] => {
+    const exercise = availableExercises.find(ex => ex.id === exerciseId);
+    if (!exercise || !exercise.levels || exercise.levels.length === 0) {
+      return [1];
+    }
+    return exercise.levels.map(l => l.level);
   };
 
   if (isLoading) {
@@ -210,7 +344,6 @@ const PlanDetails = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Breadcrumb and Back Button */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" onClick={() => navigate('/plans')} className="flex items-center px-0 hover:bg-transparent hover:text-primary">
             <ChevronLeft className="h-4 w-4 mr-1" />
@@ -218,7 +351,6 @@ const PlanDetails = () => {
           </Button>
         </div>
 
-        {/* Plan Header */}
         <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
             <div className="flex-grow">
@@ -259,7 +391,14 @@ const PlanDetails = () => {
           </div>
         </div>
 
-        {/* Exercises List */}
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-medium">Ejercicios</h2>
+          <Button onClick={() => setIsAddExerciseDialogOpen(true)}>
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Añadir Ejercicio
+          </Button>
+        </div>
+
         {plan.exercises.length > 0 ? (
           <div className="space-y-6">
             {plan.exercises.map((planExercise) => {
@@ -273,6 +412,10 @@ const PlanDetails = () => {
                   planExercise={planExercise}
                   planId={plan.id}
                   onUpdate={fetchPlanDetails}
+                  onRemove={() => handleRemoveExercise(planExercise.exerciseId)}
+                  onLevelUpdate={(newLevel) => handleUpdateExerciseLevel(planExercise.exerciseId, newLevel)}
+                  availableLevels={getAvailableLevels(planExercise.exerciseId)}
+                  editable={true}
                 />
               );
             })}
@@ -281,9 +424,69 @@ const PlanDetails = () => {
           <div className="bg-white p-8 rounded-lg shadow-sm text-center">
             <h3 className="text-lg font-medium mb-2">No hay ejercicios en este plan</h3>
             <p className="text-gray-600 mb-6">Este plan no tiene ningún ejercicio asignado.</p>
+            <Button onClick={() => setIsAddExerciseDialogOpen(true)}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Añadir Ejercicio
+            </Button>
           </div>
         )}
       </main>
+
+      <Dialog open={isAddExerciseDialogOpen} onOpenChange={setIsAddExerciseDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Añadir Ejercicio</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Ejercicio</label>
+              <Select value={selectedExerciseId} onValueChange={setSelectedExerciseId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar ejercicio" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableExercises.map(exercise => (
+                    <SelectItem key={exercise.id} value={exercise.id}>
+                      {exercise.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {selectedExerciseId && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Nivel</label>
+                <Select 
+                  value={selectedLevel.toString()} 
+                  onValueChange={(value) => setSelectedLevel(parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar nivel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableLevels(selectedExerciseId).map(level => (
+                      <SelectItem key={level} value={level.toString()}>
+                        {level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddExerciseDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddExercise} disabled={!selectedExerciseId}>
+              Añadir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

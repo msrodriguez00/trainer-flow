@@ -15,7 +15,9 @@ import {
   BarChart3,
   MessageSquareText,
   PlusCircle, 
-  Star 
+  Star,
+  Trash2,
+  Edit
 } from "lucide-react";
 import {
   Dialog,
@@ -28,12 +30,23 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface PlanExerciseCardProps {
   exercise: Exercise;
   planExercise: PlanExercise;
   planId: string;
   onUpdate: () => void;
+  onRemove?: () => void;
+  onLevelUpdate?: (level: number) => void;
+  availableLevels?: number[];
+  editable?: boolean;
 }
 
 const categoryIcons: Record<string, JSX.Element> = {
@@ -80,10 +93,15 @@ const PlanExerciseCard: React.FC<PlanExerciseCardProps> = ({
   exercise,
   planExercise,
   planId,
-  onUpdate
+  onUpdate,
+  onRemove,
+  onLevelUpdate,
+  availableLevels = [],
+  editable = false
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [evaluationDialogOpen, setEvaluationDialogOpen] = useState(false);
+  const [isEditingLevel, setIsEditingLevel] = useState(false);
   const [newEvaluation, setNewEvaluation] = useState<Partial<Evaluation>>({
     timeRating: 0,
     weightRating: 0,
@@ -136,6 +154,13 @@ const PlanExerciseCard: React.FC<PlanExerciseCardProps> = ({
       toast.error("Error al guardar la evaluación");
     }
   };
+  
+  const handleLevelChange = (newLevel: number) => {
+    if (onLevelUpdate) {
+      onLevelUpdate(newLevel);
+      setIsEditingLevel(false);
+    }
+  };
 
   return (
     <>
@@ -153,23 +178,70 @@ const PlanExerciseCard: React.FC<PlanExerciseCardProps> = ({
                 ))}
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setExpanded(!expanded)}
-            >
-              {expanded ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
+            <div className="flex">
+              {editable && onRemove && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onRemove}
+                  title="Eliminar ejercicio"
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               )}
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setExpanded(!expanded)}
+              >
+                {expanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {level && (
             <div className="bg-secondary/20 p-3 rounded-md mb-4">
-              <h3 className="font-medium mb-2">Nivel {level.level}</h3>
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-medium">
+                  {isEditingLevel && editable && onLevelUpdate && availableLevels ? (
+                    <Select 
+                      value={planExercise.level.toString()} 
+                      onValueChange={(value) => handleLevelChange(parseInt(value))}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Nivel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableLevels.map(level => (
+                          <SelectItem key={level} value={level.toString()}>
+                            Nivel {level}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <>
+                      Nivel {level.level}
+                      {editable && onLevelUpdate && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="ml-2" 
+                          onClick={() => setIsEditingLevel(true)}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </h3>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Repeticiones:</p>
