@@ -10,7 +10,7 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, X, Loader2, UserPlus } from "lucide-react";
+import { Check, X, Loader2, UserPlus, AlertCircle } from "lucide-react";
 
 interface TrainerInvitation {
   id: string;
@@ -23,23 +23,32 @@ interface TrainerInvitation {
 const PendingInvitationsCard = () => {
   const [invitations, setInvitations] = useState<TrainerInvitation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [processingIds, setProcessingIds] = useState<string[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
+    // Only fetch invitations when we have a user with an email
     if (user?.email) {
+      console.log("User is available, fetching invitations for:", user.email);
       fetchPendingInvitations();
     } else {
-      // If no user email, clear loading state to prevent endless loading
+      console.log("No user email available, skipping invitation fetch");
       setLoading(false);
     }
   }, [user]);
 
   const fetchPendingInvitations = async () => {
-    if (!user?.email) return;
+    if (!user?.email) {
+      console.log("No user email in fetchPendingInvitations, aborting");
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
+    setError(null);
+    
     try {
       console.log("Fetching invitations for email:", user.email);
       
@@ -53,7 +62,7 @@ const PendingInvitationsCard = () => {
           created_at,
           profiles:trainer_id (name)
         `)
-        .eq("email", user.email)
+        .eq("email", user.email.toLowerCase()) // Ensure email is lowercase for consistent matching
         .eq("accepted", false)
         .order("created_at", { ascending: false });
 
@@ -74,8 +83,9 @@ const PendingInvitationsCard = () => {
       }));
 
       setInvitations(formattedInvitations);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching invitations:", error);
+      setError("No se pudieron cargar las invitaciones");
       toast({
         variant: "destructive",
         title: "Error",
@@ -87,7 +97,10 @@ const PendingInvitationsCard = () => {
   };
 
   const handleAcceptInvitation = async (invitationId: string, trainerId: string) => {
-    if (!user?.email) return;
+    if (!user?.email) {
+      console.log("No user email in handleAcceptInvitation, aborting");
+      return;
+    }
     
     setProcessingIds(prev => [...prev, invitationId]);
     try {
@@ -105,7 +118,7 @@ const PendingInvitationsCard = () => {
       const { data: existingClient, error: clientError } = await supabase
         .from("clients")
         .select("*")
-        .eq("email", user.email)
+        .eq("email", user.email.toLowerCase()) // Ensure email is lowercase
         .maybeSingle();
 
       if (clientError && clientError.code !== 'PGRST116') throw clientError;
@@ -126,7 +139,7 @@ const PendingInvitationsCard = () => {
         await supabase
           .from("clients")
           .insert({
-            email: user.email,
+            email: user.email.toLowerCase(), // Ensure email is lowercase
             name: user.user_metadata?.name || user.email.split('@')[0],
             trainer_id: trainerId,
             trainers: [trainerId],
@@ -193,6 +206,30 @@ const PendingInvitationsCard = () => {
     });
   };
 
+  // If we have an error and we're on the /auth page, we might be in the wrong context
+  // Add a special message for this case
+  if (window.location.pathname === "/auth" && error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <UserPlus className="mr-2 h-5 w-5" />
+            Invitaciones de Entrenadores
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center py-4 text-center">
+            <AlertCircle className="h-8 w-8 text-amber-500 mb-2" />
+            <p className="font-medium">Por favor inicia sesión como cliente</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Para ver invitaciones, usa la página de acceso para clientes
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -205,6 +242,11 @@ const PendingInvitationsCard = () => {
         {loading ? (
           <div className="flex justify-center py-4">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center py-4 text-center">
+            <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
+            <p>{error}</p>
           </div>
         ) : invitations.length > 0 ? (
           <div className="space-y-4">
