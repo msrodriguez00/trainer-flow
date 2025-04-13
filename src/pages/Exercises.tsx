@@ -31,7 +31,7 @@ const Exercises = () => {
   const handleCreateExercise = async (exercise: Omit<Exercise, "id">) => {
     const success = await createExercise(exercise);
     if (success) {
-      setIsFormOpen(false);
+      closeForm();
     }
   };
 
@@ -45,9 +45,18 @@ const Exercises = () => {
     
     const success = await updateExercise(editExercise.id, updatedExercise);
     if (success) {
-      setIsFormOpen(false);
-      setEditExercise(undefined);
+      closeForm();
     }
+  };
+
+  const closeForm = () => {
+    setIsFormOpen(false);
+    setEditExercise(undefined);
+  };
+
+  const openNewExerciseForm = () => {
+    setEditExercise(undefined);
+    setIsFormOpen(true);
   };
 
   return (
@@ -58,10 +67,7 @@ const Exercises = () => {
         <ExercisesHeader 
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          onCreateExercise={() => {
-            setEditExercise(undefined);
-            setIsFormOpen(true);
-          }}
+          onCreateExercise={openNewExerciseForm}
         />
 
         <ExercisesList 
@@ -70,19 +76,13 @@ const Exercises = () => {
           searchTerm={searchTerm}
           onEditExercise={handleEditExercise}
           onDeleteExercise={deleteExercise}
-          onCreateExercise={() => {
-            setEditExercise(undefined);
-            setIsFormOpen(true);
-          }}
+          onCreateExercise={openNewExerciseForm}
         />
       </main>
 
       <NewExerciseForm
         isOpen={isFormOpen}
-        onClose={() => {
-          setIsFormOpen(false);
-          setEditExercise(undefined);
-        }}
+        onClose={closeForm}
         onSubmit={editExercise ? handleUpdateExercise : handleCreateExercise}
         initialExercise={editExercise}
       />

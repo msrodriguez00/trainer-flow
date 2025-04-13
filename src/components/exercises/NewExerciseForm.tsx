@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { CategorySelection } from "./CategorySelection";
@@ -35,6 +36,7 @@ const NewExerciseForm = ({
     { video: "", repetitions: 0, weight: 0 }
   ]);
   const [videoErrors, setVideoErrors] = useState<boolean[]>([false]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Effect to initialize form when initialExercise changes or dialog opens
   useEffect(() => {
@@ -113,19 +115,27 @@ const NewExerciseForm = ({
       return;
     }
 
+    setIsSubmitting(true);
+
     const formattedLevels: Level[] = levels.map((level, idx) => ({
       level: idx + 1,
       ...level,
     }));
 
-    onSubmit({
-      name,
-      categories: selectedCategories,
-      levels: formattedLevels,
-    });
-
-    if (!initialExercise) {
-      resetForm();
+    try {
+      onSubmit({
+        name,
+        categories: selectedCategories,
+        levels: formattedLevels,
+      });
+      
+      if (!initialExercise) {
+        resetForm();
+      }
+    } finally {
+      // Ensure we always clean up even if onSubmit fails
+      setIsSubmitting(false);
+      // Don't close here - let the parent component handle closing on successful submission
     }
   };
 
@@ -136,13 +146,24 @@ const NewExerciseForm = ({
     setVideoErrors([false]);
   };
 
+  const handleDialogChange = (open: boolean) => {
+    if (!open && !isSubmitting) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleDialogChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {initialExercise ? "Editar Ejercicio" : "Nuevo Ejercicio"}
           </DialogTitle>
+          <DialogDescription>
+            {initialExercise 
+              ? "Modifica los detalles del ejercicio seleccionado." 
+              : "Añade un nuevo ejercicio a tu colección."}
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <ExerciseNameInput 
@@ -166,10 +187,19 @@ const NewExerciseForm = ({
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={isSubmitting}
+          >
             Cancelar
           </Button>
-          <Button onClick={handleSubmit}>Guardar</Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Guardando..." : "Guardar"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
