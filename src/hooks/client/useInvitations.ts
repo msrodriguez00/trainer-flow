@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { TrainerInvitation } from "@/components/client/types";
@@ -18,11 +18,12 @@ export function useInvitations() {
   const [lastRefresh, setLastRefresh] = useState<number>(0);
   const { user } = useAuth();
   const { toast } = useToast();
+  const isFirstMount = useRef(true);
+  const isFetching = useRef(false);
 
-  // Remove lastRefresh from the dependencies array to prevent infinite loop
   const fetchPendingInvitations = useCallback(async () => {
-    if (!user?.email) {
-      console.log("No user email in fetchPendingInvitations, aborting");
+    if (!user?.email || isFetching.current) {
+      console.log("Skipping fetch: No user email or fetch already in progress");
       setLoading(false);
       return;
     }
@@ -32,6 +33,7 @@ export function useInvitations() {
     console.log("Current route:", window.location.pathname);
     console.log("Last refresh timestamp:", lastRefresh);
     
+    isFetching.current = true;
     setLoading(true);
     setError(null);
     
@@ -51,7 +53,7 @@ export function useInvitations() {
         setInvitations(formattedInvitations);
         
         // Only show toast if it's not the initial load and invitations have changed
-        if (lastRefresh > 0 && invitationsChanged) {
+        if (lastRefresh > 0 && invitationsChanged && !isFirstMount.current) {
           if (formattedInvitations.length > 0) {
             toast({
               title: "Invitaciones actualizadas",
@@ -72,32 +74,39 @@ export function useInvitations() {
       });
     } finally {
       setLoading(false);
+      isFetching.current = false;
+      isFirstMount.current = false;
       console.log("=== INVITATION FETCH PROCESS COMPLETED ===");
     }
-  }, [user?.email, toast, invitations]); // Removed lastRefresh from dependencies
+  }, [user?.email, toast]); // Removed invitations and lastRefresh from dependencies
 
   // Separate function to refresh invitations and update lastRefresh
   const refreshInvitations = useCallback(() => {
     console.log("Manual refresh triggered");
-    // Update lastRefresh outside the fetchPendingInvitations function
     setLastRefresh(Date.now());
     return fetchPendingInvitations();
   }, [fetchPendingInvitations]);
 
   useEffect(() => {
-    if (user?.email) {
+    if (user?.email && isFirstMount.current) {
       console.log("Client user is available, fetching invitations for:", user.email);
-      // Update lastRefresh here, outside of fetchPendingInvitations
-      setLastRefresh(prev => prev === 0 ? Date.now() : prev);
       fetchPendingInvitations();
     } else {
-      console.log("No user email available, skipping invitation fetch");
+      console.log("No user email available or not first mount, skipping invitation fetch");
       setLoading(false);
       if (!user && window.location.pathname !== "/auth") {
         setError("Debes iniciar sesión para ver invitaciones");
       }
     }
   }, [user?.email, fetchPendingInvitations]);
+
+  // Effect that reacts to lastRefresh changes
+  useEffect(() => {
+    if (lastRefresh > 0 && !isFirstMount.current && user?.email) {
+      console.log("Last refresh timestamp changed, fetching invitations");
+      fetchPendingInvitations();
+    }
+  }, [lastRefresh, fetchPendingInvitations, user?.email]);
 
   const handleAcceptInvitation = async (invitationId: string, trainerId: string) => {
     if (!user?.email || !user?.id) {

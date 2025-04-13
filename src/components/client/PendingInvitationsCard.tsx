@@ -31,22 +31,7 @@ const PendingInvitationsCard = () => {
   } = useInvitations();
   
   const { toast } = useToast();
-  const initialLoadDone = useRef(false);
   
-  // Solo ejecutar una vez después del montaje inicial
-  useEffect(() => {
-    // Evitar múltiples llamadas usando una referencia
-    if (!initialLoadDone.current) {
-      // Pequeño retraso para asegurar que la autenticación esté completamente inicializada
-      const timer = setTimeout(() => {
-        refreshInvitations();
-        initialLoadDone.current = true;
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [refreshInvitations]);
-
   // Debug output
   useEffect(() => {
     console.log("PendingInvitationsCard state:", {
