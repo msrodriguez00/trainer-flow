@@ -44,23 +44,36 @@ export const ExerciseFormDialog = ({
     handleSubmit,
   } = useExerciseForm({ initialExercise, onSubmit, onClose });
 
-  // Force cleanup if dialog closes externally
   useEffect(() => {
+    console.log("ExerciseFormDialog useEffect - isOpen:", isOpen);
+    
     if (!isOpen) {
-      // Ensure any pending state is cleaned up
-      setTimeout(() => {
-        onClose();
-      }, 0);
+      console.log("ExerciseFormDialog - Dialog is closed, cleaning up");
+      onClose();
     }
+    
+    return () => {
+      console.log("ExerciseFormDialog - Cleanup on unmount");
+    };
   }, [isOpen, onClose]);
 
   const handleDialogChange = (open: boolean) => {
+    console.log("ExerciseFormDialog - Dialog state changed to:", open);
+    
     if (!open) {
-      // Safely close dialog
+      console.log("ExerciseFormDialog - Calling onClose because dialog is closing");
       onClose();
     }
   };
+  
+  // If dialog is not open, don't render anything
+  if (!isOpen) {
+    console.log("ExerciseFormDialog - Not rendering content because isOpen is false");
+    return null;
+  }
 
+  console.log("ExerciseFormDialog - Rendering dialog content with initialExercise:", initialExercise?.id);
+  
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogChange} modal={true}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
@@ -98,14 +111,22 @@ export const ExerciseFormDialog = ({
         <DialogFooter>
           <Button 
             variant="outline" 
-            onClick={onClose} 
+            onClick={() => {
+              console.log("ExerciseFormDialog - Cancel button clicked");
+              onClose();
+            }} 
             disabled={isSubmitting}
+            type="button"
           >
             Cancelar
           </Button>
           <Button 
-            onClick={handleSubmit} 
+            onClick={() => {
+              console.log("ExerciseFormDialog - Save button clicked");
+              handleSubmit();
+            }}
             disabled={isSubmitting}
+            type="button"
           >
             {isSubmitting ? "Guardando..." : "Guardar"}
           </Button>

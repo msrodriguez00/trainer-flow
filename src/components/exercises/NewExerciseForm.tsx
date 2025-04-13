@@ -13,21 +13,23 @@ interface NewExerciseFormProps {
 const NewExerciseForm = (props: NewExerciseFormProps) => {
   // Ensure cleanup happens if component unmounts while open
   useEffect(() => {
+    console.log("NewExerciseForm useEffect - isOpen:", props.isOpen);
+    
     return () => {
       if (props.isOpen) {
-        // Force cleanup on unmount if still open
-        setTimeout(() => {
-          props.onClose();
-        }, 0);
+        console.log("NewExerciseForm - Cleanup on unmount while open");
+        props.onClose();
       }
     };
   }, [props.isOpen, props.onClose]);
   
   // Only render dialog when it's actually open
   if (!props.isOpen) {
+    console.log("NewExerciseForm - Not rendering dialog because isOpen is false");
     return null;
   }
 
+  console.log("NewExerciseForm - Rendering dialog with initialExercise:", props.initialExercise?.id);
   return <ExerciseFormDialog {...props} />;
 };
 

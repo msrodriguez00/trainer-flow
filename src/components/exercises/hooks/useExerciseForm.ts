@@ -21,7 +21,10 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
 
   // Effect to initialize form when initialExercise changes
   useEffect(() => {
+    console.log("useExerciseForm - initialExercise changed:", initialExercise?.id);
+    
     if (initialExercise) {
+      console.log("useExerciseForm - Setting form data from initialExercise");
       setName(initialExercise.name);
       setSelectedCategories(initialExercise.categories);
       
@@ -35,8 +38,14 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
       setLevels(formattedLevels);
       setVideoErrors(new Array(formattedLevels.length).fill(false));
     } else {
+      console.log("useExerciseForm - No initialExercise, resetting form");
       resetForm();
     }
+    
+    // Cleanup function
+    return () => {
+      console.log("useExerciseForm - Cleanup on unmount or initialExercise change");
+    };
   }, [initialExercise]);
 
   const handleCategoryChange = (category: Category, checked: boolean) => {
@@ -75,7 +84,10 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
   };
 
   const handleSubmit = async () => {
+    console.log("useExerciseForm - handleSubmit called");
+    
     if (!name || selectedCategories.length === 0) {
+      console.log("useExerciseForm - Validation failed: missing name or categories");
       toast({
         title: "Error",
         description: "Completa el nombre y selecciona al menos una categoría",
@@ -87,6 +99,7 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     // Verificar si hay errores en las URLs de YouTube
     const hasVideoErrors = videoErrors.some(error => error);
     if (hasVideoErrors) {
+      console.log("useExerciseForm - Validation failed: invalid YouTube URLs");
       toast({
         title: "Error",
         description: "Hay URLs de video inválidas. Solo se permiten enlaces de YouTube.",
@@ -96,6 +109,7 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     }
 
     setIsSubmitting(true);
+    console.log("useExerciseForm - Setting isSubmitting to true");
 
     const formattedLevels: Level[] = levels.map((level, idx) => ({
       level: idx + 1,
@@ -103,27 +117,31 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     }));
 
     try {
+      console.log("useExerciseForm - Calling onSubmit");
       await onSubmit({
         name,
         categories: selectedCategories,
         levels: formattedLevels,
       });
       
+      console.log("useExerciseForm - onSubmit completed successfully");
       // Clean up state after successful submission
       resetForm();
     } catch (error) {
-      console.error("Error submitting exercise:", error);
+      console.error("useExerciseForm - Error submitting exercise:", error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al guardar el ejercicio.",
         variant: "destructive",
       });
     } finally {
+      console.log("useExerciseForm - Setting isSubmitting to false");
       setIsSubmitting(false);
     }
   };
 
   const resetForm = () => {
+    console.log("useExerciseForm - Resetting form state");
     setName("");
     setSelectedCategories([]);
     setLevels([{ video: "", repetitions: 0, weight: 0 }]);
