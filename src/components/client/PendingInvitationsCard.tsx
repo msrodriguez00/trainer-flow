@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,19 +24,24 @@ const PendingInvitationsCard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingIds, setProcessingIds] = useState<string[]>([]);
-  const { user } = useAuth();
+  const { user, isClient } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Only fetch invitations when we have a user with an email
-    if (user?.email) {
-      console.log("User is available, fetching invitations for:", user.email);
+    if (user?.email && isClient) {
+      console.log("Client user is available, fetching invitations for:", user.email);
       fetchPendingInvitations();
     } else {
-      console.log("No user email available, skipping invitation fetch");
+      console.log("Not a client user or no email available, skipping invitation fetch");
+      console.log("User info:", { email: user?.email, isClient });
       setLoading(false);
+      if (user && !isClient && window.location.pathname !== "/auth") {
+        setError("Esta sección es solo para clientes");
+      } else if (!user && window.location.pathname !== "/auth") {
+        setError("Debes iniciar sesión para ver invitaciones");
+      }
     }
-  }, [user]);
+  }, [user, isClient]);
 
   const fetchPendingInvitations = async () => {
     if (!user?.email) {
@@ -50,9 +54,9 @@ const PendingInvitationsCard = () => {
     setError(null);
     
     try {
-      console.log("Fetching invitations for email:", user.email);
+      const userEmail = user.email.toLowerCase();
+      console.log("Fetching invitations for email:", userEmail);
       
-      // Obtener las invitaciones pendientes para el correo del usuario
       const { data: invitationsData, error: invitationsError } = await supabase
         .from("client_invitations")
         .select(`
@@ -62,7 +66,7 @@ const PendingInvitationsCard = () => {
           created_at,
           profiles:trainer_id (name)
         `)
-        .eq("email", user.email.toLowerCase()) // Ensure email is lowercase for consistent matching
+        .eq("email", userEmail) // Ensure email is lowercase for consistent matching
         .eq("accepted", false)
         .order("created_at", { ascending: false });
 
@@ -73,7 +77,6 @@ const PendingInvitationsCard = () => {
 
       console.log("Invitations data:", invitationsData);
 
-      // Transformar los datos para incluir el nombre del entrenador
       const formattedInvitations: TrainerInvitation[] = invitationsData.map((inv: any) => ({
         id: inv.id,
         email: inv.email,
@@ -85,7 +88,7 @@ const PendingInvitationsCard = () => {
       setInvitations(formattedInvitations);
     } catch (error: any) {
       console.error("Error fetching invitations:", error);
-      setError("No se pudieron cargar las invitaciones");
+      setError(`No se pudieron cargar las invitaciones: ${error.message || "Error desconocido"}`);
       toast({
         variant: "destructive",
         title: "Error",
@@ -106,7 +109,6 @@ const PendingInvitationsCard = () => {
     try {
       console.log("Accepting invitation:", invitationId, "for trainer:", trainerId);
       
-      // Marcar la invitación como aceptada
       const { error: updateError } = await supabase
         .from("client_invitations")
         .update({ accepted: true })
@@ -114,7 +116,6 @@ const PendingInvitationsCard = () => {
 
       if (updateError) throw updateError;
 
-      // Verificar si el usuario ya existe como cliente
       const { data: existingClient, error: clientError } = await supabase
         .from("clients")
         .select("*")
@@ -124,7 +125,6 @@ const PendingInvitationsCard = () => {
       if (clientError && clientError.code !== 'PGRST116') throw clientError;
 
       if (existingClient) {
-        // Si el cliente existe, añadir el nuevo entrenador a su lista de entrenadores
         const updatedTrainers = [...(existingClient.trainers || [])];
         if (!updatedTrainers.includes(trainerId)) {
           updatedTrainers.push(trainerId);
@@ -135,7 +135,6 @@ const PendingInvitationsCard = () => {
             .eq("id", existingClient.id);
         }
       } else {
-        // Si el cliente no existe, crearlo
         await supabase
           .from("clients")
           .insert({
@@ -147,7 +146,6 @@ const PendingInvitationsCard = () => {
           });
       }
 
-      // Eliminar la invitación de la lista local
       setInvitations(invitations.filter(inv => inv.id !== invitationId));
       
       toast({
@@ -171,7 +169,6 @@ const PendingInvitationsCard = () => {
     try {
       console.log("Rejecting invitation:", invitationId);
       
-      // Eliminar la invitación
       const { error } = await supabase
         .from("client_invitations")
         .delete()
@@ -179,7 +176,6 @@ const PendingInvitationsCard = () => {
 
       if (error) throw error;
 
-      // Eliminar la invitación de la lista local
       setInvitations(invitations.filter(inv => inv.id !== invitationId));
       
       toast({
@@ -206,9 +202,7 @@ const PendingInvitationsCard = () => {
     });
   };
 
-  // If we have an error and we're on the /auth page, we might be in the wrong context
-  // Add a special message for this case
-  if (window.location.pathname === "/auth" && error) {
+  if (window.location.pathname === "/auth") {
     return (
       <Card>
         <CardHeader>
@@ -222,7 +216,7 @@ const PendingInvitationsCard = () => {
             <AlertCircle className="h-8 w-8 text-amber-500 mb-2" />
             <p className="font-medium">Por favor inicia sesión como cliente</p>
             <p className="text-sm text-gray-500 mt-1">
-              Para ver invitaciones, usa la página de acceso para clientes
+              Para ver invitaciones, usa la página de <a href="/client-login" className="text-blue-500 hover:underline">acceso para clientes</a>
             </p>
           </div>
         </CardContent>
@@ -247,6 +241,16 @@ const PendingInvitationsCard = () => {
           <div className="flex flex-col items-center py-4 text-center">
             <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
             <p>{error}</p>
+            {window.location.pathname !== "/client-login" && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-3"
+                onClick={() => window.location.href = '/client-login'}
+              >
+                Ir a acceso para clientes
+              </Button>
+            )}
           </div>
         ) : invitations.length > 0 ? (
           <div className="space-y-4">
