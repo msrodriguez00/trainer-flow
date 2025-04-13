@@ -36,12 +36,6 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
         secondary: clientTheme.secondaryColor,
         accent: clientTheme.accentColor
       });
-      
-      console.log("WelcomeHeader - Theme colors updated:", {
-        primary: clientTheme.primaryColor,
-        secondary: clientTheme.secondaryColor,
-        accent: clientTheme.accentColor
-      });
     } else {
       // Fallback to CSS variables if clientTheme is not available
       const root = document.documentElement;
@@ -53,7 +47,6 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
       
       if (colors.primary) {
         setThemeColors(colors);
-        console.log("WelcomeHeader - Fallback to CSS variables:", colors);
       }
     }
   }, [clientTheme]);
@@ -73,26 +66,6 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
             loading={loading}
             onTrainerSelect={handleTrainerSelect}
           />
-          
-          {/* Add a visual indicator for theme testing */}
-          <div className="mt-4 flex flex-col gap-2">
-            <div className="text-sm font-medium">Tema actual:</div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full border border-gray-300" 
-                style={{ backgroundColor: themeColors.primary }}></div>
-              <span className="text-xs">Primary: {themeColors.primary}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full border border-gray-300" 
-                style={{ backgroundColor: themeColors.secondary }}></div>
-              <span className="text-xs">Secondary: {themeColors.secondary}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full border border-gray-300" 
-                style={{ backgroundColor: themeColors.accent }}></div>
-              <span className="text-xs">Accent: {themeColors.accent}</span>
-            </div>
-          </div>
         </div>
       </CardContent>
     </Card>
@@ -100,3 +73,4 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
 };
 
 export default WelcomeHeader;
+
