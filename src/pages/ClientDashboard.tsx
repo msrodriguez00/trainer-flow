@@ -11,6 +11,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Plan } from "@/types";
 import { ClipboardList, Calendar as CalendarIcon, Activity } from "lucide-react";
 
+interface Trainer {
+  id: string;
+  name: string;
+  branding?: {
+    logo_url: string | null;
+    primary_color: string;
+    secondary_color: string;
+    accent_color: string;
+  };
+}
+
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
   return new Intl.DateTimeFormat("es-ES", {
@@ -26,6 +37,8 @@ const ClientDashboard = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
+  const [trainerInfo, setTrainerInfo] = useState<Trainer | null>(null);
   
   // Redirigir a los entrenadores a la página principal
   useEffect(() => {
@@ -34,13 +47,74 @@ const ClientDashboard = () => {
     }
   }, [isLoading, isClient, navigate]);
 
+  // Get selected trainer from session storage
   useEffect(() => {
-    if (user) {
-      fetchClientPlans();
+    const trainerId = sessionStorage.getItem('selected_trainer_id');
+    if (trainerId) {
+      setSelectedTrainerId(trainerId);
     }
-  }, [user]);
+  }, []);
 
-  const fetchClientPlans = async () => {
+  // Fetch trainer information and apply branding
+  useEffect(() => {
+    if (selectedTrainerId) {
+      fetchTrainerInfo(selectedTrainerId);
+    }
+  }, [selectedTrainerId]);
+
+  // Fetch plans for the selected trainer
+  useEffect(() => {
+    if (user && selectedTrainerId) {
+      fetchClientPlans(selectedTrainerId);
+    }
+  }, [user, selectedTrainerId]);
+
+  const fetchTrainerInfo = async (trainerId: string) => {
+    try {
+      // Get trainer profile
+      const { data: trainerData, error: trainerError } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .eq("id", trainerId)
+        .single();
+      
+      if (trainerError) throw trainerError;
+      
+      // Get trainer branding
+      const { data: brandData, error: brandError } = await supabase
+        .from("trainer_brands")
+        .select("*")
+        .eq("trainer_id", trainerId)
+        .maybeSingle();
+      
+      if (brandError && brandError.code !== 'PGRST116') throw brandError;
+      
+      const trainer: Trainer = {
+        id: trainerData.id,
+        name: trainerData.name || "Tu Entrenador",
+        branding: brandData ? {
+          logo_url: brandData.logo_url,
+          primary_color: brandData.primary_color || "#9b87f5",
+          secondary_color: brandData.secondary_color || "#E5DEFF",
+          accent_color: brandData.accent_color || "#7E69AB"
+        } : undefined
+      };
+      
+      setTrainerInfo(trainer);
+      
+      // Apply branding to CSS variables
+      if (trainer.branding) {
+        document.documentElement.style.setProperty('--client-primary', trainer.branding.primary_color);
+        document.documentElement.style.setProperty('--client-secondary', trainer.branding.secondary_color);
+        document.documentElement.style.setProperty('--client-accent', trainer.branding.accent_color);
+      }
+      
+    } catch (error) {
+      console.error("Error fetching trainer info:", error);
+    }
+  };
+
+  const fetchClientPlans = async (trainerId: string) => {
     if (!user) return;
     
     setLoading(true);
@@ -55,6 +129,7 @@ const ClientDashboard = () => {
           plan_exercises:plan_exercises(*)
         `)
         .eq("client_id", user.id)
+        .eq("trainer_id", trainerId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -83,6 +158,18 @@ const ClientDashboard = () => {
     return <div className="flex items-center justify-center h-screen">Cargando...</div>;
   }
 
+  // Dynamic styles based on selected trainer's branding
+  const dynamicStyles = trainerInfo?.branding ? {
+    cardHeaderStyle: {
+      backgroundColor: trainerInfo.branding.secondary_color,
+      color: trainerInfo.branding.accent_color
+    },
+    buttonStyle: {
+      backgroundColor: trainerInfo.branding.primary_color,
+      color: "#ffffff"
+    }
+  } : {};
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -91,10 +178,24 @@ const ClientDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Sección de bienvenida y perfil */}
           <Card className="col-span-full mb-6">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-2" style={dynamicStyles.cardHeaderStyle}>
+              {trainerInfo?.branding?.logo_url && (
+                <div className="flex justify-center mb-4">
+                  <img 
+                    src={trainerInfo.branding.logo_url} 
+                    alt="Logo" 
+                    className="h-12 object-contain"
+                  />
+                </div>
+              )}
               <CardTitle className="text-2xl">¡Bienvenido, {profile?.name || "Cliente"}!</CardTitle>
             </CardHeader>
             <CardContent>
+              {trainerInfo && (
+                <p className="text-gray-600 mb-2">
+                  Entrenador: <span className="font-medium">{trainerInfo.name}</span>
+                </p>
+              )}
               <p className="text-gray-600">
                 Aquí puedes ver tus planes de entrenamiento y tu calendario de actividades.
               </p>
@@ -103,7 +204,7 @@ const ClientDashboard = () => {
           
           {/* Sección de Calendario */}
           <Card className="md:col-span-2">
-            <CardHeader>
+            <CardHeader style={dynamicStyles.cardHeaderStyle}>
               <CardTitle className="flex items-center">
                 <CalendarIcon className="mr-2 h-5 w-5" />
                 Calendario de Actividades
@@ -134,7 +235,7 @@ const ClientDashboard = () => {
           
           {/* Sección de Planes */}
           <Card>
-            <CardHeader>
+            <CardHeader style={dynamicStyles.cardHeaderStyle}>
               <CardTitle className="flex items-center">
                 <ClipboardList className="mr-2 h-5 w-5" />
                 Mis Planes
@@ -148,7 +249,13 @@ const ClientDashboard = () => {
                   {plans.map((plan) => (
                     <Sheet key={plan.id}>
                       <SheetTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start">
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start"
+                          style={{
+                            borderColor: trainerInfo?.branding?.primary_color
+                          }}
+                        >
                           <div className="flex items-center">
                             <ClipboardList className="mr-2 h-4 w-4" />
                             <span>{plan.name}</span>
@@ -181,7 +288,7 @@ const ClientDashboard = () => {
                 </div>
               ) : (
                 <p className="text-center text-gray-500">
-                  No tienes planes asignados todavía.
+                  No tienes planes asignados todavía con este entrenador.
                 </p>
               )}
             </CardContent>

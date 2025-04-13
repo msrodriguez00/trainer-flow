@@ -8,7 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Trainer {
@@ -29,8 +35,9 @@ const ClientLogin = () => {
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [selectedTrainer, setSelectedTrainer] = useState<string | null>(null);
   const [trainerBranding, setTrainerBranding] = useState<Trainer['branding'] | null>(null);
+  const [showTrainerModal, setShowTrainerModal] = useState(false);
   const navigate = useNavigate();
-  const { signIn, user, isClient } = useAuth();
+  const { user, isClient } = useAuth();
   const { toast } = useToast();
 
   // Redirect if already logged in
@@ -40,26 +47,52 @@ const ClientLogin = () => {
     }
   }, [user, isClient, navigate]);
 
-  // Fetch trainers for this client's email
-  useEffect(() => {
-    const fetchTrainers = async () => {
-      if (!email) return;
+  // Handle first step - email/password authentication
+  const handleFirstStepLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    setLoading(true);
+    try {
+      // First, authenticate the user
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
       
-      try {
-        const { data, error } = await supabase
+      if (authError) throw authError;
+      
+      if (authData.user) {
+        // Check if this user is actually a client
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", authData.user.id)
+          .single();
+          
+        if (profileError) throw profileError;
+        
+        if (profileData.role !== 'client') {
+          // Not a client, sign them out
+          await supabase.auth.signOut();
+          throw new Error("Esta cuenta no pertenece a un cliente.");
+        }
+        
+        // Find trainers for this client
+        const { data: clientData, error: clientError } = await supabase
           .from("clients")
           .select("trainers")
           .eq("email", email.toLowerCase())
           .single();
-        
-        if (error && error.code !== 'PGRST116') throw error;
-        
-        if (data && data.trainers && data.trainers.length > 0) {
+          
+        if (clientError && clientError.code !== 'PGRST116') throw clientError;
+          
+        if (clientData && clientData.trainers && clientData.trainers.length > 0) {
+          // Fetch trainer information
           const { data: trainerData, error: trainerError } = await supabase
             .from("profiles")
             .select("id, name")
-            .in("id", data.trainers);
-          
+            .in("id", clientData.trainers);
+            
           if (trainerError) throw trainerError;
           
           const trainersWithBranding: Trainer[] = [];
@@ -85,80 +118,73 @@ const ClientLogin = () => {
           
           setTrainers(trainersWithBranding);
           
-          // Auto-select if only one trainer
+          // If only one trainer, auto-select and proceed
           if (trainersWithBranding.length === 1) {
             setSelectedTrainer(trainersWithBranding[0].id);
-            setTrainerBranding(trainersWithBranding[0].branding || null);
+            applyTrainerTheme(trainersWithBranding[0]);
+            navigateToClientDashboard();
+          } else if (trainersWithBranding.length > 1) {
+            // Show modal for trainer selection
+            setShowTrainerModal(true);
+          } else {
+            throw new Error("No hay entrenadores asignados a esta cuenta.");
           }
+        } else {
+          throw new Error("No hay entrenadores asignados a esta cuenta.");
         }
-      } catch (error) {
-        console.error("Error fetching trainers:", error);
       }
-    };
-    
-    if (email) {
-      fetchTrainers();
-    }
-  }, [email]);
-
-  // Apply theme when trainer is selected
-  useEffect(() => {
-    if (selectedTrainer && trainers.length > 0) {
-      const selected = trainers.find(t => t.id === selectedTrainer);
-      if (selected && selected.branding) {
-        setTrainerBranding(selected.branding);
-        
-        // Apply theme to CSS variables
-        document.documentElement.style.setProperty('--client-primary', selected.branding.primary_color);
-        document.documentElement.style.setProperty('--client-secondary', selected.branding.secondary_color);
-        document.documentElement.style.setProperty('--client-accent', selected.branding.accent_color);
-      }
-    }
-    
-    return () => {
-      // Reset theme variables when component unmounts
-      document.documentElement.style.removeProperty('--client-primary');
-      document.documentElement.style.removeProperty('--client-secondary');
-      document.documentElement.style.removeProperty('--client-accent');
-    };
-  }, [selectedTrainer, trainers]);
-
-  const handleSelectTrainer = (trainerId: string) => {
-    setSelectedTrainer(trainerId);
-    const selected = trainers.find(t => t.id === trainerId);
-    if (selected && selected.branding) {
-      setTrainerBranding(selected.branding);
-    }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedTrainer) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Por favor selecciona un entrenador para continuar.",
-      });
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      await signIn({ email, password });
-      toast({
-        title: "Inicio de sesión exitoso",
-        description: "¡Bienvenido de nuevo!",
-      });
-      navigate("/client-dashboard");
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error al iniciar sesión",
         description: error.message || "Verifica tus credenciales e inténtalo nuevamente.",
       });
+      
+      // Sign out in case of error
+      await supabase.auth.signOut();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const applyTrainerTheme = (trainer: Trainer) => {
+    if (trainer.branding) {
+      setTrainerBranding(trainer.branding);
+      
+      // Apply theme to CSS variables
+      document.documentElement.style.setProperty('--client-primary', trainer.branding.primary_color);
+      document.documentElement.style.setProperty('--client-secondary', trainer.branding.secondary_color);
+      document.documentElement.style.setProperty('--client-accent', trainer.branding.accent_color);
+    }
+  };
+
+  const handleTrainerSelect = (trainerId: string) => {
+    const selected = trainers.find(t => t.id === trainerId);
+    if (selected) {
+      setSelectedTrainer(trainerId);
+      applyTrainerTheme(selected);
+    }
+  };
+
+  const navigateToClientDashboard = () => {
+    if (selectedTrainer) {
+      // Store selected trainer ID in session storage
+      sessionStorage.setItem('selected_trainer_id', selectedTrainer);
+      navigate("/client-dashboard");
+    }
+  };
+
+  // Handle selection from trainer modal
+  const confirmTrainerSelection = () => {
+    if (selectedTrainer) {
+      setShowTrainerModal(false);
+      navigateToClientDashboard();
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Por favor selecciona un entrenador para continuar.",
+      });
     }
   };
 
@@ -183,15 +209,6 @@ const ClientLogin = () => {
     <div className="grid h-screen place-items-center bg-gray-100">
       <Card className="w-[400px]" style={dynamicStyles.cardStyle}>
         <CardHeader className="space-y-1" style={dynamicStyles.headerStyle}>
-          {trainerBranding && trainerBranding.logo_url && (
-            <div className="flex justify-center mb-4">
-              <img 
-                src={trainerBranding.logo_url} 
-                alt="Trainer logo" 
-                className="h-16 object-contain"
-              />
-            </div>
-          )}
           <CardTitle className="text-2xl text-center">
             Acceso para Clientes
           </CardTitle>
@@ -200,7 +217,7 @@ const ClientLogin = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 mt-4">
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleFirstStepLogin} className="space-y-4">
             <div className="grid gap-2">
               <div className="grid gap-1">
                 <Label htmlFor="email">Correo electrónico</Label>
@@ -213,27 +230,6 @@ const ClientLogin = () => {
                   required
                 />
               </div>
-              
-              {trainers.length > 0 && (
-                <div className="grid gap-1">
-                  <Label htmlFor="trainer">Entrenador</Label>
-                  <Select 
-                    value={selectedTrainer || ""} 
-                    onValueChange={handleSelectTrainer}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un entrenador" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {trainers.map((trainer) => (
-                        <SelectItem key={trainer.id} value={trainer.id}>
-                          {trainer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
               
               <div className="grid gap-1">
                 <Label htmlFor="password">Contraseña</Label>
@@ -249,17 +245,20 @@ const ClientLogin = () => {
               
               <Button 
                 type="submit" 
-                disabled={loading || !selectedTrainer}
+                disabled={loading}
                 style={dynamicStyles.buttonStyle}
-                className="mt-4"
+                className="mt-4 gap-2"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Iniciando sesión...
                   </>
                 ) : (
-                  "Iniciar sesión"
+                  <>
+                    <LogIn className="h-4 w-4" />
+                    Iniciar sesión
+                  </>
                 )}
               </Button>
               
@@ -275,6 +274,57 @@ const ClientLogin = () => {
           </form>
         </CardContent>
       </Card>
+      
+      {/* Trainer selection modal */}
+      <Dialog open={showTrainerModal} onOpenChange={setShowTrainerModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Selecciona tu Entrenador</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="trainer-select">Entrenador</Label>
+              <Select
+                value={selectedTrainer || ""}
+                onValueChange={handleTrainerSelect}
+              >
+                <SelectTrigger id="trainer-select">
+                  <SelectValue placeholder="Selecciona un entrenador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {trainers.map((trainer) => (
+                    <SelectItem key={trainer.id} value={trainer.id}>
+                      {trainer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {selectedTrainer && trainerBranding && trainerBranding.logo_url && (
+              <div className="flex justify-center my-4">
+                <img 
+                  src={trainerBranding.logo_url} 
+                  alt="Trainer logo" 
+                  className="h-16 object-contain"
+                />
+              </div>
+            )}
+            
+            <Button
+              onClick={confirmTrainerSelection}
+              disabled={!selectedTrainer}
+              className="w-full"
+              style={trainerBranding ? { 
+                backgroundColor: trainerBranding.primary_color,
+                color: "#ffffff"
+              } : undefined}
+            >
+              Continuar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
