@@ -74,7 +74,7 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     setVideoErrors(newErrors);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name || selectedCategories.length === 0) {
       toast({
         title: "Error",
@@ -103,10 +103,20 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     }));
 
     try {
-      onSubmit({
+      await onSubmit({
         name,
         categories: selectedCategories,
         levels: formattedLevels,
+      });
+      
+      // Clean up state after successful submission
+      resetForm();
+    } catch (error) {
+      console.error("Error submitting exercise:", error);
+      toast({
+        title: "Error",
+        description: "Ha ocurrido un error al guardar el ejercicio.",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -118,15 +128,6 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     setSelectedCategories([]);
     setLevels([{ video: "", repetitions: 0, weight: 0 }]);
     setVideoErrors([false]);
-  };
-
-  const handleDialogChange = (open: boolean) => {
-    if (!open) {
-      // Small delay to prevent React state update conflicts
-      setTimeout(() => {
-        onClose();
-      }, 0);
-    }
   };
 
   return {
@@ -142,6 +143,5 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     removeLevel,
     handleVideoValidationChange,
     handleSubmit,
-    handleDialogChange
   };
 };

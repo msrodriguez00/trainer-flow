@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import { Exercise } from "@/types";
 import NewExerciseForm from "@/components/exercises/NewExerciseForm";
@@ -30,12 +30,11 @@ const Exercises = () => {
 
   const handleCreateExercise = async (exercise: Omit<Exercise, "id">) => {
     try {
-      const success = await createExercise(exercise);
-      if (success) {
-        closeForm();
-      }
+      await createExercise(exercise);
+      closeForm();
     } catch (error) {
       console.error("Error creating exercise:", error);
+      closeForm(); // Close form even on error
     }
   };
 
@@ -48,27 +47,24 @@ const Exercises = () => {
     if (!editExercise) return;
     
     try {
-      const success = await updateExercise(editExercise.id, updatedExercise);
-      if (success) {
-        closeForm();
-      }
+      await updateExercise(editExercise.id, updatedExercise);
+      closeForm();
     } catch (error) {
       console.error("Error updating exercise:", error);
+      closeForm(); // Close form even on error
     }
   };
 
-  const closeForm = () => {
-    // Use setTimeout to avoid state update conflict
-    setTimeout(() => {
-      setIsFormOpen(false);
-      setEditExercise(undefined);
-    }, 0);
-  };
+  // Use useCallback to prevent unnecessary re-renders
+  const closeForm = useCallback(() => {
+    setIsFormOpen(false);
+    setEditExercise(undefined);
+  }, []);
 
-  const openNewExerciseForm = () => {
+  const openNewExerciseForm = useCallback(() => {
     setEditExercise(undefined);
     setIsFormOpen(true);
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -91,15 +87,13 @@ const Exercises = () => {
         />
       </main>
 
-      {/* Only render the form component when it needs to be shown */}
-      {isFormOpen && (
-        <NewExerciseForm
-          isOpen={isFormOpen}
-          onClose={closeForm}
-          onSubmit={editExercise ? handleUpdateExercise : handleCreateExercise}
-          initialExercise={editExercise}
-        />
-      )}
+      {/* Conditionally render form component */}
+      <NewExerciseForm
+        isOpen={isFormOpen}
+        onClose={closeForm}
+        onSubmit={editExercise ? handleUpdateExercise : handleCreateExercise}
+        initialExercise={editExercise}
+      />
     </div>
   );
 };

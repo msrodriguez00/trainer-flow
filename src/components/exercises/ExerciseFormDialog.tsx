@@ -14,6 +14,7 @@ import { CategorySelection } from "./CategorySelection";
 import { ExerciseLevelsList } from "./ExerciseLevelsList";
 import { ExerciseNameInput } from "./ExerciseNameInput";
 import { EXERCISE_CATEGORIES } from "./constants";
+import { useEffect } from "react";
 
 interface ExerciseFormDialogProps {
   isOpen: boolean;
@@ -41,11 +42,27 @@ export const ExerciseFormDialog = ({
     removeLevel,
     handleVideoValidationChange,
     handleSubmit,
-    handleDialogChange
   } = useExerciseForm({ initialExercise, onSubmit, onClose });
 
+  // Force cleanup if dialog closes externally
+  useEffect(() => {
+    if (!isOpen) {
+      // Ensure any pending state is cleaned up
+      setTimeout(() => {
+        onClose();
+      }, 0);
+    }
+  }, [isOpen, onClose]);
+
+  const handleDialogChange = (open: boolean) => {
+    if (!open) {
+      // Safely close dialog
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogChange}>
+    <Dialog open={isOpen} onOpenChange={handleDialogChange} modal={true}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
