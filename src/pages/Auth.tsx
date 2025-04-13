@@ -15,7 +15,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [trainers, setTrainers] = useState<{ id: string; name: string }[]>([]);
   const [selectedTrainer, setSelectedTrainer] = useState<string | null>(null);
-  const [invitationData, setInvitationData] = useState<any>(null);
+  const [invitationId, setInvitationId] = useState<string | null>(null);
   const [invitationEmail, setInvitationEmail] = useState<string>("");
   const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [pendingInvitation, setPendingInvitation] = useState<TrainerInvitation | null>(null);
@@ -25,32 +25,30 @@ const Auth = () => {
   const { signIn, signUp, profile, isClient, isTrainer, isAdmin, user } = useAuth();
   const { toast } = useToast();
 
-  // Check for token and email in the URL for invitation handling
-  const token = searchParams.get("token");
+  // Check for email in the URL for invitation handling
   const email = searchParams.get("email");
-  const hasInvitationParams = !!(token && email);
+  const hasInvitationParams = !!email;
 
   useEffect(() => {
     if (profile) {
       if (hasInvitationParams) {
         // If we have invitation params and the user is logged in, check the invitation
-        checkInvitationAfterLogin(token as string, email as string);
+        checkInvitationAfterLogin(email as string);
       } else {
         redirectBasedOnRole();
       }
     }
   }, [profile]);
   
-  const checkInvitationAfterLogin = async (token: string, email: string) => {
+  const checkInvitationAfterLogin = async (email: string) => {
     try {
-      // Check if the invitation exists and is valid, using status field now
+      // Check if the invitation exists and is valid
       const { data: invitationData, error: invitationError } = await supabase
         .from("client_invitations")
         .select("*")
-        .eq("token", token)
         .eq("email", email.toLowerCase())
-        .eq("status", "pending") // Changed from 'accepted' boolean to 'status' field
-        .single();
+        .eq("status", "pending")
+        .maybeSingle();
         
       if (invitationError) throw invitationError;
       
@@ -124,10 +122,9 @@ const Auth = () => {
   const handleSignUp = async (name: string, email: string, password: string, trainerId: string | null) => {
     setLoading(true);
     try {
-      await signUp({ email, password, name, trainerId: trainerId || invitationData?.trainer_id });
+      await signUp({ email, password, name, trainerId: trainerId || selectedTrainer });
       
-      if (invitationData) {
-        // Don't accept the invitation yet - we'll do it after login
+      if (invitationId) {
         toast({
           title: "Registro exitoso",
           description: "Te has registrado correctamente. Por favor acepta o rechaza la invitación del entrenador.",
@@ -261,7 +258,7 @@ const Auth = () => {
     }
   };
 
-  const handleInvitationLoaded = ({ email, trainerId, trainers, invitationData }: any) => {
+  const handleInvitationLoaded = ({ email, trainerId, trainers, invitationId }: any) => {
     // Switch to sign-up if no user is logged in
     if (!user) {
       setType("sign-up");
@@ -269,7 +266,7 @@ const Auth = () => {
     setInvitationEmail(email);
     setSelectedTrainer(trainerId);
     setTrainers(trainers);
-    setInvitationData(invitationData);
+    setInvitationId(invitationId);
   };
 
   return (
@@ -290,7 +287,7 @@ const Auth = () => {
             trainers={trainers}
             initialEmail={invitationEmail}
             preselectedTrainer={selectedTrainer}
-            isInvitation={!!invitationData}
+            isInvitation={!!invitationId}
           />
         )}
       </AuthCard>

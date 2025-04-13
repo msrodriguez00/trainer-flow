@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,12 +44,11 @@ const ClientLogin = () => {
   const { user, isClient } = useAuth();
   const { toast } = useToast();
 
-  // Check for token and email in the URL
-  const token = searchParams.get("token");
+  // Check for email in the URL
   const emailParam = searchParams.get("email");
-  const hasInvitationParams = !!(token && emailParam);
+  const hasInvitationParams = !!emailParam;
 
-  // If token and email are in URL, pre-fill the email field
+  // If email is in URL, pre-fill the email field
   useEffect(() => {
     if (emailParam) {
       setEmail(emailParam);
@@ -62,23 +60,22 @@ const ClientLogin = () => {
     if (user && isClient) {
       if (hasInvitationParams) {
         // Check for invitation after login
-        checkInvitationAfterLogin(token as string, emailParam as string);
+        checkInvitationAfterLogin(emailParam as string);
       } else {
         navigate("/client-dashboard");
       }
     }
-  }, [user, isClient, navigate, hasInvitationParams, token, emailParam]);
+  }, [user, isClient, navigate, hasInvitationParams, emailParam]);
 
-  const checkInvitationAfterLogin = async (token: string, email: string) => {
+  const checkInvitationAfterLogin = async (email: string) => {
     try {
-      // Check if the invitation exists and is valid, using status field now
+      // Check if the invitation exists and is valid
       const { data: invitationData, error: invitationError } = await supabase
         .from("client_invitations")
         .select("*")
-        .eq("token", token)
         .eq("email", email.toLowerCase())
-        .eq("status", "pending") // Changed from 'accepted' boolean to 'status' field
-        .single();
+        .eq("status", "pending")
+        .maybeSingle();
         
       if (invitationError) throw invitationError;
       
@@ -181,7 +178,6 @@ const ClientLogin = () => {
     }
   };
 
-  // Handle first step - email/password authentication
   const handleFirstStepLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -355,7 +351,6 @@ const ClientLogin = () => {
     }
   };
 
-  // Handle selection from trainer modal
   const confirmTrainerSelection = () => {
     if (selectedTrainer) {
       setShowTrainerModal(false);
@@ -369,7 +364,6 @@ const ClientLogin = () => {
     }
   };
 
-  // Dynamic styles based on selected trainer
   const dynamicStyles = trainerBranding ? {
     cardStyle: {
       borderColor: trainerBranding.primary_color,
@@ -456,7 +450,7 @@ const ClientLogin = () => {
                 <div className="text-center mt-2">
                   <Button 
                     variant="link" 
-                    onClick={() => navigate(`/auth?token=${token}&email=${emailParam}`)}
+                    onClick={() => navigate(`/auth?email=${emailParam}`)}
                   >
                     No tengo cuenta - Crear cuenta
                   </Button>
@@ -467,7 +461,6 @@ const ClientLogin = () => {
         </CardContent>
       </Card>
       
-      {/* Trainer selection modal */}
       <Dialog open={showTrainerModal} onOpenChange={setShowTrainerModal}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -518,7 +511,6 @@ const ClientLogin = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Invitation modal */}
       <InvitationResponseModal
         invitation={pendingInvitation}
         isOpen={showInvitationModal}

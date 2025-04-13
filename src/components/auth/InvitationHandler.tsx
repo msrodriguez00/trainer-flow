@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,21 +9,12 @@ interface Trainer {
   name: string;
 }
 
-interface InvitationData {
-  trainer_id: string;
-  token: string;
-  email: string;
-  trainer?: {
-    name: string;
-  };
-}
-
 interface InvitationHandlerProps {
   onInvitationLoaded: (data: {
     email: string;
     trainerId: string;
     trainers: Trainer[];
-    invitationData: InvitationData;
+    invitationId: string;
   }) => void;
 }
 
@@ -32,19 +23,18 @@ export const InvitationHandler = ({ onInvitationLoaded }: InvitationHandlerProps
   const { toast } = useToast();
 
   useEffect(() => {
-    const token = searchParams.get("token");
     const email = searchParams.get("email");
     
-    if (token && email) {
+    if (email) {
       const fetchInvitationData = async () => {
         try {
-          // First fetch the invitation
+          // Fetch the invitation directly by email
           const { data: invitationData, error: invitationError } = await supabase
             .from("client_invitations")
             .select("*")
-            .eq("token", token)
-            .eq("email", email)
-            .single();
+            .eq("email", email.toLowerCase())
+            .eq("status", "pending")
+            .maybeSingle();
             
           if (invitationError) throw invitationError;
           
@@ -62,7 +52,7 @@ export const InvitationHandler = ({ onInvitationLoaded }: InvitationHandlerProps
             const { data: existingClients, error: existingClientsError } = await supabase
               .from("clients")
               .select("*")
-              .eq("email", email);
+              .eq("email", email.toLowerCase());
               
             if (existingClientsError) throw existingClientsError;
             
@@ -85,19 +75,11 @@ export const InvitationHandler = ({ onInvitationLoaded }: InvitationHandlerProps
             
             const trainers: Trainer[] = trainerProfiles || [];
             
-            // Combine invitation and trainer data
-            const combinedInvitationData: InvitationData = {
-              ...invitationData,
-              trainer: {
-                name: trainerData?.name || "Unnamed Trainer"
-              }
-            };
-            
             onInvitationLoaded({
               email,
               trainerId: invitationData.trainer_id,
               trainers,
-              invitationData: combinedInvitationData,
+              invitationId: invitationData.id,
             });
           }
         } catch (error) {

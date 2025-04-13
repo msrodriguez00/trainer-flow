@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import InviteClientForm from "@/components/InviteClientForm";
@@ -20,7 +19,6 @@ interface Invitation {
   created_at: string;
   expires_at: string;
   status: InvitationStatus;
-  token: string;
 }
 
 const ClientInvite = () => {
@@ -74,13 +72,12 @@ const ClientInvite = () => {
   }, [user]);
 
   const handleResendInvitation = async (invitation: Invitation) => {
-    // En una aplicación real, esto reenviaría el correo electrónico con el enlace de invitación
     toast({
       title: "Invitación reenviada",
       description: `Se ha reenviado la invitación a ${invitation.email}.`,
     });
     
-    console.log(`Reenvío de enlace de invitación: ${window.location.origin}/auth?token=${invitation.token}&email=${encodeURIComponent(invitation.email)}`);
+    console.log(`Reenvío de invitación a ${invitation.email}`);
   };
 
   const handleDeleteInvitation = async () => {
