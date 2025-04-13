@@ -67,7 +67,7 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
           
         if (clientError) {
           console.error("Error al buscar cliente:", clientError);
-          if (clientError.code !== 'PGRST116') throw clientError;
+          throw clientError;
         }
         
         console.log("Client data:", clientData);

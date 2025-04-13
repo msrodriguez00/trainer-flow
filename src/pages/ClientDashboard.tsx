@@ -25,12 +25,20 @@ const ClientDashboard = () => {
 
   // Debug para ver si estamos cargando la página correctamente
   useEffect(() => {
-    console.log("ClientDashboard rendering", { isLoading, isClient, profile });
-  }, [isLoading, isClient, profile]);
+    console.log("ClientDashboard rendering", { 
+      isLoading, 
+      isClient, 
+      profile,
+      user: user ? {
+        id: user.id,
+        email: user.email,
+      } : null
+    });
+  }, [isLoading, isClient, profile, user]);
 
   // Manejador para cambios de entrenador
   const handleTrainerChange = (trainerId: string, trainerName: string, trainerBranding?: any) => {
-    console.log("Entrenador seleccionado:", trainerName, "ID:", trainerId);
+    console.log("Entrenador seleccionado:", trainerName, "ID:", trainerId, "Branding:", trainerBranding);
     toast({
       title: "Entrenador seleccionado",
       description: `Has seleccionado a ${trainerName} como tu entrenador actual.`,
