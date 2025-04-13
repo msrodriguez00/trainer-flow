@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Plan } from "@/types";
 import { ClipboardList, Calendar as CalendarIcon, Activity } from "lucide-react";
+import PendingInvitationsCard from "@/components/client/PendingInvitationsCard";
 
 interface Trainer {
   id: string;
@@ -200,6 +201,11 @@ const ClientDashboard = () => {
                 Aquí puedes ver tus planes de entrenamiento y tu calendario de actividades.
               </p>
             </CardContent>
+          </Card>
+          
+          {/* Nueva Sección: Invitaciones de Entrenadores */}
+          <Card className="col-span-full mb-6">
+            <PendingInvitationsCard />
           </Card>
           
           {/* Sección de Calendario */}
