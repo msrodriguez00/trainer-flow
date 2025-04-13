@@ -9,17 +9,15 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
   const normalizedEmail = email.toLowerCase().trim();
   console.log("Normalized email for query:", normalizedEmail);
   
-  // Log relevant request information without accessing protected properties
+  // Log relevant request information
   console.log("Fetching invitations for email:", normalizedEmail);
   console.log("QUERY START: Fetching invitations from client_invitations table");
-  console.log("SQL equivalent: SELECT * FROM client_invitations WHERE email = '" + normalizedEmail + "' AND status = 'pending'");
   
   try {
-    // First attempt to get data with select and filter methods
+    // The RLS policy will filter based on the authenticated user's email
     const { data: invitationsData, error: invitationsError } = await supabase
       .from("client_invitations")
       .select("id, email, trainer_id, created_at, status")
-      .eq("email", normalizedEmail)
       .eq("status", "pending");
     
     console.log("QUERY END: Response received from database");
@@ -30,26 +28,6 @@ export const fetchPendingInvitationsByEmail = async (email: string): Promise<Tra
     if (invitationsError) {
       console.error("Error fetching invitations:", invitationsError);
       throw invitationsError;
-    }
-
-    // Try a direct RPC call as alternative if available data is empty
-    if (!invitationsData || invitationsData.length === 0) {
-      console.log("No data found with regular query, trying direct SQL query via RPC if available");
-      
-      // For debugging purposes, also try to count total invitations
-      const { data: countData } = await supabase
-        .from("client_invitations")
-        .select("id", { count: "exact" });
-      
-      console.log("Total invitations in database:", countData?.length || 0);
-      
-      // Check if there are any invitations with this email regardless of status
-      const { data: anyInvitations } = await supabase
-        .from("client_invitations")
-        .select("id, email, status")
-        .eq("email", normalizedEmail);
-      
-      console.log("Any invitations for this email:", anyInvitations);
     }
 
     // If we have invitations, obtain the names of the trainers
@@ -106,7 +84,7 @@ export const acceptInvitation = async (invitationId: string, trainerId: string, 
   // Normalize email
   const normalizedEmail = userEmail.toLowerCase().trim();
   
-  // Update the status to 'accepted'
+  // Update the status to 'accepted' - RLS policy will ensure user can only update their own invitations
   const { error: updateError } = await supabase
     .from("client_invitations")
     .update({ status: "accepted" })
@@ -171,7 +149,7 @@ export const acceptInvitation = async (invitationId: string, trainerId: string, 
 export const rejectInvitation = async (invitationId: string): Promise<void> => {
   console.log("Rejecting invitation:", invitationId);
   
-  // Update the status to 'rejected'
+  // Update the status to 'rejected' - RLS policy will ensure user can only update their own invitations
   const { error } = await supabase
     .from("client_invitations")
     .update({ status: "rejected" })
