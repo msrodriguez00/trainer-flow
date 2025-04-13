@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,21 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Plan } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
-const TrainingPlansList = () => {
+export const TrainingPlansList = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
 
-  // Primero obtenemos el ID del cliente asociado con este usuario
   useEffect(() => {
     if (user) {
       fetchClientId();
     }
   }, [user]);
 
-  // Luego obtenemos los planes del cliente
   useEffect(() => {
     if (clientId) {
       fetchClientPlans();
@@ -64,7 +61,6 @@ const TrainingPlansList = () => {
     
     setLoading(true);
     try {
-      // Modificamos la consulta para evitar referencias a relaciones inexistentes
       const { data: plansData, error: plansError } = await supabase
         .from("plans")
         .select(`
@@ -90,11 +86,9 @@ const TrainingPlansList = () => {
       console.log("Plans data:", plansData);
 
       if (plansData && plansData.length > 0) {
-        // Obtener los ejercicios de cada plan en consultas separadas
         const formattedPlans: Plan[] = [];
         
         for (const plan of plansData) {
-          // Consulta para obtener los ejercicios del plan
           const { data: planExercises, error: exercisesError } = await supabase
             .from("plan_exercises")
             .select(`
@@ -109,7 +103,6 @@ const TrainingPlansList = () => {
             continue;
           }
           
-          // Para cada plan_exercise, obtener los datos del ejercicio
           const exercisesWithNames = [];
           
           for (const planExercise of (planExercises || [])) {
@@ -132,7 +125,6 @@ const TrainingPlansList = () => {
             });
           }
           
-          // Añadir el plan con sus ejercicios al array
           formattedPlans.push({
             id: plan.id,
             name: plan.name,

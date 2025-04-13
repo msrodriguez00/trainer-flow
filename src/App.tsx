@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,6 +21,7 @@ import ClientInvite from "./pages/ClientInvite";
 import Plans from "./pages/Plans";
 import PlanDetails from "./pages/PlanDetails";
 import ClientDashboard from "./pages/ClientDashboard"; 
+import ClientPlans from "./pages/ClientPlans";
 import AdminDashboard from "./pages/AdminDashboard";
 import TrainerDashboard from "./pages/TrainerDashboard";
 import NotFound from "./pages/NotFound";
@@ -164,7 +166,7 @@ const App = () => (
             } />
             <Route path="/client-plans" element={
               <ProtectedRoute clientOnly>
-                <ClientDashboard />
+                <ClientPlans />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={

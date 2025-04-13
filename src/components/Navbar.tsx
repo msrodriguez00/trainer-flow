@@ -10,7 +10,10 @@ const Navbar = () => {
   const location = useLocation();
   const { isClient, isAdmin, isTrainer, profile } = useAuth();
   
-  // Filtrar los elementos de navegación según el rol del usuario
+  // Definir las rutas específicas para planes según el tipo de usuario
+  const plansPath = isClient ? "/client-plans" : "/plans";
+  
+  // Definir los elementos de navegación según el rol del usuario
   const navItems = [
     { 
       path: isClient ? "/client-dashboard" : isTrainer ? "/trainer-dashboard" : isAdmin ? "/admin" : "/", 
@@ -21,9 +24,8 @@ const Navbar = () => {
     { path: "/exercises", icon: Dumbbell, label: "Ejercicios", showFor: "trainer" },
     { path: "/library", icon: BookOpen, label: "Biblioteca", showFor: "trainer" },
     { path: "/clients", icon: Users, label: "Clientes", showFor: "trainer" },
-    // Modificamos este item para asegurar que los clientes usen la ruta correcta
     { 
-      path: isClient ? "/client-dashboard" : "/plans", 
+      path: plansPath,
       icon: ClipboardList, 
       label: "Planes", 
       showFor: "all" 
@@ -36,6 +38,22 @@ const Navbar = () => {
     if (item.showFor === "trainer" && (isTrainer || isAdmin)) return true;
     return false;
   });
+
+  // Function to check if a nav item is active
+  const isNavItemActive = (path: string) => {
+    // Para el cliente, considerar tanto /client-dashboard como / como la misma página
+    if (isClient && path === "/client-dashboard" && location.pathname === "/") {
+      return true;
+    }
+    
+    // Para el tab de planes de clientes, considerar equivalentes client-plans y client-dashboard
+    if (isClient && path === "/client-plans" && location.pathname === "/client-plans") {
+      return true;
+    }
+    
+    // Comparación exacta de rutas para todos los demás casos
+    return location.pathname === path;
+  };
 
   return (
     <nav className="bg-white shadow-sm">
@@ -63,7 +81,7 @@ const Navbar = () => {
                   onClick={() => navigate(item.path)}
                   className={cn(
                     "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium",
-                    location.pathname === item.path
+                    isNavItemActive(item.path)
                       ? "border-primary text-gray-900"
                       : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   )}
@@ -90,7 +108,7 @@ const Navbar = () => {
               onClick={() => navigate(item.path)}
               className={cn(
                 "flex flex-col items-center py-2 px-3",
-                location.pathname === item.path
+                isNavItemActive(item.path)
                   ? "text-primary"
                   : "text-gray-500 hover:text-gray-900"
               )}
