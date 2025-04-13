@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -6,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
 
 type ProfilePersonalInfoProps = {
   userId: string;
@@ -31,6 +29,7 @@ const ProfilePersonalInfo = ({
   const [name, setName] = useState(initialName);
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
   const [updating, setUpdating] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const { toast } = useToast();
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -42,7 +41,6 @@ const ProfilePersonalInfo = ({
     try {
       console.log("Actualizando perfil para:", userId);
       
-      // Actualizar perfil del usuario con manejo de errores mejorado
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -71,6 +69,55 @@ const ProfilePersonalInfo = ({
       });
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleUploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+    
+    const file = event.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/avatars/${Date.now()}.${fileExt}`;
+
+    setUploadingAvatar(true);
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          upsert: true,
+          contentType: file.type
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrlData.publicUrl })
+        .eq("id", userId);
+
+      if (profileError) throw profileError;
+
+      setAvatarUrl(publicUrlData.publicUrl);
+
+      toast({
+        title: "Avatar actualizado",
+        description: "Tu avatar se ha subido correctamente.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error al subir el avatar",
+        description: error.message || "Ha ocurrido un error al subir tu avatar.",
+      });
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -140,28 +187,40 @@ const ProfilePersonalInfo = ({
           )}
           
           <div className="space-y-2">
-            <Label htmlFor="avatar">URL de Avatar</Label>
-            <Input
-              id="avatar"
-              type="url"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="https://ejemplo.com/avatar.jpg"
-            />
-            {avatarUrl && (
-              <div className="mt-2 flex items-center">
+            <Label htmlFor="avatar">Subir Avatar</Label>
+            <div className="flex items-center gap-4">
+              {avatarUrl && (
                 <img
                   src={avatarUrl}
                   alt="Avatar preview"
-                  className="w-12 h-12 rounded-full object-cover mr-4"
+                  className="w-24 h-24 rounded-full object-cover mr-4"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = "https://via.placeholder.com/150";
                   }}
                 />
-                <span className="text-sm text-gray-500">Vista previa del avatar</span>
+              )}
+              <div>
+                <Label htmlFor="avatar-upload" className="cursor-pointer">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Upload size={16} />
+                    <span>Subir nuevo avatar</span>
+                  </div>
+                  <Input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadAvatar}
+                    className="hidden"
+                    disabled={uploadingAvatar}
+                  />
+                </Label>
+                {uploadingAvatar && <p className="text-sm text-gray-500">Subiendo...</p>}
+                <p className="text-xs text-gray-500 mt-1">
+                  Formatos recomendados: PNG, JPG. Tamaño máximo: 5MB
+                </p>
               </div>
-            )}
+            </div>
           </div>
           
           <Button type="submit" disabled={updating}>

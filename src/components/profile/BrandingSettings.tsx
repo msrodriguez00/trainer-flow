@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -54,7 +53,6 @@ const BrandingSettings = ({
         updated_at: new Date().toISOString(),
       };
 
-      // Verificar si ya existe un registro de marca para este entrenador
       const { data: existingBrand, error: checkError } = await supabase
         .from("trainer_brands")
         .select("*")
@@ -67,7 +65,6 @@ const BrandingSettings = ({
       }
 
       if (existingBrand) {
-        // Actualizar la configuración existente
         const { error: brandError } = await supabase
           .from("trainer_brands")
           .update(brandData)
@@ -78,7 +75,6 @@ const BrandingSettings = ({
           throw new Error(`Error al actualizar marca: ${brandError.message}`);
         }
       } else {
-        // Crear una nueva configuración
         const { error: brandError } = await supabase
           .from("trainer_brands")
           .insert(brandData);
@@ -113,22 +109,25 @@ const BrandingSettings = ({
     
     const file = event.target.files[0];
     const fileExt = file.name.split('.').pop();
-    const filePath = `${userId}/logos/${Math.random()}.${fileExt}`;
+    const fileName = `${userId}/logos/${Date.now()}.${fileExt}`;
 
     setUploadingLogo(true);
 
     try {
       const { error: uploadError } = await supabase.storage
         .from('trainer-assets')
-        .upload(filePath, file);
+        .upload(fileName, file, {
+          upsert: true,
+          contentType: file.type
+        });
 
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage
+      const { data: publicUrlData } = supabase.storage
         .from('trainer-assets')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
-      setLogoUrl(data.publicUrl);
+      setLogoUrl(publicUrlData.publicUrl);
 
       toast({
         title: "Logo subido",
