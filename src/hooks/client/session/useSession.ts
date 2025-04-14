@@ -74,14 +74,17 @@ export const useSession = (sessionId: string): UseSessionResponse => {
         const trainingSeries: TrainingSeries[] = data.series.map(series => ({
           ...series,
           isCompleted: false,
-          exercises: series.exercises.map(ex => ({
-            ...ex,
-            id: ex.id, // Ensure id is included
-            isCompleted: false,
-            videoUrl: ex.videoUrl || '',
-            repetitions: ex.repetitions,
-            weight: ex.weight
-          }))
+          exercises: series.exercises.map(ex => {
+            // Ensure all properties exist in the transformed object
+            return {
+              ...ex,
+              isCompleted: false,
+              id: ex.id || ex.exerciseId, // Use either id or exerciseId
+              videoUrl: ex.videoUrl || '',
+              repetitions: ex.repetitions || 0,
+              weight: ex.weight || 0
+            } as TrainingExercise;
+          })
         }));
         
         setSessionState({
