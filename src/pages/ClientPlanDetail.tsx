@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Plan } from "@/types";
@@ -13,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useClientIdentification } from "@/hooks/client/useClientIdentification";
 import ClientAuthError from "@/components/client/common/ClientAuthError";
 import LoadingScreen from "@/components/client/common/LoadingScreen";
+import SessionDatePicker from "@/components/client/plans/SessionDatePicker";
 
 const ClientPlanDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -66,7 +68,8 @@ const ClientPlanDetail = () => {
           .select(`
             id,
             name,
-            order_index
+            order_index,
+            scheduled_date
           `)
           .eq("plan_id", planData.id)
           .order("order_index", { ascending: true });
@@ -149,6 +152,7 @@ const ClientPlanDetail = () => {
             id: session.id,
             name: session.name,
             orderIndex: session.order_index,
+            scheduledDate: session.scheduled_date,
             series: seriesList
           });
         }
@@ -185,6 +189,27 @@ const ClientPlanDetail = () => {
       setLoading(false);
     }
   };
+
+  const handleSessionDateUpdate = useCallback((sessionId: string, newDate: string | null) => {
+    if (!plan) return;
+    
+    setPlan(prevPlan => {
+      if (!prevPlan) return null;
+      
+      return {
+        ...prevPlan,
+        sessions: prevPlan.sessions.map(session => {
+          if (session.id === sessionId) {
+            return {
+              ...session,
+              scheduledDate: newDate
+            };
+          }
+          return session;
+        })
+      };
+    });
+  }, [plan]);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "d 'de' MMMM, yyyy", {
@@ -321,9 +346,26 @@ const ClientPlanDetail = () => {
                     {plan.sessions.map((session) => (
                       <AccordionItem key={session.id} value={session.id} className="border rounded-lg">
                         <AccordionTrigger className="px-4 py-3">
-                          <div className="font-medium">{session.name}</div>
+                          <div className="flex flex-col md:flex-row md:items-center md:gap-4 w-full">
+                            <div className="font-medium">{session.name}</div>
+                            {session.scheduledDate && (
+                              <div className="text-sm text-muted-foreground flex items-center mt-1 md:mt-0">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {formatDate(session.scheduledDate)}
+                              </div>
+                            )}
+                          </div>
                         </AccordionTrigger>
                         <AccordionContent className="px-4 pb-4">
+                          <div className="mb-4">
+                            <label className="text-sm font-medium mb-1 block">Fecha programada:</label>
+                            <SessionDatePicker 
+                              sessionId={session.id} 
+                              initialDate={session.scheduledDate}
+                              onDateUpdated={(newDate) => handleSessionDateUpdate(session.id, newDate)}
+                            />
+                          </div>
+                          
                           {session.series.map((serie) => (
                             <div key={serie.id} className="mt-4 first:mt-0">
                               <h4 className="font-medium text-primary mb-2">{serie.name}</h4>

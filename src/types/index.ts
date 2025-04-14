@@ -55,6 +55,7 @@ export type Session = {
   id: string;
   name: string;
   orderIndex: number;
+  scheduledDate?: string | null;
   series: Series[];
 };
 
