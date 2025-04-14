@@ -3,10 +3,10 @@ import React from "react";
 import SessionExerciseItem from "./SessionExerciseItem";
 
 interface Exercise {
+  exerciseId: string;
   exerciseName: string;
   level: number;
-  exerciseId: string;
-  evaluations: any[];
+  evaluations?: any[]; // Made evaluations optional to match PlanExercise type
 }
 
 interface SeriesProps {
@@ -28,6 +28,7 @@ const SeriesSection: React.FC<SeriesProps> = ({ name, exercises }) => {
               key={idx} 
               exerciseName={exercise.exerciseName} 
               level={exercise.level}
+              evaluations={exercise.evaluations}
             />
           ))}
         </div>

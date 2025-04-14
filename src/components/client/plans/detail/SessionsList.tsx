@@ -7,7 +7,7 @@ interface Exercise {
   exerciseId: string;
   exerciseName: string;
   level: number;
-  evaluations: any[];
+  evaluations?: any[]; // Made evaluations optional
 }
 
 interface Series {

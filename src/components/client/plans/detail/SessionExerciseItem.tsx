@@ -4,6 +4,7 @@ import React from "react";
 interface ExerciseProps {
   exerciseName: string;
   level: number;
+  evaluations?: any[]; // Made evaluations optional
 }
 
 const SessionExerciseItem: React.FC<ExerciseProps> = ({ exerciseName, level }) => {

@@ -3,7 +3,6 @@ import React from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { CalendarClock } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { 
   Accordion, 
   AccordionContent, 
@@ -14,16 +13,18 @@ import { Card } from "@/components/ui/card";
 import SeriesSection from "./SeriesSection";
 import SessionCalendarButton from "./SessionCalendarButton";
 
+interface Exercise {
+  exerciseId: string;
+  exerciseName: string;
+  level: number;
+  evaluations?: any[]; // Made evaluations optional
+}
+
 interface Series {
   id: string;
   name: string;
   orderIndex: number;
-  exercises: Array<{
-    exerciseId: string;
-    exerciseName: string;
-    level: number;
-    evaluations: any[];
-  }>;
+  exercises: Exercise[];
 }
 
 interface SessionProps {
