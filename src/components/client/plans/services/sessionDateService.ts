@@ -1,6 +1,13 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+
+// Updated return type to include 'warning'
+type SessionDateServiceResult = {
+  success: boolean;
+  data?: any;
+  error?: any;
+  warning?: string;
+};
 
 /**
  * Updates the scheduled date of a session in the database
@@ -9,7 +16,7 @@ export async function updateSessionDate(
   sessionId: string, 
   clientId: string, 
   date: Date | null
-): Promise<{ success: boolean; data?: any; error?: any }> {
+): Promise<SessionDateServiceResult> {
   try {
     console.log("1. Iniciando actualización de fecha de sesión:", {
       sessionId,

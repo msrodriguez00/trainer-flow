@@ -6,6 +6,14 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
+// Import the result type from the service
+type SessionDateServiceResult = {
+  success: boolean;
+  data?: any;
+  error?: any;
+  warning?: string;
+};
+
 export const useSessionDate = (
   sessionId: string,
   initialDate?: string | null,
@@ -38,7 +46,7 @@ export const useSessionDate = (
     setIsUpdating(true);
     
     try {
-      const result = await updateSessionDate(sessionId, clientId, date || null);
+      const result: SessionDateServiceResult = await updateSessionDate(sessionId, clientId, date || null);
       
       if (!result.success) {
         toast({
