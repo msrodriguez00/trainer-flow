@@ -1,83 +1,48 @@
+
 import { useState, useEffect } from "react";
-import { Exercise, Client } from "@/types";
+import { Client, Exercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePlanFormService } from "./planFormService";
+import { useSessionOperations } from "./useSessionOperations";
+import { useExerciseOperations } from "./useExerciseOperations";
+import { createInitialSession } from "./sessionUtils";
+import { UsePlanFormResult } from "./types";
 
-interface ExerciseSelection {
-  exerciseId: string;
-  level: number;
-  sessionId: string;
-  seriesId: string;
-}
-
-interface Series {
-  id: string;
-  name: string;
-  exercises: ExerciseSelection[];
-}
-
-interface Session {
-  id: string;
-  name: string;
-  series: Series[];
-}
-
-interface UsePlanFormResult {
-  name: string;
-  setName: (name: string) => void;
-  clientId: string;
-  setClientId: (id: string) => void;
-  month: string;
-  setMonth: (month: string) => void;
-  clients: Client[];
-  exercises: Exercise[];
-  sessions: Session[];
-  loading: boolean;
-  
-  addSession: () => void;
-  removeSession: (index: number) => void;
-  updateSessionName: (index: number, name: string) => void;
-  
-  addSeries: (sessionIndex: number) => void;
-  removeSeries: (sessionIndex: number, seriesIndex: number) => void;
-  updateSeriesName: (sessionIndex: number, seriesIndex: number, name: string) => void;
-  
-  addExerciseToSeries: (sessionIndex: number, seriesIndex: number) => void;
-  removeExerciseFromSeries: (sessionIndex: number, seriesIndex: number, exerciseIndex: number) => void;
-  handleExerciseChange: (sessionIndex: number, seriesIndex: number, exerciseIndex: number, exerciseId: string) => void;
-  handleLevelChange: (sessionIndex: number, seriesIndex: number, exerciseIndex: number, level: number) => void;
-  
-  handleSubmit: (e: React.FormEvent) => Promise<void>;
-}
-
-export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => void) {
+export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => void): UsePlanFormResult {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { fetchClients, fetchExercises } = usePlanFormService();
+  
   const [name, setName] = useState("");
   const [month, setMonth] = useState("");
   const [clientId, setClientId] = useState(initialClientId || "");
-  const [sessions, setSessions] = useState<Session[]>([
-    {
-      id: `temp-session-${Date.now()}`,
-      name: "Sesión 1",
-      series: [
-        {
-          id: `temp-series-${Date.now()}`,
-          name: "Serie 1",
-          exercises: []
-        }
-      ]
-    }
-  ]);
   const [clients, setClients] = useState<Client[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const {
+    sessions,
+    setSessions,
+    addSession,
+    removeSession,
+    updateSessionName,
+    addSeries,
+    removeSeries,
+    updateSeriesName
+  } = useSessionOperations([createInitialSession()]);
+
+  const {
+    addExerciseToSeries,
+    removeExerciseFromSeries,
+    handleExerciseChange,
+    handleLevelChange
+  } = useExerciseOperations(sessions, setSessions);
+
   useEffect(() => {
     if (user) {
-      fetchClients();
-      fetchExercises();
+      loadInitialData();
     }
   }, [user]);
 
@@ -87,160 +52,18 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
     }
   }, [initialClientId]);
 
-  const fetchClients = async () => {
+  const loadInitialData = async () => {
     if (!user) return;
-
+    
     try {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("trainer_id", user.id)
-        .order("name");
-
-      if (error) throw error;
-
-      setClients(data || []);
-    } catch (error) {
-      console.error("Error fetching clients:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los clientes.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchExercises = async () => {
-    if (!user) return;
-
-    try {
-      console.log("Fetching exercises...");
-      const { data, error } = await supabase
-        .from("exercises")
-        .select("id, name, categories, levels")
-        .order("name");
-
-      if (error) throw error;
-
-      console.log("Exercises data received:", data);
-
-      const formattedExercises: Exercise[] = data.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        categories: item.categories || [],
-        levels: Array.isArray(item.levels) ? item.levels : []
-      }));
-
-      console.log("Formatted exercises:", formattedExercises);
-      setExercises(formattedExercises);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching exercises:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los ejercicios.",
-        variant: "destructive",
-      });
+      const clientsData = await fetchClients(user.id);
+      setClients(clientsData);
+      
+      const exercisesData = await fetchExercises();
+      setExercises(exercisesData);
+    } finally {
       setLoading(false);
     }
-  };
-
-  const addSession = () => {
-    setSessions([
-      ...sessions,
-      {
-        id: `temp-session-${Date.now()}`,
-        name: `Sesión ${sessions.length + 1}`,
-        series: [
-          {
-            id: `temp-series-${Date.now()}`,
-            name: "Serie 1",
-            exercises: []
-          }
-        ]
-      }
-    ]);
-  };
-
-  const removeSession = (index: number) => {
-    if (sessions.length > 1) {
-      setSessions(sessions.filter((_, i) => i !== index));
-    } else {
-      toast({
-        title: "Error",
-        description: "El plan debe tener al menos una sesión.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updateSessionName = (index: number, name: string) => {
-    const updatedSessions = [...sessions];
-    updatedSessions[index].name = name;
-    setSessions(updatedSessions);
-  };
-
-  const addSeries = (sessionIndex: number) => {
-    const updatedSessions = [...sessions];
-    updatedSessions[sessionIndex].series.push({
-      id: `temp-series-${Date.now()}`,
-      name: `Serie ${updatedSessions[sessionIndex].series.length + 1}`,
-      exercises: []
-    });
-    setSessions(updatedSessions);
-  };
-
-  const removeSeries = (sessionIndex: number, seriesIndex: number) => {
-    const updatedSessions = [...sessions];
-    if (updatedSessions[sessionIndex].series.length > 1) {
-      updatedSessions[sessionIndex].series = updatedSessions[sessionIndex].series.filter(
-        (_, i) => i !== seriesIndex
-      );
-      setSessions(updatedSessions);
-    } else {
-      toast({
-        title: "Error",
-        description: "Cada sesión debe tener al menos una serie.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updateSeriesName = (sessionIndex: number, seriesIndex: number, name: string) => {
-    const updatedSessions = [...sessions];
-    updatedSessions[sessionIndex].series[seriesIndex].name = name;
-    setSessions(updatedSessions);
-  };
-
-  const addExerciseToSeries = (sessionIndex: number, seriesIndex: number) => {
-    const updatedSessions = [...sessions];
-    updatedSessions[sessionIndex].series[seriesIndex].exercises.push({
-      exerciseId: "",
-      level: 1,
-      sessionId: updatedSessions[sessionIndex].id,
-      seriesId: updatedSessions[sessionIndex].series[seriesIndex].id
-    });
-    setSessions(updatedSessions);
-  };
-
-  const removeExerciseFromSeries = (sessionIndex: number, seriesIndex: number, exerciseIndex: number) => {
-    const updatedSessions = [...sessions];
-    updatedSessions[sessionIndex].series[seriesIndex].exercises = 
-      updatedSessions[sessionIndex].series[seriesIndex].exercises.filter((_, i) => i !== exerciseIndex);
-    setSessions(updatedSessions);
-  };
-
-  const handleExerciseChange = (sessionIndex: number, seriesIndex: number, exerciseIndex: number, exerciseId: string) => {
-    const updatedSessions = [...sessions];
-    updatedSessions[sessionIndex].series[seriesIndex].exercises[exerciseIndex].exerciseId = exerciseId;
-    updatedSessions[sessionIndex].series[seriesIndex].exercises[exerciseIndex].level = 1;
-    setSessions(updatedSessions);
-  };
-
-  const handleLevelChange = (sessionIndex: number, seriesIndex: number, exerciseIndex: number, level: number) => {
-    const updatedSessions = [...sessions];
-    updatedSessions[sessionIndex].series[seriesIndex].exercises[exerciseIndex].level = level;
-    setSessions(updatedSessions);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
