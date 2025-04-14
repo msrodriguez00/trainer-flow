@@ -41,100 +41,31 @@ export const PlanItem: React.FC<PlanItemProps> = ({ plan }) => {
     navigate(`/client-plan/${plan.id}`);
   };
   
+  const handlePlanClick = () => {
+    navigate(`/client-plan/${plan.id}`);
+  };
+  
   return (
-    <Sheet key={plan.id}>
-      <SheetTrigger asChild>
-        <Button 
-          variant="outline" 
-          className="w-full justify-start"
-        >
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center">
-              <ClipboardList className="mr-2 h-4 w-4" />
-              <span>{plan.name}</span>
-            </div>
-            {plan.month && (
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Calendar className="mr-1 h-3 w-3" />
-                <span>{plan.month}</span>
-              </div>
-            )}
+    <div key={plan.id}>
+      <Button 
+        variant="outline" 
+        className="w-full justify-start"
+        onClick={handlePlanClick}
+      >
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center">
+            <ClipboardList className="mr-2 h-4 w-4" />
+            <span>{plan.name}</span>
           </div>
-        </Button>
-      </SheetTrigger>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>
-            <div className="flex items-center justify-between">
-              <span>{plan.name}</span>
-              {plan.month && (
-                <div className="flex items-center text-sm font-normal text-muted-foreground">
-                  <Calendar className="mr-1 h-4 w-4" />
-                  <span>{plan.month}</span>
-                </div>
-              )}
-            </div>
-          </SheetTitle>
-        </SheetHeader>
-        <div className="mt-6">
-          <div className="mb-4 text-sm text-gray-500">
-            Creado: {formatDate(plan.createdAt)}
-          </div>
-          
-          <div className="mb-6">
-            <Button onClick={handleViewDetails} className="w-full">
-              <span>Ver detalles completos</span>
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-          
-          <h3 className="text-lg font-medium mb-2">Sesiones ({plan.sessions.length})</h3>
-          
-          <Accordion type="single" collapsible className="space-y-2">
-            {plan.sessions.map((session, sessionIndex) => (
-              <AccordionItem key={session.id} value={`session-${sessionIndex}`} className="border rounded-md">
-                <AccordionTrigger className="px-3 py-2">
-                  <div className="flex items-center">
-                    <FolderKanban className="mr-2 h-4 w-4" />
-                    <span>{session.name}</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-3 pb-2">
-                  <div className="space-y-3 pl-2">
-                    {session.series.map((serie, serieIndex) => (
-                      <div key={serie.id} className="border-l-2 border-gray-200 pl-3">
-                        <h4 className="flex items-center text-sm font-medium mb-2">
-                          <Layers className="mr-2 h-4 w-4" />
-                          {serie.name} ({serie.exercises.length} ejercicios)
-                        </h4>
-                        <div className="space-y-2 pl-2">
-                          {serie.exercises.map((exercise, exerciseIndex) => (
-                            <div key={exerciseIndex} className="p-2 border rounded-md bg-gray-50">
-                              <div className="flex items-center">
-                                <Activity className="mr-2 h-4 w-4 text-primary" />
-                                <span>
-                                  {exercise.exerciseName || `Ejercicio ${exerciseIndex + 1}`} (Nivel {exercise.level})
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-          
-          {totalExercises === 0 && (
-            <div className="text-center p-4 border rounded-md mt-4">
-              <p className="text-gray-500">Este plan no contiene ejercicios.</p>
+          {plan.month && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Calendar className="mr-1 h-3 w-3" />
+              <span>{plan.month}</span>
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </Button>
+    </div>
   );
 };
 
