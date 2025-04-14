@@ -298,13 +298,14 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
       for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex++) {
         const session = sessions[sessionIndex];
         
-        // Crear sesión
+        // Crear sesión - Ahora incluyendo client_id
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
             name: session.name,
             plan_id: planData.id,
-            order_index: sessionIndex
+            order_index: sessionIndex,
+            client_id: clientId  // Add the client_id field
           })
           .select()
           .single();
@@ -314,13 +315,14 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
         for (let seriesIndex = 0; seriesIndex < session.series.length; seriesIndex++) {
           const series = session.series[seriesIndex];
           
-          // Crear serie
+          // Crear serie - Ahora incluyendo client_id
           const { data: seriesData, error: seriesError } = await supabase
             .from("series")
             .insert({
               name: series.name,
               session_id: sessionData.id,
-              order_index: seriesIndex
+              order_index: seriesIndex,
+              client_id: clientId  // Add the client_id field
             })
             .select()
             .single();
