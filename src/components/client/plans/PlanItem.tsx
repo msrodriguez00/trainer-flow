@@ -1,6 +1,6 @@
 
 import React from "react";
-import { ClipboardList, Activity, Layers, FolderKanban } from "lucide-react";
+import { ClipboardList, Activity, Layers, FolderKanban, Calendar } from "lucide-react";
 import { Plan } from "@/types";
 import { 
   Sheet, 
@@ -39,15 +39,33 @@ export const PlanItem: React.FC<PlanItemProps> = ({ plan }) => {
           variant="outline" 
           className="w-full justify-start"
         >
-          <div className="flex items-center">
-            <ClipboardList className="mr-2 h-4 w-4" />
-            <span>{plan.name}</span>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center">
+              <ClipboardList className="mr-2 h-4 w-4" />
+              <span>{plan.name}</span>
+            </div>
+            {plan.month && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Calendar className="mr-1 h-3 w-3" />
+                <span>{plan.month}</span>
+              </div>
+            )}
           </div>
         </Button>
       </SheetTrigger>
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>{plan.name}</SheetTitle>
+          <SheetTitle>
+            <div className="flex items-center justify-between">
+              <span>{plan.name}</span>
+              {plan.month && (
+                <div className="flex items-center text-sm font-normal text-muted-foreground">
+                  <Calendar className="mr-1 h-4 w-4" />
+                  <span>{plan.month}</span>
+                </div>
+              )}
+            </div>
+          </SheetTitle>
         </SheetHeader>
         <div className="mt-6">
           <div className="mb-4 text-sm text-gray-500">

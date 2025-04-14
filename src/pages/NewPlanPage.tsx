@@ -14,6 +14,7 @@ const NewPlanPage = () => {
   const handleCreatePlan = (plan: {
     name: string;
     clientId: string;
+    month?: string;
     exercises: any[];
     sessions?: any[];
   }) => {

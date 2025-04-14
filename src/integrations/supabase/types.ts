@@ -241,6 +241,7 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          month: string | null
           name: string
           trainer_id: string
         }
@@ -248,6 +249,7 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          month?: string | null
           name: string
           trainer_id: string
         }
@@ -255,6 +257,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          month?: string | null
           name?: string
           trainer_id?: string
         }

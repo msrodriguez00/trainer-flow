@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,7 +64,8 @@ export const usePlans = () => {
           id,
           name,
           client_id,
-          created_at
+          created_at,
+          month
         `)
         .eq("client_id", clientId)
         .order("created_at", { ascending: false });
@@ -185,6 +187,7 @@ export const usePlans = () => {
             name: plan.name,
             clientId: plan.client_id,
             createdAt: plan.created_at,
+            month: plan.month || undefined,
             sessions: sessions,
             exercises: allExercises
           });

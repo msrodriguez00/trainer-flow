@@ -7,6 +7,7 @@ interface NewPlanFormProps {
   onSubmit: (plan: {
     name: string;
     clientId: string;
+    month?: string;
     exercises: PlanExercise[];
     sessions?: any[];
   }) => void;

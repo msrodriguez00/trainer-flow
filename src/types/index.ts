@@ -65,4 +65,5 @@ export type Plan = {
   sessions: Session[];
   exercises: PlanExercise[];  // Para mantener compatibilidad hacia atrás
   createdAt: string;
+  month?: string;  // Campo de mes (opcional)
 };

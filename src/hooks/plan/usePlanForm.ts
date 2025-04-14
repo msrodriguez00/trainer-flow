@@ -29,6 +29,8 @@ interface UsePlanFormResult {
   setName: (name: string) => void;
   clientId: string;
   setClientId: (id: string) => void;
+  month: string;
+  setMonth: (month: string) => void;
   clients: Client[];
   exercises: Exercise[];
   sessions: Session[];
@@ -54,6 +56,7 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
   const { user } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState("");
+  const [month, setMonth] = useState("");
   const [clientId, setClientId] = useState(initialClientId || "");
   const [sessions, setSessions] = useState<Session[]>([
     {
@@ -283,7 +286,8 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
         .insert({
           name,
           client_id: clientId,
-          trainer_id: user.id
+          trainer_id: user.id,
+          month: month || null
         })
         .select()
         .single();
@@ -363,6 +367,7 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
         onSubmit({
           name,
           clientId,
+          month,
           exercises: allExercises,
           sessions
         });
@@ -388,6 +393,8 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
     setName,
     clientId,
     setClientId,
+    month,
+    setMonth,
     clients,
     exercises,
     sessions,

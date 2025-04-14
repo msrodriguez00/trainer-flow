@@ -18,6 +18,12 @@ interface PlanFormProps {
   onSubmit: (plan: any) => void;
 }
 
+// Array of months in Spanish
+const months = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+];
+
 const PlanForm = ({ initialClientId, onSubmit }: PlanFormProps) => {
   const navigate = useNavigate();
   const {
@@ -25,6 +31,8 @@ const PlanForm = ({ initialClientId, onSubmit }: PlanFormProps) => {
     setName,
     clientId,
     setClientId,
+    month,
+    setMonth,
     clients,
     exercises,
     sessions,
@@ -54,7 +62,7 @@ const PlanForm = ({ initialClientId, onSubmit }: PlanFormProps) => {
     <div className="bg-white p-6 rounded-lg shadow-sm max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Crear Nuevo Plan</h1>
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-2">
             <Label htmlFor="name">Nombre del Plan</Label>
             <Input
@@ -75,6 +83,21 @@ const PlanForm = ({ initialClientId, onSubmit }: PlanFormProps) => {
                 {clients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="month">Mes</Label>
+            <Select value={month} onValueChange={setMonth}>
+              <SelectTrigger id="month">
+                <SelectValue placeholder="Seleccionar mes (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((monthName) => (
+                  <SelectItem key={monthName} value={monthName}>
+                    {monthName}
                   </SelectItem>
                 ))}
               </SelectContent>
