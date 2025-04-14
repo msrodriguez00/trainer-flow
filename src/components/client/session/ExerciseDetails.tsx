@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrainingExercise } from "@/hooks/client/session/types";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell, Repeat, Weight } from "lucide-react";
 import VideoPlayer from "./VideoPlayer";
 
 interface ExerciseDetailsProps {
@@ -54,6 +54,25 @@ const ExerciseDetails: React.FC<ExerciseDetailsProps> = ({ exercise }) => {
           videoUrl={getVideoUrl()}
           title={exercise.exerciseName || "Ejercicio"}
         />
+        
+        {/* Exercise details: repetitions and weight */}
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+            <Repeat className="h-5 w-5 text-primary" />
+            <div>
+              <p className="text-sm font-medium">Repeticiones</p>
+              <p className="text-xl font-bold">{exercise.repetitions || '-'}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+            <Weight className="h-5 w-5 text-primary" />
+            <div>
+              <p className="text-sm font-medium">Carga</p>
+              <p className="text-xl font-bold">{exercise.weight ? `${exercise.weight} kg` : '-'}</p>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

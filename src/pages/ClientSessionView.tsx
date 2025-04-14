@@ -43,7 +43,7 @@ const ClientSessionView = () => {
   }
   
   return (
-    <MainLayout withoutPadding>
+    <MainLayout>
       <SessionView session={session} onExit={handleExit} />
     </MainLayout>
   );

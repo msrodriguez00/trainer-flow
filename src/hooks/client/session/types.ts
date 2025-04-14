@@ -3,6 +3,10 @@ import { PlanExercise, Series } from "@/types";
 
 export interface TrainingExercise extends PlanExercise {
   isCompleted: boolean;
+  videoUrl?: string;
+  id: string;
+  repetitions?: number;
+  weight?: number;
 }
 
 export interface TrainingSeries extends Omit<Series, 'exercises'> {

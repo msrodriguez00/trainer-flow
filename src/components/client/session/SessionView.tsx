@@ -50,7 +50,7 @@ const SessionView: React.FC<SessionViewProps> = ({ session, onExit }) => {
     toast({
       title: "¡Bien hecho!",
       description: "Ejercicio completado",
-      variant: "success"
+      variant: "default" // Changed from "success" to "default"
     });
   };
 

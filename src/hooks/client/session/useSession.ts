@@ -203,7 +203,7 @@ export const useSession = (sessionId: string): UseSessionResponse => {
       toast({
         title: "Serie completada",
         description: isLastSeries ? "¡Has completado todas las series!" : "Avanzando a la siguiente serie",
-        variant: "success"
+        variant: "default" // Changed from "success" to "default"
       });
       
     } catch (error) {

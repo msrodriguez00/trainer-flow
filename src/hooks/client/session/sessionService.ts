@@ -59,14 +59,21 @@ export const fetchSessionData = async (sessionId: string): Promise<SessionData |
       }
 
       // Transform exercises to the expected format
-      const formattedExercises = exercises.map((ex) => ({
-        exerciseId: ex.exercise_id,
-        exerciseName: ex.exercises.name,
-        id: ex.id,
-        level: ex.level,
-        evaluations: [],
-        videoUrl: ex.exercises.levels[ex.level - 1]?.video || ""
-      }));
+      const formattedExercises = exercises.map((ex) => {
+        // Get level data for the exercise
+        const levelData = ex.exercises.levels[ex.level - 1] || {};
+        
+        return {
+          exerciseId: ex.exercise_id,
+          exerciseName: ex.exercises.name,
+          id: ex.id,
+          level: ex.level,
+          evaluations: [],
+          videoUrl: levelData.video || "",
+          repetitions: levelData.repetitions || 0,
+          weight: levelData.weight || 0
+        };
+      });
 
       seriesWithExercises.push({
         ...series,
