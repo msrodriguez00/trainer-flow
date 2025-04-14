@@ -18,20 +18,16 @@ const NewExerciseForm = (props: NewExerciseFormProps) => {
       initialExerciseId: props.initialExercise?.id,
     });
     
-    // Cleanup function 
+    // Cleanup function without calling onClose during unmount
     return () => {
       console.log("NewExerciseForm unmounting - props:", {
         isOpen: props.isOpen,
         initialExerciseId: props.initialExercise?.id,
       });
       
-      // Only call onClose if dialog was open when component unmounts
-      if (props.isOpen) {
-        console.log("NewExerciseForm - Calling onClose during unmount while dialog was open");
-        props.onClose();
-      }
+      // Removed the problematic onClose call during unmount
     };
-  }, [props.isOpen, props.onClose, props.initialExercise]);
+  }, [props.isOpen, props.initialExercise]);
   
   // Separate logging for render phase
   console.log("NewExerciseForm rendering - isOpen:", props.isOpen, "initialExercise:", props.initialExercise?.id);

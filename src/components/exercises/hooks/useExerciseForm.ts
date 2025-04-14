@@ -143,11 +143,9 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
       // Reset the form to prevent issues if it's reused
       resetForm();
       
-      // Close the dialog after a short delay to ensure state updates complete
-      setTimeout(() => {
-        console.log("useExerciseForm - Closing dialog after successful submission");
-        onClose();
-      }, 100);
+      // Close the dialog immediately - removed the setTimeout that was causing issues
+      console.log("useExerciseForm - Closing dialog after successful submission");
+      onClose();
       
     } catch (error) {
       console.error("useExerciseForm - Error submitting exercise:", error);

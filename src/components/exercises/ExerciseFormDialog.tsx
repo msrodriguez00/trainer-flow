@@ -87,7 +87,7 @@ export const ExerciseFormDialog = ({
   
   return (
     <Dialog 
-      open={true} 
+      open={isOpen} // Use isOpen instead of hardcoded true
       onOpenChange={handleDialogChange} 
       modal={true}
     >

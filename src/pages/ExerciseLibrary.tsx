@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -144,6 +145,11 @@ const ExerciseLibrary = () => {
     if (!editExercise || !user) return;
     
     try {
+      // First close the form to avoid UI becoming unresponsive
+      setIsFormOpen(false);
+      setEditExercise(undefined);
+      
+      // Then perform the update operation
       const { error } = await supabase
         .from("exercises")
         .update({
@@ -165,9 +171,8 @@ const ExerciseLibrary = () => {
         description: `Se ha actualizado "${updatedExercise.name}" correctamente.`,
       });
       
+      // Finally fetch the updated data
       fetchExercises();
-      setIsFormOpen(false);
-      setEditExercise(undefined);
     } catch (error) {
       console.error("Error updating exercise:", error);
       toast({
