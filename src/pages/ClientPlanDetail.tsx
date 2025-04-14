@@ -104,16 +104,19 @@ const ClientPlanDetail = () => {
 
           const seriesList = [];
 
-          // Para cada serie, obtener los ejercicios
+          // Para cada serie, obtener los ejercicios con JOIN a la tabla exercises
           for (const serie of (seriesData || [])) {
-            // Obtener ejercicios con un JOIN para obtener todos los detalles del ejercicio
-            const { data: planExercises, error: exercisesError } = await supabase
+            const { data: exercisesWithDetails, error: exercisesError } = await supabase
               .from("plan_exercises")
               .select(`
                 id,
                 exercise_id,
                 level,
-                exercises:exercise_id (*)
+                evaluations (*),
+                exercises (
+                  id,
+                  name
+                )
               `)
               .eq("series_id", serie.id);
 
@@ -122,29 +125,40 @@ const ClientPlanDetail = () => {
               continue;
             }
 
-            console.log("Exercise data in plan detail for series", serie.id, ":", planExercises);
+            console.log("Exercise data in plan detail for series", serie.id, ":", exercisesWithDetails);
             
             // Debug para ver cada ejercicio
-            planExercises?.forEach((ex, idx) => {
+            exercisesWithDetails?.forEach((ex, idx) => {
               console.log(`Plan detail - Exercise ${idx} data:`, ex);
               console.log(`Plan detail - Exercise ${idx} name:`, ex.exercises?.name || "NO NAME FOUND");
             });
 
-            const exercisesWithNames = planExercises?.map(ex => ({
-              exerciseId: ex.exercise_id,
-              exerciseName: ex.exercises?.name || "Ejercicio sin nombre",
-              level: ex.level,
-              evaluations: []
-            })) || [];
+            const mappedExercises = exercisesWithDetails?.map(ex => {
+              const mappedEvaluations = ex.evaluations ? ex.evaluations.map((evaluation: any) => ({
+                timeRating: evaluation.time_rating,
+                weightRating: evaluation.weight_rating,
+                repetitionsRating: evaluation.repetitions_rating,
+                exerciseRating: evaluation.exercise_rating,
+                comment: evaluation.comment,
+                date: evaluation.date
+              })) : [];
+              
+              return {
+                exerciseId: ex.exercise_id,
+                exerciseName: ex.exercises?.name || "Ejercicio sin nombre",
+                level: ex.level,
+                evaluations: mappedEvaluations
+              };
+            }) || [];
 
             seriesList.push({
               id: serie.id,
               name: serie.name,
               orderIndex: serie.order_index,
-              exercises: exercisesWithNames
+              exercises: mappedExercises
             });
           }
-
+          
           sessions.push({
             id: session.id,
             name: session.name,
@@ -152,7 +166,7 @@ const ClientPlanDetail = () => {
             series: seriesList
           });
         }
-
+        
         // Aplanar ejercicios para compatibilidad con la estructura existente
         const allExercises = [];
         sessions.forEach(session => {

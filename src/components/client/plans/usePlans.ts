@@ -150,14 +150,17 @@ export const usePlans = () => {
             const seriesList: Series[] = [];
             
             for (const serie of (seriesData || [])) {
-              // Fetch exercises for this series, with a JOIN to get the exercise details directly
-              const { data: planExercises, error: exercisesError } = await supabase
+              // Fetch exercises for this series using a JOIN with the exercises table
+              const { data: exercisesWithDetails, error: exercisesError } = await supabase
                 .from("plan_exercises")
                 .select(`
                   id,
                   exercise_id,
                   level,
-                  exercises:exercise_id (*)
+                  exercises (
+                    id,
+                    name
+                  )
                 `)
                 .eq("series_id", serie.id);
                 
@@ -166,15 +169,15 @@ export const usePlans = () => {
                 continue;
               }
               
-              console.log("Exercise data for series", serie.id, ":", planExercises);
+              console.log("Exercise data for series", serie.id, ":", exercisesWithDetails);
               
               // Debug each exercise to make sure we have the name
-              planExercises?.forEach((ex, idx) => {
+              exercisesWithDetails?.forEach((ex, idx) => {
                 console.log(`Exercise ${idx} data:`, ex);
                 console.log(`Exercise ${idx} name:`, ex.exercises?.name || "NO NAME FOUND");
               });
               
-              const exercisesWithNames: PlanExercise[] = planExercises?.map(ex => ({
+              const exercisesWithNames: PlanExercise[] = exercisesWithDetails?.map(ex => ({
                 exerciseId: ex.exercise_id,
                 exerciseName: ex.exercises?.name || "Ejercicio sin nombre",
                 level: ex.level,
