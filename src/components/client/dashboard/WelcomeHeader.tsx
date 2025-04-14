@@ -1,7 +1,6 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TrainerSelector from "./TrainerSelector";
-import { useTrainerSelection } from "@/hooks/client/useTrainerSelection";
+import { useTrainerSelection } from "@/hooks/client/trainerSelection";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useClientTheme } from "@/hooks/client/useClientTheme";
@@ -28,7 +27,6 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
     handleTrainerSelect
   } = useTrainerSelection(onTrainerChange);
 
-  // Update theme colors for display whenever clientTheme changes
   useEffect(() => {
     if (clientTheme) {
       setThemeColors({
@@ -37,7 +35,6 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
         accent: clientTheme.accentColor
       });
     } else {
-      // Fallback to CSS variables if clientTheme is not available
       const root = document.documentElement;
       const colors = {
         primary: getComputedStyle(root).getPropertyValue('--client-primary').trim(),
@@ -73,4 +70,3 @@ const WelcomeHeader = ({ userName, userEmail, onTrainerChange }: WelcomeHeaderPr
 };
 
 export default WelcomeHeader;
-
