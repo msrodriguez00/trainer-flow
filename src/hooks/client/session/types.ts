@@ -1,12 +1,14 @@
 
 import { PlanExercise, Series } from "@/types";
 
-export interface TrainingExercise extends PlanExercise {
+// Extended version of PlanExercise with session-specific fields
+export interface TrainingExercise extends Omit<PlanExercise, 'exerciseId'> {
   isCompleted: boolean;
-  videoUrl?: string;
+  videoUrl: string;
   id: string;
-  repetitions?: number;
-  weight?: number;
+  exerciseId: string;
+  repetitions: number;
+  weight: number;
 }
 
 export interface TrainingSeries extends Omit<Series, 'exercises'> {

@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { SessionData, TrainingSeries } from "./types";
+import { SessionData } from "./types";
 
 export const fetchSessionData = async (sessionId: string): Promise<SessionData | null> => {
   try {

@@ -75,14 +75,18 @@ export const useSession = (sessionId: string): UseSessionResponse => {
           ...series,
           isCompleted: false,
           exercises: series.exercises.map(ex => {
-            // Ensure all properties exist in the transformed object
+            // Transform and ensure all required properties exist
             return {
               ...ex,
               isCompleted: false,
-              id: ex.id || ex.exerciseId, // Use either id or exerciseId
-              videoUrl: ex.videoUrl || '',
+              // All these properties should exist from sessionService
+              id: ex.id || "",
+              exerciseId: ex.exerciseId || "",
+              videoUrl: ex.videoUrl || "",
               repetitions: ex.repetitions || 0,
-              weight: ex.weight || 0
+              weight: ex.weight || 0,
+              level: ex.level,
+              evaluations: ex.evaluations || []
             } as TrainingExercise;
           })
         }));
