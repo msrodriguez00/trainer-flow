@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, Check, X } from "lucide-react";
@@ -34,6 +34,15 @@ export const SessionDatePicker = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
+  // Asegurarse de que la fecha inicial se establezca correctamente
+  useEffect(() => {
+    if (initialDate) {
+      setDate(new Date(initialDate));
+    } else {
+      setDate(undefined);
+    }
+  }, [initialDate]);
+
   const handleSelect = useCallback((newDate: Date | undefined) => {
     setDate(newDate);
   }, []);
@@ -43,14 +52,22 @@ export const SessionDatePicker = ({
     
     try {
       setIsUpdating(true);
+      
+      console.log("Actualizando fecha de sesión:", {
+        sessionId,
+        newDate: date?.toISOString() || null
+      });
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("sessions")
         .update({ scheduled_date: date?.toISOString() || null })
-        .eq("id", sessionId);
+        .eq("id", sessionId)
+        .select();
+
+      console.log("Resultado de la actualización:", { data, error });
 
       if (error) {
-        console.error("Error updating session date:", error);
+        console.error("Error al actualizar la fecha de la sesión:", error);
         toast({
           title: "Error",
           description: "No se pudo actualizar la fecha de la sesión",
@@ -69,7 +86,7 @@ export const SessionDatePicker = ({
         onDateUpdated(date?.toISOString() || null);
       }
     } catch (error) {
-      console.error("Error updating session date:", error);
+      console.error("Error al actualizar la fecha de la sesión:", error);
       toast({
         title: "Error",
         description: "Ocurrió un error al actualizar la fecha",
@@ -145,7 +162,7 @@ export const SessionDatePicker = ({
                 onClick={handleSave}
                 disabled={isUpdating}
               >
-                <Check className="mr-1 h-4 w-4" /> Guardar
+                <Check className="mr-1 h-4 w-4" /> {isUpdating ? "Guardando..." : "Guardar"}
               </Button>
             </div>
           </div>
