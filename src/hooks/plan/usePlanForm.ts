@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Exercise, Client } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -82,7 +81,6 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
     }
   }, [user]);
 
-  // Set initial client ID if provided via props
   useEffect(() => {
     if (initialClientId) {
       setClientId(initialClientId);
@@ -258,7 +256,6 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
       return;
     }
 
-    // Verificar que todas las sesiones tengan al menos un ejercicio
     let hasExercises = false;
     for (const session of sessions) {
       for (const series of session.series) {
@@ -280,7 +277,6 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
     }
 
     try {
-      // 1. Crear el plan
       const { data: planData, error: planError } = await supabase
         .from("plans")
         .insert({
@@ -294,18 +290,16 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
 
       if (planError) throw planError;
 
-      // 2. Crear sesiones, series y ejercicios
       for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex++) {
         const session = sessions[sessionIndex];
         
-        // Crear sesión - Ahora incluyendo client_id
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
             name: session.name,
             plan_id: planData.id,
             order_index: sessionIndex,
-            client_id: clientId  // Add the client_id field
+            client_id: clientId
           })
           .select()
           .single();
@@ -315,21 +309,19 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
         for (let seriesIndex = 0; seriesIndex < session.series.length; seriesIndex++) {
           const series = session.series[seriesIndex];
           
-          // Crear serie - Ahora incluyendo client_id
           const { data: seriesData, error: seriesError } = await supabase
             .from("series")
             .insert({
               name: series.name,
               session_id: sessionData.id,
               order_index: seriesIndex,
-              client_id: clientId  // Add the client_id field
+              client_id: clientId
             })
             .select()
             .single();
             
           if (seriesError) throw seriesError;
 
-          // Insertar los ejercicios de esta serie
           const validExercises = series.exercises.filter(ex => ex.exerciseId && ex.level > 0);
           
           if (validExercises.length > 0) {
@@ -337,7 +329,8 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
               series_id: seriesData.id,
               exercise_id: ex.exerciseId,
               level: ex.level,
-              plan_id: planData.id  // Necesario para la política RLS
+              plan_id: planData.id,
+              client_id: clientId
             }));
 
             const { error: exError } = await supabase
@@ -349,7 +342,6 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
         }
       }
 
-      // Aplanar todos los ejercicios para mantener compatibilidad con la interfaz anterior
       const allExercises = [];
       sessions.forEach(session => {
         session.series.forEach(series => {
