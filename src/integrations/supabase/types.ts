@@ -306,6 +306,7 @@ export type Database = {
       }
       series: {
         Row: {
+          client_id: string
           created_at: string
           id: string
           name: string
@@ -313,6 +314,7 @@ export type Database = {
           session_id: string
         }
         Insert: {
+          client_id: string
           created_at?: string
           id?: string
           name: string
@@ -320,6 +322,7 @@ export type Database = {
           session_id: string
         }
         Update: {
+          client_id?: string
           created_at?: string
           id?: string
           name?: string
@@ -327,6 +330,13 @@ export type Database = {
           session_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "series_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "series_session_id_fkey"
             columns: ["session_id"]
@@ -338,6 +348,7 @@ export type Database = {
       }
       sessions: {
         Row: {
+          client_id: string
           created_at: string
           id: string
           name: string
@@ -346,6 +357,7 @@ export type Database = {
           scheduled_date: string | null
         }
         Insert: {
+          client_id: string
           created_at?: string
           id?: string
           name: string
@@ -354,6 +366,7 @@ export type Database = {
           scheduled_date?: string | null
         }
         Update: {
+          client_id?: string
           created_at?: string
           id?: string
           name?: string
@@ -362,6 +375,13 @@ export type Database = {
           scheduled_date?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sessions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sessions_plan_id_fkey"
             columns: ["plan_id"]

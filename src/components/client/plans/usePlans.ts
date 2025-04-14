@@ -1,74 +1,23 @@
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Plan, Session, Series, PlanExercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { useClientIdentification } from "@/hooks/client/useClientIdentification";
 
 export const usePlans = () => {
-  const { user } = useAuth();
   const { toast } = useToast();
+  const { clientId, loading: clientLoading } = useClientIdentification();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clientId, setClientId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (user) {
-      fetchClientId();
-    } else {
-      // Reset state when user is not authenticated
-      setPlans([]);
-      setClientId(null);
-      setLoading(false);
-    }
-  }, [user]);
 
   useEffect(() => {
     if (clientId) {
       fetchClientPlans();
-    } else if (user && !loading) {
+    } else if (!clientLoading) {
       setLoading(false);
     }
-  }, [clientId, user]);
-
-  const fetchClientId = async () => {
-    if (!user) return;
-    
-    try {
-      console.log("Fetching client ID for user:", user.id);
-      const { data, error } = await supabase
-        .from("clients")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error fetching client ID:", error);
-        toast({
-          title: "Error",
-          description: "No se pudo identificar tu perfil de cliente",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      if (data) {
-        console.log("Client ID found:", data.id);
-        setClientId(data.id);
-      } else {
-        console.log("No client record found for this user");
-        toast({
-          title: "Información",
-          description: "No se encontró un perfil de cliente asociado a tu cuenta",
-        });
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error("Error in fetchClientId:", error);
-      setLoading(false);
-    }
-  };
+  }, [clientId, clientLoading]);
 
   const fetchClientPlans = async () => {
     if (!clientId) return;
@@ -116,9 +65,11 @@ export const usePlans = () => {
             .select(`
               id,
               name,
-              order_index
+              order_index,
+              scheduled_date
             `)
             .eq("plan_id", plan.id)
+            .eq("client_id", clientId)
             .order("order_index", { ascending: true });
             
           if (sessionsError) {
@@ -140,6 +91,7 @@ export const usePlans = () => {
                 order_index
               `)
               .eq("session_id", session.id)
+              .eq("client_id", clientId)
               .order("order_index", { ascending: true });
               
             if (seriesError) {
@@ -193,6 +145,7 @@ export const usePlans = () => {
               id: session.id,
               name: session.name,
               orderIndex: session.order_index,
+              scheduledDate: session.scheduled_date,
               series: seriesList
             });
           }

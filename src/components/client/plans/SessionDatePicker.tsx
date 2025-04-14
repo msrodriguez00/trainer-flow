@@ -13,6 +13,7 @@ import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useClientIdentification } from "@/hooks/client/useClientIdentification";
 
 interface SessionDatePickerProps {
   sessionId: string;
@@ -33,6 +34,7 @@ export const SessionDatePicker = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
+  const { clientId } = useClientIdentification();
 
   // Asegurar que la fecha inicial se establezca correctamente
   useEffect(() => {
@@ -48,7 +50,7 @@ export const SessionDatePicker = ({
   }, []);
 
   const handleSave = async () => {
-    if (disabled) return;
+    if (disabled || !clientId) return;
     
     try {
       setIsUpdating(true);
@@ -56,17 +58,17 @@ export const SessionDatePicker = ({
       // Incluir logs de diagnóstico detallados
       console.log("Intentando actualizar fecha de sesión:", {
         sessionId,
-        newDate: date?.toISOString() || null,
-        authSession: await supabase.auth.getSession()
+        clientId,
+        newDate: date?.toISOString() || null
       });
 
-      // Eliminar la referencia a updated_at que no existe en la tabla
       const { data, error } = await supabase
         .from("sessions")
         .update({ 
           scheduled_date: date?.toISOString() || null
         })
         .eq("id", sessionId)
+        .eq("client_id", clientId)
         .select();
 
       console.log("Resultado de la actualización:", { data, error });
@@ -110,6 +112,7 @@ export const SessionDatePicker = ({
           .from("sessions")
           .select("scheduled_date")
           .eq("id", sessionId)
+          .eq("client_id", clientId)
           .single();
           
         console.log("Verificación de actualización:", { 
