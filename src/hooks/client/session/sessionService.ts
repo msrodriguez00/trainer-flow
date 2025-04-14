@@ -64,9 +64,9 @@ export const fetchSessionData = async (sessionId: string): Promise<SessionData |
         const levelData = ex.exercises.levels[ex.level - 1] || {};
         
         return {
+          id: ex.id,
           exerciseId: ex.exercise_id,
           exerciseName: ex.exercises.name,
-          id: ex.id,
           level: ex.level,
           evaluations: [],
           videoUrl: levelData.video || "",

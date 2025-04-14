@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchSessionData, saveSessionProgress } from "./sessionService";
@@ -74,21 +73,10 @@ export const useSession = (sessionId: string): UseSessionResponse => {
         const trainingSeries: TrainingSeries[] = data.series.map(series => ({
           ...series,
           isCompleted: false,
-          exercises: series.exercises.map(ex => {
-            // Transform and ensure all required properties exist
-            return {
-              ...ex,
-              isCompleted: false,
-              // All these properties should exist from sessionService
-              id: ex.id || "",
-              exerciseId: ex.exerciseId || "",
-              videoUrl: ex.videoUrl || "",
-              repetitions: ex.repetitions || 0,
-              weight: ex.weight || 0,
-              level: ex.level,
-              evaluations: ex.evaluations || []
-            } as TrainingExercise;
-          })
+          exercises: series.exercises.map(ex => ({
+            ...ex,
+            isCompleted: false
+          })) as TrainingExercise[]
         }));
         
         setSessionState({
@@ -214,7 +202,7 @@ export const useSession = (sessionId: string): UseSessionResponse => {
       toast({
         title: "Serie completada",
         description: isLastSeries ? "¡Has completado todas las series!" : "Avanzando a la siguiente serie",
-        variant: "default" // Changed from "success" to "default"
+        variant: "default"
       });
       
     } catch (error) {

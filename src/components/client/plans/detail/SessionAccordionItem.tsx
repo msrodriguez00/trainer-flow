@@ -1,89 +1,72 @@
 
-import React, { useCallback } from "react";
+import React from "react";
 import { Session } from "@/types";
-import { Calendar } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { 
-  AccordionContent, 
   AccordionItem, 
-  AccordionTrigger 
+  AccordionTrigger, 
+  AccordionContent
 } from "@/components/ui/accordion";
-import SessionDatePicker from "../SessionDatePicker";
 import SeriesDetail from "./SeriesDetail";
-import { useToast } from "@/hooks/use-toast";
+import SessionDatePicker from "../SessionDatePicker";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Play } from "lucide-react";
 
 interface SessionAccordionItemProps {
   session: Session;
   onDateUpdated: (sessionId: string, newDate: string | null) => void;
 }
 
-export const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({ 
-  session, 
-  onDateUpdated 
+const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({ 
+  session,
+  onDateUpdated
 }) => {
-  const { toast } = useToast();
+  const navigate = useNavigate();
   
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "d 'de' MMMM, yyyy", {
-      locale: es,
-    });
+  const handleStartSession = () => {
+    navigate(`/client-session/${session.id}`);
   };
-
-  const handleDateUpdate = useCallback((newDate: string | null) => {
-    console.log("Fecha actualizada en SessionAccordionItem:", { 
-      sessionId: session.id, 
-      newDate,
-      sessionData: {
-        name: session.name,
-        currentDate: session.scheduledDate 
-      }
-    });
-    
-    // Mostrar confirmación visual inmediata
-    if (newDate !== session.scheduledDate) {
-      toast({
-        title: newDate ? "Fecha programada" : "Fecha eliminada",
-        description: newDate 
-          ? `Sesión "${session.name}" agendada para ${formatDate(newDate)}` 
-          : `Se eliminó la fecha de la sesión "${session.name}"`,
-      });
-    }
-    
-    // Propagar la actualización al componente padre
-    onDateUpdated(session.id, newDate);
-  }, [session, onDateUpdated, toast]);
-
+  
   return (
-    <AccordionItem key={session.id} value={session.id} className="border rounded-lg">
-      <AccordionTrigger className="px-4 py-3">
-        <div className="flex flex-col md:flex-row md:items-center md:gap-4 w-full">
-          <div className="font-medium">{session.name}</div>
-          {session.scheduledDate && (
-            <div className="text-sm text-muted-foreground flex items-center mt-1 md:mt-0">
-              <Calendar className="h-3 w-3 mr-1" />
-              {formatDate(session.scheduledDate)}
-            </div>
-          )}
+    <AccordionItem value={session.id} className="border rounded-md mb-4 overflow-hidden">
+      <AccordionTrigger className="px-4 py-3 hover:bg-accent/20 [&[data-state=open]]:bg-accent/20">
+        <div className="flex items-center justify-between w-full text-left">
+          <span className="font-medium">{session.name}</span>
         </div>
       </AccordionTrigger>
-      <AccordionContent className="px-4 pb-4">
-        <div className="mb-4">
-          <label className="text-sm font-medium mb-1 block">Fecha programada:</label>
-          <SessionDatePicker 
-            sessionId={session.id} 
-            initialDate={session.scheduledDate}
-            onDateUpdated={handleDateUpdate}
-          />
+      
+      <AccordionContent className="px-4 py-3">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <SessionDatePicker 
+              sessionId={session.id} 
+              currentDate={session.scheduledDate} 
+              onDateUpdated={onDateUpdated}
+            />
+            
+            <Button
+              onClick={handleStartSession}
+              className="w-full sm:w-auto"
+              size="sm"
+            >
+              <Play className="mr-2 h-4 w-4" />
+              Iniciar sesión guiada
+            </Button>
+          </div>
+          
+          {session.series.length > 0 ? (
+            <div className="space-y-4 mt-4">
+              <h4 className="text-sm font-medium">Series</h4>
+              {session.series.map((series) => (
+                <SeriesDetail key={series.id} series={series} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Esta sesión no tiene series configuradas
+            </p>
+          )}
         </div>
-        
-        {session.series.map((serie) => (
-          <SeriesDetail 
-            key={serie.id} 
-            name={serie.name} 
-            exercises={serie.exercises} 
-          />
-        ))}
       </AccordionContent>
     </AccordionItem>
   );
