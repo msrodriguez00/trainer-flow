@@ -219,12 +219,43 @@ const ClientPlanDetail = () => {
 
   const handleScheduleSession = async (sessionId: string, date: Date) => {
     try {
+      console.log(`Scheduling session ${sessionId} for date ${date.toISOString()}`);
+      
+      // First verify that the session belongs to a plan owned by this client
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .select('plan_id')
+        .eq('id', sessionId)
+        .single();
+
+      if (sessionError) {
+        console.error("Error verifying session:", sessionError);
+        throw sessionError;
+      }
+
+      // Verify that the plan belongs to this client
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .select('client_id')
+        .eq('id', sessionData.plan_id)
+        .eq('client_id', clientId)
+        .single();
+
+      if (planError) {
+        console.error("Error verifying plan ownership:", planError);
+        throw planError;
+      }
+
+      // If verification passed, update the session date
       const { error } = await supabase
         .from('sessions')
         .update({ scheduled_date: date.toISOString() })
         .eq('id', sessionId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating session date:", error);
+        throw error;
+      }
 
       await fetchPlanDetails();
 
@@ -236,7 +267,7 @@ const ClientPlanDetail = () => {
       console.error("Error scheduling session:", error);
       toast({
         title: "Error",
-        description: "No se pudo programar la sesión",
+        description: "No se pudo programar la sesión. Verifica que tengas permisos para modificar este plan.",
         variant: "destructive",
       });
     }
