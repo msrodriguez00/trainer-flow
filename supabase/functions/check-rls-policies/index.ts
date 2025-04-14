@@ -25,28 +25,36 @@ serve(async (req) => {
       auth: { persistSession: false }
     });
 
-    // Obtener información sobre las políticas RLS para la tabla sessions
-    const { data: policiesData, error: policiesError } = await supabaseAdmin
-      .rpc("get_policies_for_table", { table_name: "sessions" });
+    console.log("Checking RLS policies for sessions table");
 
-    if (policiesError) {
-      throw policiesError;
+    // Use SQL to check if RLS is enabled (using direct SQL query)
+    const { data: rlsEnabled, error: rlsError } = await supabaseAdmin.rpc(
+      'is_rls_enabled',
+      { table_name: 'sessions' }
+    );
+    
+    if (rlsError) {
+      console.error("Error checking RLS status:", rlsError);
+      throw new Error(`Could not verify RLS status: ${rlsError.message}`);
     }
 
-    // Verificar si RLS está habilitado
-    const { data: rlsData, error: rlsError } = await supabaseAdmin
-      .rpc("is_rls_enabled", { table_name: "sessions" });
-
-    if (rlsError) {
-      throw rlsError;
+    // Get all policies for the sessions table
+    const { data: policies, error: policiesError } = await supabaseAdmin.rpc(
+      'get_policies_for_table',
+      { table_name: 'sessions' }
+    );
+    
+    if (policiesError) {
+      console.error("Error getting policies:", policiesError);
+      throw new Error(`Could not get policies: ${policiesError.message}`);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         message: "RLS policies checked",
-        rls_enabled: rlsData,
-        policies: policiesData
+        rls_enabled: rlsEnabled,
+        policies: policies
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -54,10 +62,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
+    console.error("Error checking RLS policies:", error);
+    
     return new Response(
       JSON.stringify({
         success: false,
         message: error.message,
+        error: String(error)
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

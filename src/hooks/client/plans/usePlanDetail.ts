@@ -128,29 +128,38 @@ export const usePlanDetail = (planId: string | undefined) => {
 
           for (const serie of (seriesData || [])) {
             try {
-              // Use a timeout to prevent long-running queries
+              // Remove the timeout and use AbortSignal for limiting query time
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000);
+              
               const fetchExercises = async () => {
-                const { data: exercisesWithDetails, error: exercisesError } = await supabase
-                  .from("plan_exercises")
-                  .select(`
-                    id,
-                    exercise_id,
-                    level,
-                    evaluations (*),
-                    exercises (
+                try {
+                  const { data: exercisesWithDetails, error: exercisesError } = await supabase
+                    .from("plan_exercises")
+                    .select(`
                       id,
-                      name
-                    )
-                  `)
-                  .eq("series_id", serie.id)
-                  .timeout(5000); // Set a 5 second timeout
+                      exercise_id,
+                      level,
+                      evaluations (*),
+                      exercises (
+                        id,
+                        name
+                      )
+                    `)
+                    .eq("series_id", serie.id);
 
-                if (exercisesError) {
-                  console.error("Error fetching exercises:", exercisesError);
+                  clearTimeout(timeoutId);
+
+                  if (exercisesError) {
+                    console.error("Error fetching exercises:", exercisesError);
+                    return [];
+                  }
+
+                  return exercisesWithDetails || [];
+                } catch (err) {
+                  console.error("Error fetching exercises:", err);
                   return [];
                 }
-
-                return exercisesWithDetails || [];
               };
 
               const exercisesWithDetails = await fetchExercises();

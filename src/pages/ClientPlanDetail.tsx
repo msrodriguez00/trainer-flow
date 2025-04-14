@@ -23,11 +23,15 @@ const ClientPlanDetail = () => {
   useEffect(() => {
     // Verificamos las políticas RLS al cargar la página
     const checkRLS = async () => {
-      console.log("ClientPlanDetail - Verificando políticas RLS para sesiones");
-      await checkSessionRLSPolicies();
-      console.log("ClientPlanDetail - Asegurando que las políticas RLS estén aplicadas");
-      const result = await ensureSessionRLSPolicies();
-      console.log("ClientPlanDetail - Resultado de asegurar políticas:", result);
+      try {
+        console.log("ClientPlanDetail - Verificando políticas RLS para sesiones");
+        await checkSessionRLSPolicies();
+        console.log("ClientPlanDetail - Asegurando que las políticas RLS estén aplicadas");
+        const result = await ensureSessionRLSPolicies();
+        console.log("ClientPlanDetail - Resultado de asegurar políticas:", result);
+      } catch (error) {
+        console.error("Error verificando políticas RLS:", error);
+      }
     };
     
     checkRLS();

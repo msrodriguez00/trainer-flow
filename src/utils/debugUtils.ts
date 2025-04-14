@@ -5,32 +5,16 @@ export const checkSessionRLSPolicies = async () => {
   try {
     console.log("==== DIAGNÓSTICO DE POLÍTICAS RLS PARA SESIONES ====");
     
-    // Use custom SQL query instead of RPC function
-    const { data: rlsEnabled, error: rlsError } = await supabase
-      .from('pg_tables')
-      .select('rowsecurity')
-      .eq('tablename', 'sessions')
-      .single();
+    // Use Supabase Edge Function instead of direct query for system tables
+    const { data: rlsInfo, error: rlsError } = await supabase.functions.invoke('check-rls-policies');
     
     if (rlsError) {
       console.error("Error al verificar estado de RLS:", rlsError);
       return;
     }
     
-    console.log("RLS habilitado para tabla sessions:", rlsEnabled?.rowsecurity || false);
-    
-    // Get policies using a direct query instead of RPC
-    const { data: policies, error: policiesError } = await supabase
-      .from('pg_policies')
-      .select('*')
-      .eq('tablename', 'sessions');
-    
-    if (policiesError) {
-      console.error("Error al obtener políticas:", policiesError);
-      return;
-    }
-    
-    console.log("Políticas RLS para tabla sessions:", policies);
+    console.log("RLS habilitado para tabla sessions:", rlsInfo?.rls_enabled || false);
+    console.log("Políticas RLS para tabla sessions:", rlsInfo?.policies || []);
     
     // Verificar usuario actual
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -41,7 +25,6 @@ export const checkSessionRLSPolicies = async () => {
     }
     
     console.log("Usuario actual:", user?.id);
-    
     console.log("==== FIN DE DIAGNÓSTICO ====");
   } catch (error) {
     console.error("Error en diagnóstico de RLS:", error);
@@ -95,7 +78,7 @@ export const debugUpdateSession = async (sessionId: string, date: Date) => {
     // 2. Obtener el plan_id asociado a la sesión
     const { data: sessionData, error: sessionError } = await supabase
       .from('sessions')
-      .select('plan_id')
+      .select('plan_id, scheduled_date')
       .eq('id', sessionId)
       .single();
     
@@ -104,6 +87,7 @@ export const debugUpdateSession = async (sessionId: string, date: Date) => {
       return { success: false, message: "Error al obtener la sesión" };
     }
     
+    console.log("Estado de la sesión antes de actualizar:", sessionData);
     console.log("Plan ID asociado a la sesión:", sessionData.plan_id);
     
     // 3. Verificar relación del cliente con el plan
@@ -122,11 +106,12 @@ export const debugUpdateSession = async (sessionId: string, date: Date) => {
     console.log("¿Coincide con usuario?", clientPlan.client_id === user?.id);
     
     // 4. Intentar la actualización
-    console.log(`Intentando actualizar fecha a: ${date.toISOString()}`);
+    const formattedDate = date.toISOString();
+    console.log(`Intentando actualizar fecha a: ${formattedDate}`);
     
     const { data: updateResult, error: updateError } = await supabase
       .from('sessions')
-      .update({ scheduled_date: date.toISOString() })
+      .update({ scheduled_date: formattedDate })
       .eq('id', sessionId)
       .select();
     
@@ -140,7 +125,7 @@ export const debugUpdateSession = async (sessionId: string, date: Date) => {
     // 5. Verificar el estado después de la actualización
     const { data: afterUpdate, error: checkError } = await supabase
       .from('sessions')
-      .select('scheduled_date')
+      .select('scheduled_date, plan_id')
       .eq('id', sessionId)
       .single();
     
@@ -150,13 +135,18 @@ export const debugUpdateSession = async (sessionId: string, date: Date) => {
     }
     
     console.log("Fecha después de actualización:", afterUpdate?.scheduled_date);
-    console.log("¿Coincide con fecha deseada?", afterUpdate?.scheduled_date === date.toISOString());
+    console.log("Fecha esperada:", formattedDate);
+    console.log("Fecha en BD:", afterUpdate?.scheduled_date);
+    
+    if (afterUpdate?.scheduled_date !== formattedDate) {
+      console.log(" usePlanDetail - La fecha en la base de datos no coincide con la solicitada");
+    }
     
     console.log("==== FIN DE DEPURACIÓN ====");
     
     return { 
       success: true, 
-      updated: afterUpdate?.scheduled_date === date.toISOString(),
+      updated: afterUpdate?.scheduled_date === formattedDate,
       currentDate: afterUpdate?.scheduled_date
     };
   } catch (error) {
