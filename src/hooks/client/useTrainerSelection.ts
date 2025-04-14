@@ -129,7 +129,7 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
         console.log("Final trainers with branding:", trainersWithBranding);
         setTrainers(trainersWithBranding);
         
-        // FIX: Solo intentar seleccionar un entrenador si la lista tiene elementos
+        // Solo intentar seleccionar un entrenador si la lista tiene elementos
         if (trainersWithBranding.length > 0) {
           // Si no hay entrenador seleccionado, elegir el primero
           if (!selectedTrainerId || selectedTrainerId === "") {
@@ -152,11 +152,11 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
         } else {
           // No hay entrenadores disponibles, usar un entrenador por defecto
           console.log("No trainers available despite finding IDs, using default");
-          setDefaultTrainer();
+          setDefaultTrainerWithoutSelect();
         }
       } else {
         console.log("No trainer IDs available, setting default trainer");
-        setDefaultTrainer();
+        setDefaultTrainerWithoutSelect();
       }
     } catch (error: any) {
       console.error("Error loading trainers:", error);
@@ -180,7 +180,8 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     };
     
     setTrainers([defaultTrainer]);
-    handleTrainerSelect(defaultTrainer.id);
+    // Establecer directamente el trainer sin llamar a handleTrainerSelect
+    setTrainerDirectly(defaultTrainer);
     
     toast({
       title: "Sin información de cliente",
@@ -203,7 +204,8 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     };
     
     setTrainers([fallbackTrainer]);
-    handleTrainerSelect(fallbackTrainer.id);
+    // Establecer directamente el trainer sin llamar a handleTrainerSelect
+    setTrainerDirectly(fallbackTrainer);
     
     toast({
       title: "No se encontraron entrenadores",
@@ -212,8 +214,9 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     });
   };
 
-  const setDefaultTrainer = () => {
-    console.log("Setting default demo trainer");
+  // Nueva función para establecer el entrenador predeterminado directamente sin seleccionarlo
+  const setDefaultTrainerWithoutSelect = () => {
+    console.log("Setting default demo trainer directly");
     const demoTrainer: Trainer = {
       id: "demo-trainer",
       name: "Entrenador Demo",
@@ -226,7 +229,40 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     };
     
     setTrainers([demoTrainer]);
-    handleTrainerSelect(demoTrainer.id);
+    // Establecer directamente el trainer sin llamar a handleTrainerSelect
+    setTrainerDirectly(demoTrainer);
+  };
+
+  // Función para establecer un entrenador directamente
+  const setTrainerDirectly = (trainer: Trainer) => {
+    setSelectedTrainerId(trainer.id);
+    setTrainerName(trainer.name);
+    
+    // Guardar en sessionStorage
+    sessionStorage.setItem('selected_trainer_id', trainer.id);
+    sessionStorage.setItem('selected_trainer_name', trainer.name);
+    
+    // Aplicar tema
+    if (trainer.branding) {
+      sessionStorage.setItem('selected_trainer_branding', JSON.stringify(trainer.branding));
+      applyTrainerThemeToDocument(trainer.branding);
+    }
+    
+    // Notificar cambio de entrenador si hay callback
+    if (onTrainerChange) {
+      onTrainerChange(trainer.id, trainer.name, trainer.branding);
+    }
+  };
+
+  // Función auxiliar para aplicar tema directamente al documento
+  const applyTrainerThemeToDocument = (branding: any) => {
+    document.documentElement.style.setProperty('--client-primary', branding.primary_color, 'important');
+    document.documentElement.style.setProperty('--client-secondary', branding.secondary_color, 'important');
+    document.documentElement.style.setProperty('--client-accent', branding.accent_color, 'important');
+    
+    // Forzar re-renderizado de componentes que usan el tema
+    document.documentElement.classList.remove('theme-applied');
+    setTimeout(() => document.documentElement.classList.add('theme-applied'), 10);
   };
 
   const handleLoadError = () => {
@@ -243,7 +279,8 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
     };
     
     setTrainers([fallbackTrainer]);
-    handleTrainerSelect(fallbackTrainer.id);
+    // Establecer directamente el trainer sin llamar a handleTrainerSelect
+    setTrainerDirectly(fallbackTrainer);
     
     toast({
       title: "No se pudieron cargar entrenadores",
@@ -280,13 +317,7 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       }
       
       // Apply theme to CSS variables
-      document.documentElement.style.setProperty('--client-primary', trainer.branding.primary_color, 'important');
-      document.documentElement.style.setProperty('--client-secondary', trainer.branding.secondary_color, 'important');
-      document.documentElement.style.setProperty('--client-accent', trainer.branding.accent_color, 'important');
-      
-      // Force re-render of components that use the theme
-      document.documentElement.classList.remove('theme-applied');
-      setTimeout(() => document.documentElement.classList.add('theme-applied'), 10);
+      applyTrainerThemeToDocument(trainer.branding);
       
       toast({
         title: `Tema de ${trainer.name} aplicado`,
@@ -308,14 +339,13 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
   const handleTrainerSelect = (trainerId: string) => {
     console.log("Trainer selected manually:", trainerId);
     
-    // FIX: verificar primero si la lista de entrenadores tiene elementos
+    // verificar primero si la lista de entrenadores tiene elementos
     if (trainers.length === 0) {
       console.log("No trainers available, cannot select trainer:", trainerId);
-      setDefaultTrainer();
-      return;
+      return; // No llamar a setDefaultTrainerWithoutSelect para evitar recursión
     }
     
-    // Corregir el problema de búsqueda del entrenador
+    // Buscar el entrenador seleccionado
     const selected = trainers.find(t => t.id === trainerId);
     
     if (selected) {
@@ -335,10 +365,10 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
       // Si no encontramos el entrenador pero tenemos alguno en la lista, usar el primero
       if (trainers.length > 0) {
         console.log("Falling back to first available trainer");
-        handleTrainerSelect(trainers[0].id);
-      } else {
-        // Si no hay entrenadores, establecer uno por defecto
-        setDefaultTrainer();
+        const firstTrainer = trainers[0];
+        setSelectedTrainerId(firstTrainer.id);
+        setTrainerName(firstTrainer.name);
+        applyTrainerTheme(firstTrainer);
       }
     }
   };
