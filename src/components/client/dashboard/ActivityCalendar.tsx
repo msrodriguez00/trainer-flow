@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Calendar as CalendarIcon, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronRight, PlayCircle } from "lucide-react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +42,12 @@ const ActivityCalendar = ({
 
   // Función para ir a los detalles del plan
   const goToPlanDetails = (planId: string) => {
-    navigate(`/client-plan-detail/${planId}`);
+    navigate(`/client-plan/${planId}`);
+  };
+
+  // Nueva función para iniciar una sesión
+  const startSession = (sessionId: string) => {
+    navigate(`/client-session/${sessionId}`);
   };
 
   return (
@@ -86,13 +91,24 @@ const ActivityCalendar = ({
                         <h4 className="font-medium">{session.name}</h4>
                         <p className="text-sm text-gray-600">Plan: {session.planName}</p>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => goToPlanDetails(session.planId)}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => goToPlanDetails(session.planId)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="default" 
+                          size="sm"
+                          onClick={() => startSession(session.id)}
+                          className="flex items-center gap-1"
+                        >
+                          <PlayCircle className="h-4 w-4" />
+                          Iniciar
+                        </Button>
+                      </div>
                     </div>
                     <Badge variant="outline" className="mt-1">
                       {format(new Date(session.scheduledDate), "HH:mm", { locale: es })}
