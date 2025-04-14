@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, CalendarClock } from "lucide-react";
+import { Calendar, CalendarClock, ChevronLeft, Activity, ClipboardList } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +19,6 @@ import { Plan } from "@/types";
 import MainLayout from "@/components/client/layout/MainLayout";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { useToast } from "@/hooks/use-toast";
 import { useClientIdentification } from "@/hooks/client/useClientIdentification";
 import ClientAuthError from "@/components/client/common/ClientAuthError";
 import LoadingScreen from "@/components/client/common/LoadingScreen";
