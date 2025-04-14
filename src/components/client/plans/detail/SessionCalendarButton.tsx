@@ -23,6 +23,16 @@ const SessionCalendarButton: React.FC<SessionCalendarButtonProps> = ({
   scheduledDate, 
   onScheduleSession 
 }) => {
+  const handleDateSelect = async (date: Date | undefined) => {
+    if (date) {
+      try {
+        await onScheduleSession(sessionId, date);
+      } catch (error) {
+        console.error("Error scheduling session:", error);
+      }
+    }
+  };
+
   return (
     <div className="mt-2 md:mt-0 flex items-center">
       {scheduledDate ? (
@@ -51,7 +61,7 @@ const SessionCalendarButton: React.FC<SessionCalendarButtonProps> = ({
             <CalendarComponent
               mode="single"
               selected={scheduledDate ? new Date(scheduledDate) : undefined}
-              onSelect={(date) => date && onScheduleSession(sessionId, date)}
+              onSelect={handleDateSelect}
               className="pointer-events-auto"
             />
           </div>

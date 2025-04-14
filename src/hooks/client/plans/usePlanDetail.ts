@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -202,6 +201,12 @@ export const usePlanDetail = (planId: string | undefined) => {
     try {
       console.log(`Scheduling session ${sessionId} for date ${date.toISOString()}`);
       
+      // Show loading toast
+      toast({
+        title: "Programando sesión...",
+        description: "Guardando la fecha seleccionada",
+      });
+      
       // First verify that the session belongs to a plan owned by this client
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
@@ -211,6 +216,11 @@ export const usePlanDetail = (planId: string | undefined) => {
 
       if (sessionError) {
         console.error("Error verifying session:", sessionError);
+        toast({
+          title: "Error",
+          description: "No se pudo verificar la sesión",
+          variant: "destructive",
+        });
         throw sessionError;
       }
 
@@ -224,6 +234,11 @@ export const usePlanDetail = (planId: string | undefined) => {
 
       if (planError) {
         console.error("Error verifying plan ownership:", planError);
+        toast({
+          title: "Error",
+          description: "No tienes permiso para modificar este plan",
+          variant: "destructive",
+        });
         throw planError;
       }
 
@@ -235,6 +250,11 @@ export const usePlanDetail = (planId: string | undefined) => {
 
       if (error) {
         console.error("Error updating session date:", error);
+        toast({
+          title: "Error",
+          description: `No se pudo programar la sesión: ${error.message}`,
+          variant: "destructive",
+        });
         throw error;
       }
 
