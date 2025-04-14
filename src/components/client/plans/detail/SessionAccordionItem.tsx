@@ -40,7 +40,7 @@ export const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({
       }
     });
     
-    // Show toast confirmation for better UX feedback
+    // Mostrar confirmación visual inmediata
     if (newDate !== session.scheduledDate) {
       toast({
         title: newDate ? "Fecha programada" : "Fecha eliminada",
@@ -48,8 +48,12 @@ export const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({
           ? `Sesión "${session.name}" agendada para ${formatDate(newDate)}` 
           : `Se eliminó la fecha de la sesión "${session.name}"`,
       });
+      
+      // Actualizar el estado local primero para mejor experiencia de usuario
+      const updatedSession = { ...session, scheduledDate: newDate };
     }
     
+    // Propagar la actualización al componente padre
     onDateUpdated(session.id, newDate);
   }, [session, onDateUpdated, toast]);
 

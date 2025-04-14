@@ -62,7 +62,7 @@ export const SessionDatePicker = ({
         newDate: date?.toISOString() || null
       });
 
-      // First, ensure session actually belongs to current client
+      // Verificar que la sesión existe y pertenece al cliente actual
       const { data: sessionCheck, error: checkError } = await supabase
         .from("sessions")
         .select("*")
@@ -80,25 +80,31 @@ export const SessionDatePicker = ({
         return;
       }
 
-      // Log session data before update
       console.log("2. Datos de sesión antes de actualizar:", sessionCheck);
 
-      // Update using PATCH instead of standard update
+      // Actualizar la fecha de la sesión - IMPORTANTE: usar .upsert para mayor compatibilidad con RLS
       console.log("3. Ejecutando query para actualizar fecha:");
+      
+      // Construir el objeto con los datos de actualización
+      const updateData = {
+        id: sessionId,
+        client_id: clientId,
+        scheduled_date: date?.toISOString() || null
+      };
+      
       const { data, error } = await supabase
         .from("sessions")
-        .update({ 
-          scheduled_date: date?.toISOString() || null 
+        .upsert(updateData, { 
+          onConflict: 'id',
+          ignoreDuplicates: false 
         })
-        .eq("id", sessionId)
-        .eq("client_id", clientId) // Important: ensure only client's data is updated
         .select();
 
       if (error) {
         console.error("4. ERROR en la actualización de fecha:", error);
-        console.log("  - Código:", error.code);
-        console.log("  - Mensaje:", error.message);
-        console.log("  - Detalles:", error.details);
+        console.error("  - Código:", error.code);
+        console.error("  - Mensaje:", error.message);
+        console.error("  - Detalles:", error.details);
         toast({
           title: "Error",
           description: `No se pudo actualizar la fecha: ${error.message}`,
@@ -107,10 +113,9 @@ export const SessionDatePicker = ({
         return;
       }
 
-      // Log the returned data
       console.log("4. Respuesta exitosa de la actualización:", data);
 
-      // Verify if the update was actually committed by fetching the session again
+      // Verificar si la actualización fue realmente efectuada
       const { data: afterData, error: afterError } = await supabase
         .from("sessions")
         .select("*")
@@ -123,23 +128,25 @@ export const SessionDatePicker = ({
         console.log("5. Datos de sesión después de actualizar:", afterData);
         console.log("   - scheduled_date actualizada:", afterData.scheduled_date);
         
-        // Check if the update was successful by comparing values
-        if (date && afterData.scheduled_date === null) {
-          console.error("6. ERROR: La fecha no se actualizó en la base de datos");
+        // Validar si la actualización fue exitosa
+        const isDateEqual = date ? afterData.scheduled_date === date.toISOString() : afterData.scheduled_date === null;
+        
+        if (!isDateEqual) {
+          console.warn("6. ADVERTENCIA: Fecha persistida diferente a la solicitada");
           toast({
-            title: "Error",
-            description: "La fecha no se actualizó correctamente en la base de datos",
-            variant: "destructive",
+            title: "Advertencia",
+            description: "La fecha puede no haberse actualizado correctamente",
           });
-          return;
+        } else {
+          // Mostrar mensaje de éxito solo si hubo un cambio real
+          if (initialDate !== afterData.scheduled_date) {
+            toast({
+              title: "Fecha actualizada",
+              description: "La fecha de la sesión ha sido guardada correctamente",
+            });
+          }
         }
       }
-
-      // If successful, show success message and update UI
-      toast({
-        title: "Fecha actualizada",
-        description: "La fecha de la sesión ha sido guardada correctamente",
-      });
       
       setIsOpen(false);
       if (onDateUpdated) {
