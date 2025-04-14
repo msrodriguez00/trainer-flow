@@ -4,9 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface CategorySelectionProps {
-  categories: { value: string; label: string }[];
+  categories: { value: Category; label: string }[];
   selectedCategories: Category[];
-  onCategoryChange: (category: string, checked: boolean) => void;
+  onCategoryChange: (category: Category, checked: boolean) => void;
 }
 
 export const CategorySelection = ({

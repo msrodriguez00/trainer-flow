@@ -5,17 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import { ExerciseLevelItem } from "./ExerciseLevelItem";
 
-// Definir el tipo LevelFormData para uso interno
-interface LevelFormData {
-  video: string;
-  repetitions: number;
-  weight: number;
-}
-
 interface ExerciseLevelsListProps {
-  levels: LevelFormData[];
+  levels: Omit<Level, "level">[];
   videoErrors: boolean[];
-  onUpdateLevel: (index: number, field: keyof LevelFormData, value: string | number) => void;
+  onUpdateLevel: (index: number, field: keyof Omit<Level, "level">, value: string | number) => void;
   onAddLevel: () => void;
   onRemoveLevel: (index: number) => void;
   onVideoValidationChange: (index: number, isValid: boolean) => void;

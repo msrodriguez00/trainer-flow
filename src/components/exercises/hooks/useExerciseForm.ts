@@ -3,13 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Exercise, Category, Level } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
-// Define a type that matches our form data for levels
-interface LevelFormData {
-  video: string;
-  repetitions: number;
-  weight: number;
-}
-
 interface UseExerciseFormProps {
   initialExercise?: Exercise;
   onSubmit: (exercise: Omit<Exercise, "id">) => void;
@@ -20,7 +13,7 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
-  const [levels, setLevels] = useState<LevelFormData[]>([
+  const [levels, setLevels] = useState<Omit<Level, "level">[]>([
     { video: "", repetitions: 0, weight: 0 }
   ]);
   const [videoErrors, setVideoErrors] = useState<boolean[]>([false]);
@@ -43,16 +36,16 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     if (initialExercise) {
       console.log("useExerciseForm - Setting form data from initialExercise");
       setName(initialExercise.name);
-      setSelectedCategories(initialExercise.categories || []);
+      setSelectedCategories([...initialExercise.categories]);
       
       // Deep copy the levels from the initialExercise to avoid reference issues
-      const formattedLevels = initialExercise.levels?.map(level => ({
-        video: level.video || "",
-        repetitions: level.repetitions || 0,
-        weight: level.weight || 0
-      })) || [{ video: "", repetitions: 0, weight: 0 }];
+      const formattedLevels = initialExercise.levels.map(level => ({
+        video: level.video,
+        repetitions: level.repetitions,
+        weight: level.weight
+      }));
       
-      setLevels(formattedLevels);
+      setLevels([...formattedLevels]);
       setVideoErrors(new Array(formattedLevels.length).fill(false));
     } else {
       console.log("useExerciseForm - No initialExercise, resetting form");
@@ -65,7 +58,7 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     };
   }, [initialExercise, resetForm]);
 
-  const handleCategoryChange = (category: string, checked: boolean) => {
+  const handleCategoryChange = (category: Category, checked: boolean) => {
     if (checked) {
       setSelectedCategories(prev => [...prev, category]);
     } else {
@@ -73,7 +66,7 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     }
   };
 
-  const updateLevel = (index: number, field: keyof LevelFormData, value: string | number) => {
+  const updateLevel = (index: number, field: keyof Omit<Level, "level">, value: string | number) => {
     const newLevels = [...levels];
     newLevels[index] = {
       ...newLevels[index],
@@ -128,14 +121,9 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     setIsSubmitting(true);
     console.log("useExerciseForm - Setting isSubmitting to true");
 
-    // Modified: Create proper level objects that will be compatible with the Level type
-    // We're creating a simplified version that will work with the API
-    // The API will generate the missing fields (id, exercise_id, name)
-    const formattedLevels = levels.map((level, idx) => ({
+    const formattedLevels: Level[] = levels.map((level, idx) => ({
       level: idx + 1,
-      video: level.video,
-      repetitions: level.repetitions,
-      weight: level.weight
+      ...level,
     }));
 
     try {
@@ -143,10 +131,7 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
       await onSubmit({
         name,
         categories: selectedCategories,
-        // The type error was here - we need to cast the formatted levels
-        // This is acceptable since the server will handle the missing properties
-        // The id and exercise_id will be generated server-side
-        levels: formattedLevels as unknown as Level[],
+        levels: formattedLevels,
       });
       
       console.log("useExerciseForm - onSubmit completed successfully");

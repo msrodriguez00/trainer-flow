@@ -1,7 +1,7 @@
 
 import { Category } from "@/types";
 
-export const EXERCISE_CATEGORIES: { value: string; label: string }[] = [
+export const EXERCISE_CATEGORIES: { value: Category; label: string }[] = [
   { value: "strength", label: "Fuerza" },
   { value: "cardio", label: "Cardio" },
   { value: "flexibility", label: "Flexibilidad" },
