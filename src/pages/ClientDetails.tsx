@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,31 +74,12 @@ const ClientDetails = () => {
       const formattedPlans: Plan[] = [];
       
       for (const planData of data) {
-        // Fetch sessions for this plan
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from("sessions")
-          .select(`id, name, order_index`)
-          .eq("plan_id", planData.id)
-          .order("order_index", { ascending: true });
-          
-        if (sessionsError) throw sessionsError;
-        
         const sessions: Session[] = [];
         
         for (const sessionData of sessionsData) {
-          // Fetch series for this session
-          const { data: seriesData, error: seriesError } = await supabase
-            .from("series")
-            .select(`id, name, order_index`)
-            .eq("session_id", sessionData.id)
-            .order("order_index", { ascending: true });
-            
-          if (seriesError) throw seriesError;
-          
           const seriesList: Series[] = [];
           
           for (const seriesItem of seriesData) {
-            // Fetch exercises for this series
             const { data: exercisesData, error: exercisesError } = await supabase
               .from("plan_exercises")
               .select(`
@@ -112,14 +92,13 @@ const ClientDetails = () => {
             if (exercisesError) throw exercisesError;
             
             const exercises: PlanExercise[] = exercisesData.map((ex: any) => {
-              // Map evaluations from snake_case to camelCase
-              const mappedEvaluations = ex.evaluations ? ex.evaluations.map((eval: any) => ({
-                timeRating: eval.time_rating,
-                weightRating: eval.weight_rating,
-                repetitionsRating: eval.repetitions_rating,
-                exerciseRating: eval.exercise_rating,
-                comment: eval.comment,
-                date: eval.date
+              const mappedEvaluations = ex.evaluations ? ex.evaluations.map((evaluation: any) => ({
+                timeRating: evaluation.time_rating,
+                weightRating: evaluation.weight_rating,
+                repetitionsRating: evaluation.repetitions_rating,
+                exerciseRating: evaluation.exercise_rating,
+                comment: evaluation.comment,
+                date: evaluation.date
               })) : [];
 
               return {
@@ -146,7 +125,6 @@ const ClientDetails = () => {
           });
         }
         
-        // Flatten exercises for backward compatibility
         const allExercises: PlanExercise[] = [];
         sessions.forEach(session => {
           session.series.forEach(series => {
@@ -233,12 +211,10 @@ const ClientDetails = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Client information card */}
           <div className="lg:col-span-1">
             <ClientInfoCard client={client} />
           </div>
 
-          {/* Plans and other tabs */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="plans" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
@@ -274,4 +250,3 @@ const ClientDetails = () => {
 };
 
 export default ClientDetails;
-

@@ -58,7 +58,6 @@ const PlanDetails = () => {
 
       if (planError) throw planError;
       
-      // Obtener sesiones
       const { data: sessionsData, error: sessionsError } = await supabase
         .from("sessions")
         .select("*")
@@ -69,7 +68,6 @@ const PlanDetails = () => {
       
       const sessions: Session[] = [];
       
-      // Para cada sesión, obtener sus series
       for (const session of sessionsData) {
         const { data: seriesData, error: seriesError } = await supabase
           .from("series")
@@ -81,7 +79,6 @@ const PlanDetails = () => {
         
         const seriesList: Series[] = [];
         
-        // Para cada serie, obtener sus ejercicios
         for (const series of seriesData) {
           const { data: exercisesData, error: exercisesError } = await supabase
             .from("plan_exercises")
@@ -97,7 +94,6 @@ const PlanDetails = () => {
           
           const planExercises: PlanExercise[] = [];
           
-          // Para cada ejercicio, obtener su información
           for (const ex of exercisesData) {
             const { data: exerciseData, error: exerciseError } = await supabase
               .from("exercises")
@@ -110,14 +106,13 @@ const PlanDetails = () => {
               continue;
             }
             
-            // Map the evaluations data from snake_case to camelCase
-            const mappedEvaluations = ex.evaluations ? ex.evaluations.map((eval: any) => ({
-              timeRating: eval.time_rating,
-              weightRating: eval.weight_rating,
-              repetitionsRating: eval.repetitions_rating,
-              exerciseRating: eval.exercise_rating,
-              comment: eval.comment,
-              date: eval.date
+            const mappedEvaluations = ex.evaluations ? ex.evaluations.map((evaluation: any) => ({
+              timeRating: evaluation.time_rating,
+              weightRating: evaluation.weight_rating,
+              repetitionsRating: evaluation.repetitions_rating,
+              exerciseRating: evaluation.exercise_rating,
+              comment: evaluation.comment,
+              date: evaluation.date
             })) : [];
             
             planExercises.push({
@@ -144,7 +139,6 @@ const PlanDetails = () => {
         });
       }
       
-      // Aplanar ejercicios para mantener compatibilidad
       const allExercises: PlanExercise[] = [];
       sessions.forEach(session => {
         session.series.forEach(series => {
@@ -160,7 +154,6 @@ const PlanDetails = () => {
 
       if (clientError) throw clientError;
 
-      // Recolectar todos los IDs de ejercicios para obtener sus detalles
       const exerciseIds = allExercises.map(ex => ex.exerciseId);
       
       if (exerciseIds.length > 0) {
@@ -194,11 +187,9 @@ const PlanDetails = () => {
       setClient(clientData);
       setEditedName(planData.name);
       
-      // Si hay sesiones, seleccionar por defecto la primera
       if (sessions.length > 0) {
         setSelectedSessionId(sessions[0].id);
         
-        // Si la sesión seleccionada tiene series, seleccionar por defecto la primera
         if (sessions[0].series.length > 0) {
           setSelectedSeriesId(sessions[0].series[0].id);
         }
@@ -279,7 +270,6 @@ const PlanDetails = () => {
     if (!selectedExerciseId || !selectedSeriesId || !plan) return;
     
     try {
-      // Comprobar si el ejercicio ya está en el plan
       const exerciseExists = plan.exercises.some(e => e.exerciseId === selectedExerciseId);
       
       if (exerciseExists) {
@@ -287,7 +277,6 @@ const PlanDetails = () => {
         return;
       }
       
-      // Recuperar el plan_id para la serie seleccionada
       const { data: seriesData, error: seriesError } = await supabase
         .from("series")
         .select("session_id")
@@ -304,14 +293,13 @@ const PlanDetails = () => {
         
       if (sessionError) throw sessionError;
       
-      // Insertar el nuevo ejercicio
       const { error } = await supabase
         .from("plan_exercises")
         .insert({
           series_id: selectedSeriesId,
           exercise_id: selectedExerciseId,
           level: selectedLevel,
-          plan_id: sessionData.plan_id // Incluir plan_id para políticas RLS
+          plan_id: sessionData.plan_id
         });
 
       if (error) throw error;
@@ -334,7 +322,6 @@ const PlanDetails = () => {
     
     if (confirm("¿Estás seguro de que quieres eliminar este ejercicio del plan?")) {
       try {
-        // Encontrar en qué serie se encuentra este ejercicio
         let seriesId: string | null = null;
         
         for (const session of plan.sessions) {
@@ -392,7 +379,6 @@ const PlanDetails = () => {
     if (!plan) return;
     
     try {
-      // Encontrar en qué serie se encuentra este ejercicio
       let seriesId: string | null = null;
       
       for (const session of plan.sessions) {
@@ -427,7 +413,6 @@ const PlanDetails = () => {
         updatedPlan.exercises[exerciseIndex].level = newLevel;
       }
       
-      // También actualizar en la estructura de sesiones/series
       for (const session of updatedPlan.sessions) {
         for (const series of session.series) {
           const exIndex = series.exercises.findIndex(e => e.exerciseId === exerciseId);
@@ -587,7 +572,6 @@ const PlanDetails = () => {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            {/* Selección de sesión */}
             {plan.sessions.length > 0 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Sesión</label>
@@ -606,7 +590,6 @@ const PlanDetails = () => {
               </div>
             )}
             
-            {/* Selección de serie */}
             {selectedSessionId && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Serie</label>
@@ -630,7 +613,6 @@ const PlanDetails = () => {
               </div>
             )}
             
-            {/* Selección de ejercicio */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Ejercicio</label>
               <Select value={selectedExerciseId} onValueChange={setSelectedExerciseId}>
@@ -647,7 +629,6 @@ const PlanDetails = () => {
               </Select>
             </div>
             
-            {/* Selección de nivel */}
             {selectedExerciseId && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Nivel</label>

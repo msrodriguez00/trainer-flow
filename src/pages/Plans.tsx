@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -68,7 +67,6 @@ const Plans = () => {
       const formattedPlans: Plan[] = [];
       
       for (const plan of plansData) {
-        // Fetch sessions for this plan
         const { data: sessionsData, error: sessionsError } = await supabase
           .from("sessions")
           .select(`id, name, order_index`)
@@ -80,7 +78,6 @@ const Plans = () => {
         const sessions: Session[] = [];
         
         for (const session of sessionsData || []) {
-          // Fetch series for this session
           const { data: seriesData, error: seriesError } = await supabase
             .from("series")
             .select(`id, name, order_index`)
@@ -92,7 +89,6 @@ const Plans = () => {
           const seriesList: Series[] = [];
           
           for (const series of seriesData || []) {
-            // Fetch exercises for this series
             const { data: exercisesData, error: exercisesError } = await supabase
               .from("plan_exercises")
               .select(`
@@ -105,14 +101,13 @@ const Plans = () => {
             if (exercisesError) throw exercisesError;
             
             const exercises: PlanExercise[] = exercisesData.map((ex: any) => {
-              // Map evaluations from snake_case to camelCase
-              const mappedEvaluations = ex.evaluations ? ex.evaluations.map((eval: any) => ({
-                timeRating: eval.time_rating,
-                weightRating: eval.weight_rating,
-                repetitionsRating: eval.repetitions_rating,
-                exerciseRating: eval.exercise_rating,
-                comment: eval.comment,
-                date: eval.date
+              const mappedEvaluations = ex.evaluations ? ex.evaluations.map((evaluation: any) => ({
+                timeRating: evaluation.time_rating,
+                weightRating: evaluation.weight_rating,
+                repetitionsRating: evaluation.repetitions_rating,
+                exerciseRating: evaluation.exercise_rating,
+                comment: evaluation.comment,
+                date: evaluation.date
               })) : [];
               
               return {
@@ -139,7 +134,6 @@ const Plans = () => {
           });
         }
         
-        // Flatten exercises for backward compatibility
         const allExercises: PlanExercise[] = [];
         sessions.forEach(session => {
           session.series.forEach(series => {
@@ -335,4 +329,3 @@ const Plans = () => {
 };
 
 export default Plans;
-

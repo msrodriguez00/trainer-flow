@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Exercise, PlanExercise, Level, Evaluation } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

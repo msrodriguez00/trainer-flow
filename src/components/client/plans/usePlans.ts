@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,7 +57,6 @@ export const usePlans = () => {
     
     setLoading(true);
     try {
-      // Obtener todos los planes del cliente
       const { data: plansData, error: plansError } = await supabase
         .from("plans")
         .select(`
@@ -87,7 +85,6 @@ export const usePlans = () => {
         const formattedPlans: Plan[] = [];
         
         for (const plan of plansData) {
-          // Para cada plan, obtenemos sus sesiones
           const { data: sessionsData, error: sessionsError } = await supabase
             .from("sessions")
             .select(`
@@ -105,7 +102,6 @@ export const usePlans = () => {
           
           const sessions: Session[] = [];
           
-          // Para cada sesión, obtenemos sus series
           for (const session of (sessionsData || [])) {
             const { data: seriesData, error: seriesError } = await supabase
               .from("series")
@@ -124,7 +120,6 @@ export const usePlans = () => {
             
             const seriesList: Series[] = [];
             
-            // Para cada serie, obtenemos sus ejercicios
             for (const serie of (seriesData || [])) {
               const { data: planExercises, error: exercisesError } = await supabase
                 .from("plan_exercises")
@@ -142,7 +137,6 @@ export const usePlans = () => {
               
               const exercisesWithNames: PlanExercise[] = [];
               
-              // Para cada ejercicio, obtenemos su nombre
               for (const planExercise of (planExercises || [])) {
                 const { data: exerciseData, error: exerciseError } = await supabase
                   .from("exercises")
@@ -179,7 +173,6 @@ export const usePlans = () => {
             });
           }
           
-          // Aplanamos los ejercicios para mantener compatibilidad con el código existente
           const allExercises: PlanExercise[] = [];
           sessions.forEach(session => {
             session.series.forEach(serie => {
@@ -193,7 +186,7 @@ export const usePlans = () => {
             clientId: plan.client_id,
             createdAt: plan.created_at,
             sessions: sessions,
-            exercises: allExercises  // Para compatibilidad con el código existente
+            exercises: allExercises
           });
         }
 
