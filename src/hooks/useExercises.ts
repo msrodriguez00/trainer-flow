@@ -69,7 +69,7 @@ export const useExercises = () => {
           name: exercise.name,
           categories: exercise.categories,
           created_by: user.id,
-          levels: exercise.levels.map((level, idx) => ({
+          levels: exercise.levels?.map((level, idx) => ({
             level: idx + 1,
             video: level.video,
             repetitions: level.repetitions,
@@ -110,7 +110,7 @@ export const useExercises = () => {
         .update({
           name: updatedExercise.name,
           categories: updatedExercise.categories,
-          levels: updatedExercise.levels.map((level, idx) => ({
+          levels: updatedExercise.levels?.map((level, idx) => ({
             level: idx + 1,
             video: level.video,
             repetitions: level.repetitions,

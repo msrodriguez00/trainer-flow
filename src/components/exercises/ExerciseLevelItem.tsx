@@ -6,11 +6,18 @@ import { Label } from "@/components/ui/label";
 import { Minus } from "lucide-react";
 import { VideoUrlInput } from "./VideoUrlInput";
 
+// Definir el tipo LevelFormData para uso interno
+interface LevelFormData {
+  video: string;
+  repetitions: number;
+  weight: number;
+}
+
 interface ExerciseLevelItemProps {
   index: number;
-  level: Omit<Level, "level">;
+  level: LevelFormData;
   videoError: boolean;
-  onUpdate: (index: number, field: keyof Omit<Level, "level">, value: string | number) => void;
+  onUpdate: (index: number, field: keyof LevelFormData, value: string | number) => void;
   onRemove: (index: number) => void;
   onVideoValidationChange: (index: number, isValid: boolean) => void;
   canRemove: boolean;
@@ -58,8 +65,8 @@ export const ExerciseLevelItem = ({
 
 interface LevelMetricsInputsProps {
   index: number;
-  level: Omit<Level, "level">;
-  onUpdate: (index: number, field: keyof Omit<Level, "level">, value: string | number) => void;
+  level: LevelFormData;
+  onUpdate: (index: number, field: keyof LevelFormData, value: string | number) => void;
 }
 
 export const LevelMetricsInputs = ({ index, level, onUpdate }: LevelMetricsInputsProps) => {

@@ -8,6 +8,7 @@ export type Client = {
   trainer_id?: string;
   created_at?: string;
   avatar_url?: string;
+  avatar?: string; // Añadido para compatibilidad con componentes existentes
 };
 
 // Exercise types
@@ -19,15 +20,12 @@ export type Exercise = {
   category_id?: string;
   trainer_id?: string;
   category?: Category;
+  categories?: string[]; // Añadido para compatibilidad con componentes existentes
   levels?: Level[];
   created_at?: string;
 };
 
-export type Category = {
-  id: string;
-  name: string;
-  trainer_id?: string;
-};
+export type Category = string;
 
 export type Level = {
   id: string;
@@ -35,6 +33,12 @@ export type Level = {
   exercise_id: string;
   description?: string;
   video_url?: string;
+  
+  // Propiedades adicionales para compatibilidad con componentes existentes
+  level?: number;
+  video?: string;
+  repetitions?: number;
+  weight?: number;
 };
 
 // Plan types

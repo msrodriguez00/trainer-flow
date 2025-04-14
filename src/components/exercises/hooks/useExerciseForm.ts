@@ -3,6 +3,12 @@ import { useState, useEffect, useCallback } from "react";
 import { Exercise, Category, Level } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
+interface LevelFormData {
+  video: string;
+  repetitions: number;
+  weight: number;
+}
+
 interface UseExerciseFormProps {
   initialExercise?: Exercise;
   onSubmit: (exercise: Omit<Exercise, "id">) => void;
@@ -13,7 +19,7 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
-  const [levels, setLevels] = useState<Omit<Level, "level">[]>([
+  const [levels, setLevels] = useState<LevelFormData[]>([
     { video: "", repetitions: 0, weight: 0 }
   ]);
   const [videoErrors, setVideoErrors] = useState<boolean[]>([false]);
@@ -36,16 +42,16 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     if (initialExercise) {
       console.log("useExerciseForm - Setting form data from initialExercise");
       setName(initialExercise.name);
-      setSelectedCategories([...initialExercise.categories]);
+      setSelectedCategories(initialExercise.categories || []);
       
       // Deep copy the levels from the initialExercise to avoid reference issues
-      const formattedLevels = initialExercise.levels.map(level => ({
-        video: level.video,
-        repetitions: level.repetitions,
-        weight: level.weight
-      }));
+      const formattedLevels = initialExercise.levels?.map(level => ({
+        video: level.video || "",
+        repetitions: level.repetitions || 0,
+        weight: level.weight || 0
+      })) || [{ video: "", repetitions: 0, weight: 0 }];
       
-      setLevels([...formattedLevels]);
+      setLevels(formattedLevels);
       setVideoErrors(new Array(formattedLevels.length).fill(false));
     } else {
       console.log("useExerciseForm - No initialExercise, resetting form");
@@ -58,7 +64,7 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     };
   }, [initialExercise, resetForm]);
 
-  const handleCategoryChange = (category: Category, checked: boolean) => {
+  const handleCategoryChange = (category: string, checked: boolean) => {
     if (checked) {
       setSelectedCategories(prev => [...prev, category]);
     } else {
@@ -66,7 +72,7 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     }
   };
 
-  const updateLevel = (index: number, field: keyof Omit<Level, "level">, value: string | number) => {
+  const updateLevel = (index: number, field: keyof LevelFormData, value: string | number) => {
     const newLevels = [...levels];
     newLevels[index] = {
       ...newLevels[index],
@@ -121,9 +127,11 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     setIsSubmitting(true);
     console.log("useExerciseForm - Setting isSubmitting to true");
 
-    const formattedLevels: Level[] = levels.map((level, idx) => ({
+    const formattedLevels = levels.map((level, idx) => ({
       level: idx + 1,
-      ...level,
+      video: level.video,
+      repetitions: level.repetitions,
+      weight: level.weight
     }));
 
     try {
