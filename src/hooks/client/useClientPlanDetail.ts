@@ -18,7 +18,11 @@ export const useClientPlanDetail = (planId: string | undefined) => {
       setLoading(true);
       console.log("Fetching plan details for ID:", planId, "client ID:", clientId);
 
+      // Log RLS policy information
+      console.log("DEBUG: Verificando permisos para el client_id:", clientId);
+      
       // Get the plan
+      console.log("DEBUG: Ejecutando consulta para obtener plan");
       const { data: planData, error: planError } = await supabase
         .from("plans")
         .select(`
@@ -33,6 +37,9 @@ export const useClientPlanDetail = (planId: string | undefined) => {
 
       if (planError) {
         console.error("Error fetching plan:", planError);
+        console.error("  - Código:", planError.code);
+        console.error("  - Mensaje:", planError.message);
+        console.error("  - Detalles:", planError.details);
         toast({
           title: "Error",
           description: "No se pudo cargar el plan",
@@ -43,20 +50,27 @@ export const useClientPlanDetail = (planId: string | undefined) => {
       }
 
       if (planData) {
+        console.log("DEBUG: Plan encontrado:", planData);
+        
         // Get sessions for this plan
+        console.log("DEBUG: Consultando sesiones para el plan");
         const { data: sessionsData, error: sessionsError } = await supabase
           .from("sessions")
           .select(`
             id,
             name,
             order_index,
-            scheduled_date
+            scheduled_date,
+            client_id
           `)
           .eq("plan_id", planData.id)
           .order("order_index", { ascending: true });
 
         if (sessionsError) {
           console.error("Error fetching sessions:", sessionsError);
+          console.error("  - Código:", sessionsError.code);
+          console.error("  - Mensaje:", sessionsError.message);
+          console.error("  - Detalles:", sessionsError.details);
           toast({
             title: "Error",
             description: "No se pudieron cargar las sesiones del plan",
@@ -66,17 +80,23 @@ export const useClientPlanDetail = (planId: string | undefined) => {
           return;
         }
 
+        console.log("DEBUG: Sesiones encontradas:", sessionsData);
+        
         const sessions = [];
 
         // For each session, get the series and exercises
         for (const session of (sessionsData || [])) {
+          console.log("DEBUG: Procesando sesión:", session.id);
+          console.log("  - client_id de la sesión:", session.client_id);
+          
           // Get series
           const { data: seriesData, error: seriesError } = await supabase
             .from("series")
             .select(`
               id,
               name,
-              order_index
+              order_index,
+              client_id
             `)
             .eq("session_id", session.id)
             .order("order_index", { ascending: true });
@@ -86,10 +106,15 @@ export const useClientPlanDetail = (planId: string | undefined) => {
             continue;
           }
 
+          console.log("DEBUG: Series encontradas:", seriesData?.length || 0);
+
           const seriesList = [];
 
           // For each series, get the exercises
           for (const serie of (seriesData || [])) {
+            console.log("DEBUG: Procesando serie:", serie.id);
+            console.log("  - client_id de la serie:", serie.client_id);
+            
             // Get exercises with a JOIN to get all exercise details
             const { data: planExercises, error: exercisesError } = await supabase
               .from("plan_exercises")

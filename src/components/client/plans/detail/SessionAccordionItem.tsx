@@ -28,9 +28,16 @@ export const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({
   };
 
   const handleDateUpdate = useCallback((newDate: string | null) => {
-    console.log("Fecha actualizada en SessionAccordionItem:", { sessionId: session.id, newDate });
+    console.log("Fecha actualizada en SessionAccordionItem:", { 
+      sessionId: session.id, 
+      newDate,
+      sessionData: {
+        name: session.name,
+        currentDate: session.scheduledDate 
+      }
+    });
     onDateUpdated(session.id, newDate);
-  }, [session.id, onDateUpdated]);
+  }, [session, onDateUpdated]);
 
   return (
     <AccordionItem key={session.id} value={session.id} className="border rounded-lg">

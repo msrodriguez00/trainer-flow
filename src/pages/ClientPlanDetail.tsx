@@ -23,16 +23,32 @@ const ClientPlanDetail = () => {
   const handleSessionDateUpdate = useCallback((sessionId: string, newDate: string | null) => {
     if (!plan) return;
     
-    console.log("Manejando actualización de fecha en ClientPlanDetail:", { sessionId, newDate });
+    console.log("Manejando actualización de fecha en ClientPlanDetail:", { 
+      sessionId, 
+      newDate,
+      planId: id,
+      sessionCount: plan.sessions?.length || 0
+    });
     
     // Local state update for UI (the DB update is done in SessionDatePicker)
     const updatedPlan = {...plan};
     const sessionIndex = updatedPlan.sessions.findIndex(s => s.id === sessionId);
     
+    console.log("Índice de sesión encontrado:", sessionIndex);
+    
     if (sessionIndex !== -1) {
+      console.log("Estado antes de actualización:", {
+        fechaAnterior: updatedPlan.sessions[sessionIndex].scheduledDate
+      });
+      
       updatedPlan.sessions[sessionIndex].scheduledDate = newDate;
       
+      console.log("Estado después de actualización:", {
+        fechaNueva: updatedPlan.sessions[sessionIndex].scheduledDate
+      });
+      
       // Force a refresh of data from the server
+      console.log("Solicitando actualización de datos del plan desde servidor");
       refreshPlanDetails();
     }
   }, [plan, refreshPlanDetails]);
