@@ -71,12 +71,16 @@ export const useSession = (sessionId: string): UseSessionResponse => {
         }
         
         // Transform to training series with completed flags
-        const trainingSeries = data.series.map(series => ({
+        const trainingSeries: TrainingSeries[] = data.series.map(series => ({
           ...series,
           isCompleted: false,
           exercises: series.exercises.map(ex => ({
             ...ex,
-            isCompleted: false
+            id: ex.id, // Ensure id is included
+            isCompleted: false,
+            videoUrl: ex.videoUrl || '',
+            repetitions: ex.repetitions,
+            weight: ex.weight
           }))
         }));
         
