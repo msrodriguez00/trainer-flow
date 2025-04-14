@@ -1,17 +1,9 @@
 
 import React from "react";
-import { ClipboardList, Activity, Layers, FolderKanban, Calendar, ArrowRight } from "lucide-react";
+import { ClipboardList, Calendar } from "lucide-react";
 import { Plan } from "@/types";
 import { useNavigate } from "react-router-dom";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetTrigger 
-} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface PlanItemProps {
   plan: Plan;
@@ -34,12 +26,6 @@ export const PlanItem: React.FC<PlanItemProps> = ({ plan }) => {
       return seriesTotal + series.exercises.length;
     }, 0);
   }, 0);
-
-  const handleViewDetails = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigate(`/client-plan/${plan.id}`);
-  };
   
   const handlePlanClick = () => {
     navigate(`/client-plan/${plan.id}`);
