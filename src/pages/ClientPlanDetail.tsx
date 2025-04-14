@@ -22,6 +22,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useClientIdentification } from "@/hooks/client/useClientIdentification";
 import ClientAuthError from "@/components/client/common/ClientAuthError";
 import LoadingScreen from "@/components/client/common/LoadingScreen";
+import { Badge } from "@/components/ui/badge";
 
 const ClientPlanDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -209,6 +210,13 @@ const ClientPlanDetail = () => {
     });
   };
 
+  const formatScheduledDate = (dateString: string | undefined) => {
+    if (!dateString) return null;
+    return format(new Date(dateString), "d 'de' MMMM, yyyy", {
+      locale: es,
+    });
+  };
+
   const handleScheduleSession = async (sessionId: string, date: Date) => {
     try {
       const { error } = await supabase
@@ -358,67 +366,95 @@ const ClientPlanDetail = () => {
                 <h3 className="text-lg font-semibold mb-4">Sesiones de Entrenamiento</h3>
                 
                 {plan.sessions.length > 0 ? (
-                  <Accordion type="single" collapsible className="space-y-4">
+                  <div className="space-y-4">
                     {plan.sessions.map((session) => (
-                      <AccordionItem key={session.id} value={session.id} className="border rounded-lg">
-                        <AccordionTrigger className="px-4 py-3">
-                          <div className="flex items-center justify-between w-full">
-                            <div className="font-medium">{session.name}</div>
-                            {session.scheduledDate && (
+                      <Card key={session.id} className="border overflow-hidden">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-muted/10">
+                          <div className="flex items-center space-x-2">
+                            <h4 className="font-medium text-lg">{session.name}</h4>
+                          </div>
+                          
+                          <div className="mt-2 md:mt-0 flex items-center">
+                            {session.scheduledDate ? (
+                              <Badge variant="outline" className="flex items-center gap-1">
+                                <CalendarClock className="h-3 w-3" />
+                                <span>
+                                  {format(new Date(session.scheduledDate), "d MMM yyyy", { locale: es })}
+                                </span>
+                              </Badge>
+                            ) : (
                               <div className="text-sm text-muted-foreground flex items-center">
-                                <CalendarClock className="h-4 w-4 mr-2" />
-                                {format(new Date(session.scheduledDate), "d MMM yyyy", { locale: es })}
+                                <CalendarClock className="h-3 w-3 mr-1" />
+                                <span>Sin fecha programada</span>
                               </div>
                             )}
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-4 pb-4">
-                          {session.series.map((serie) => (
-                            <div key={serie.id} className="mt-4 first:mt-0">
-                              <h4 className="font-medium text-primary mb-2">{serie.name}</h4>
-                              
-                              {serie.exercises.length > 0 ? (
-                                <div className="space-y-3">
-                                  {serie.exercises.map((exercise, idx) => (
-                                    <div key={idx} className="p-3 bg-muted/20 rounded-md">
-                                      <div className="flex justify-between items-center">
-                                        <div>
-                                          <p className="font-medium">{exercise.exerciseName}</p>
-                                          <p className="text-sm text-muted-foreground">Nivel {exercise.level}</p>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">
-                                  No hay ejercicios en esta serie
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                          <div className="mt-4 flex justify-end">
                             <Popover>
                               <PopoverTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                  <CalendarClock className="h-4 w-4 mr-2" />
-                                  Programar Sesión
+                                <Button variant="outline" size="sm" className="ml-2">
+                                  <Calendar className="h-4 w-4 mr-1" />
+                                  {session.scheduledDate ? "Cambiar fecha" : "Programar"}
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent>
-                                <CalendarComponent
-                                  mode="single"
-                                  selected={session.scheduledDate ? new Date(session.scheduledDate) : undefined}
-                                  onSelect={(date) => date && handleScheduleSession(session.id, date)}
-                                  className="pointer-events-auto"
-                                />
+                                <div className="p-1">
+                                  <h5 className="text-sm font-medium mb-2">Selecciona una fecha</h5>
+                                  <CalendarComponent
+                                    mode="single"
+                                    selected={session.scheduledDate ? new Date(session.scheduledDate) : undefined}
+                                    onSelect={(date) => date && handleScheduleSession(session.id, date)}
+                                    className="pointer-events-auto"
+                                  />
+                                </div>
                               </PopoverContent>
                             </Popover>
                           </div>
-                        </AccordionContent>
-                      </AccordionItem>
+                        </div>
+                        
+                        <Accordion type="single" collapsible>
+                          <AccordionItem value={session.id} className="border-0">
+                            <AccordionTrigger className="px-4 py-2">
+                              <span className="text-sm">Ver detalles de la sesión</span>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-4 pb-4">
+                              {session.scheduledDate && (
+                                <div className="mb-4 p-3 bg-primary/5 rounded-md">
+                                  <p className="text-sm flex items-center font-medium">
+                                    <CalendarClock className="h-4 w-4 mr-2 text-primary" />
+                                    Fecha programada: {formatScheduledDate(session.scheduledDate)}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {session.series.map((serie) => (
+                                <div key={serie.id} className="mt-4 first:mt-0">
+                                  <h4 className="font-medium text-primary mb-2">{serie.name}</h4>
+                                  
+                                  {serie.exercises.length > 0 ? (
+                                    <div className="space-y-3">
+                                      {serie.exercises.map((exercise, idx) => (
+                                        <div key={idx} className="p-3 bg-muted/20 rounded-md">
+                                          <div className="flex justify-between items-center">
+                                            <div>
+                                              <p className="font-medium">{exercise.exerciseName}</p>
+                                              <p className="text-sm text-muted-foreground">Nivel {exercise.level}</p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                      No hay ejercicios en esta serie
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      </Card>
                     ))}
-                  </Accordion>
+                  </div>
                 ) : (
                   <div className="text-center p-8 border border-dashed rounded-lg">
                     <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-3" />
