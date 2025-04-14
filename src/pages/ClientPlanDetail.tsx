@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -107,14 +106,14 @@ const ClientPlanDetail = () => {
 
           // Para cada serie, obtener los ejercicios
           for (const serie of (seriesData || [])) {
-            // Obtener ejercicios - Asegúrese de incluir toda la información necesaria
+            // Obtener ejercicios con un JOIN para obtener todos los detalles del ejercicio
             const { data: planExercises, error: exercisesError } = await supabase
               .from("plan_exercises")
               .select(`
                 id,
                 exercise_id,
                 level,
-                exercises:exercise_id (id, name, categories, levels)
+                exercises:exercise_id (*)
               `)
               .eq("series_id", serie.id);
 
@@ -124,6 +123,12 @@ const ClientPlanDetail = () => {
             }
 
             console.log("Exercise data in plan detail for series", serie.id, ":", planExercises);
+            
+            // Debug para ver cada ejercicio
+            planExercises?.forEach((ex, idx) => {
+              console.log(`Plan detail - Exercise ${idx} data:`, ex);
+              console.log(`Plan detail - Exercise ${idx} name:`, ex.exercises?.name || "NO NAME FOUND");
+            });
 
             const exercisesWithNames = planExercises?.map(ex => ({
               exerciseId: ex.exercise_id,
@@ -228,11 +233,11 @@ const ClientPlanDetail = () => {
   }
 
   // Calcular el número total de ejercicios en todo el plan
-  const totalExercises = plan.sessions.reduce((total, session) => {
+  const totalExercises = plan?.sessions.reduce((total, session) => {
     return total + session.series.reduce((seriesTotal, series) => {
       return seriesTotal + series.exercises.length;
     }, 0);
-  }, 0);
+  }, 0) || 0;
 
   return (
     <MainLayout>
@@ -246,98 +251,117 @@ const ClientPlanDetail = () => {
           Volver a mis planes
         </Button>
         
-        <Card className="shadow-md">
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center">
-              <div className="mb-4 md:mb-0">
-                <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                <div className="flex items-center mt-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  <span>Creado el {formatDate(plan.createdAt)}</span>
-                </div>
+        {!loading && !plan && (
+          <Card className="shadow-md">
+            <CardContent className="pt-6 px-6 pb-6">
+              <div className="text-center py-12">
+                <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium mb-2">Plan no encontrado</h3>
+                <p className="text-gray-500 mb-6">
+                  El plan que buscas no existe o no tienes permiso para verlo
+                </p>
+                <Button onClick={() => navigate("/client-plans")}>
+                  Ver mis planes
+                </Button>
               </div>
-              
-              {plan.month && (
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  {plan.month}
+            </CardContent>
+          </Card>
+        )}
+        
+        {plan && (
+          <Card className="shadow-md">
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+                <div className="mb-4 md:mb-0">
+                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                  <div className="flex items-center mt-2 text-muted-foreground">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    <span>Creado el {formatDate(plan.createdAt)}</span>
+                  </div>
                 </div>
-              )}
-            </div>
-          </CardHeader>
-          
-          <CardContent>
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-2 flex items-center">
-                <Activity className="h-5 w-5 mr-2 text-primary" />
-                Resumen del plan
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-4 bg-muted/30 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Sesiones</p>
-                  <p className="text-2xl font-semibold">{plan.sessions.length}</p>
-                </div>
-                <div className="p-4 bg-muted/30 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Series</p>
-                  <p className="text-2xl font-semibold">
-                    {plan.sessions.reduce((acc, session) => acc + session.series.length, 0)}
-                  </p>
-                </div>
-                <div className="p-4 bg-muted/30 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Ejercicios</p>
-                  <p className="text-2xl font-semibold">{totalExercises}</p>
-                </div>
+                
+                {plan.month && (
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    {plan.month}
+                  </div>
+                )}
               </div>
-            </div>
+            </CardHeader>
             
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold mb-4">Sesiones de Entrenamiento</h3>
+            <CardContent>
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-2 flex items-center">
+                  <Activity className="h-5 w-5 mr-2 text-primary" />
+                  Resumen del plan
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-4 bg-muted/30 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Sesiones</p>
+                    <p className="text-2xl font-semibold">{plan.sessions.length}</p>
+                  </div>
+                  <div className="p-4 bg-muted/30 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Series</p>
+                    <p className="text-2xl font-semibold">
+                      {plan.sessions.reduce((acc, session) => acc + session.series.length, 0)}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-muted/30 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Ejercicios</p>
+                    <p className="text-2xl font-semibold">{totalExercises}</p>
+                  </div>
+                </div>
+              </div>
               
-              {plan.sessions.length > 0 ? (
-                <Accordion type="single" collapsible className="space-y-4">
-                  {plan.sessions.map((session) => (
-                    <AccordionItem key={session.id} value={session.id} className="border rounded-lg">
-                      <AccordionTrigger className="px-4 py-3">
-                        <div className="font-medium">{session.name}</div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        {session.series.map((serie) => (
-                          <div key={serie.id} className="mt-4 first:mt-0">
-                            <h4 className="font-medium text-primary mb-2">{serie.name}</h4>
-                            
-                            {serie.exercises.length > 0 ? (
-                              <div className="space-y-3">
-                                {serie.exercises.map((exercise, idx) => (
-                                  <div key={idx} className="p-3 bg-muted/20 rounded-md">
-                                    <div className="flex justify-between items-center">
-                                      <div>
-                                        <p className="font-medium">{exercise.exerciseName}</p>
-                                        <p className="text-sm text-muted-foreground">Nivel {exercise.level}</p>
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold mb-4">Sesiones de Entrenamiento</h3>
+                
+                {plan.sessions.length > 0 ? (
+                  <Accordion type="single" collapsible className="space-y-4">
+                    {plan.sessions.map((session) => (
+                      <AccordionItem key={session.id} value={session.id} className="border rounded-lg">
+                        <AccordionTrigger className="px-4 py-3">
+                          <div className="font-medium">{session.name}</div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-4 pb-4">
+                          {session.series.map((serie) => (
+                            <div key={serie.id} className="mt-4 first:mt-0">
+                              <h4 className="font-medium text-primary mb-2">{serie.name}</h4>
+                              
+                              {serie.exercises.length > 0 ? (
+                                <div className="space-y-3">
+                                  {serie.exercises.map((exercise, idx) => (
+                                    <div key={idx} className="p-3 bg-muted/20 rounded-md">
+                                      <div className="flex justify-between items-center">
+                                        <div>
+                                          <p className="font-medium">{exercise.exerciseName}</p>
+                                          <p className="text-sm text-muted-foreground">Nivel {exercise.level}</p>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-muted-foreground">
-                                No hay ejercicios en esta serie
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              ) : (
-                <div className="text-center p-8 border border-dashed rounded-lg">
-                  <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-muted-foreground">Este plan no tiene sesiones configuradas</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">
+                                  No hay ejercicios en esta serie
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <div className="text-center p-8 border border-dashed rounded-lg">
+                    <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                    <p className="text-muted-foreground">Este plan no tiene sesiones configuradas</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </MainLayout>
   );
