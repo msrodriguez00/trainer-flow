@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 
@@ -13,11 +13,25 @@ import PlanSummary from "@/components/client/plans/detail/PlanSummary";
 import SessionsList from "@/components/client/plans/detail/SessionsList";
 import PlanNotFound from "@/components/client/plans/detail/PlanNotFound";
 import { usePlanDetail } from "@/hooks/client/plans/usePlanDetail";
+import { checkSessionRLSPolicies, ensureSessionRLSPolicies } from "@/utils/debugUtils";
 
 const ClientPlanDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { plan, loading, handleScheduleSession } = usePlanDetail(id);
+
+  useEffect(() => {
+    // Verificamos las políticas RLS al cargar la página
+    const checkRLS = async () => {
+      console.log("ClientPlanDetail - Verificando políticas RLS para sesiones");
+      await checkSessionRLSPolicies();
+      console.log("ClientPlanDetail - Asegurando que las políticas RLS estén aplicadas");
+      const result = await ensureSessionRLSPolicies();
+      console.log("ClientPlanDetail - Resultado de asegurar políticas:", result);
+    };
+    
+    checkRLS();
+  }, []);
 
   if (loading) {
     return <LoadingScreen />;
@@ -36,6 +50,16 @@ const ClientPlanDetail = () => {
       return seriesTotal + series.exercises.length;
     }, 0);
   }, 0) || 0;
+
+  const handleScheduleSessionWithLogs = async (sessionId: string, date: Date) => {
+    console.log("ClientPlanDetail - Programando sesión:", sessionId, "para la fecha:", date);
+    try {
+      await handleScheduleSession(sessionId, date);
+      console.log("ClientPlanDetail - Sesión programada exitosamente");
+    } catch (error) {
+      console.error("ClientPlanDetail - Error programando sesión:", error);
+    }
+  };
 
   return (
     <MainLayout>
@@ -64,7 +88,7 @@ const ClientPlanDetail = () => {
             
             <SessionsList 
               sessions={plan.sessions} 
-              onScheduleSession={handleScheduleSession}
+              onScheduleSession={handleScheduleSessionWithLogs}
             />
           </Card>
         )}

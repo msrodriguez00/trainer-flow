@@ -19,47 +19,32 @@ serve(async (req) => {
   try {
     const url = Deno.env.get("SUPABASE_URL") || "";
     const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    
-    console.log("Applying RLS policies for sessions table");
 
     // Create client with service role for admin access
     const supabaseAdmin = createClient(url, serviceRole, {
       auth: { persistSession: false }
     });
 
-    // Llamar a la función que aplica las políticas
-    const { data, error } = await supabaseAdmin
-      .rpc("apply_session_rls_policies");
-
-    if (error) {
-      console.error("Error applying session RLS policies:", error);
-      throw error;
-    }
-
-    // Verificar si RLS está habilitado después de aplicar políticas
-    const { data: rlsData, error: rlsError } = await supabaseAdmin
-      .rpc("is_rls_enabled", { table_name: "sessions" });
-
-    if (rlsError) {
-      console.error("Error checking RLS status:", rlsError);
-      throw rlsError;
-    }
-
-    // Verificar políticas existentes
+    // Obtener información sobre las políticas RLS para la tabla sessions
     const { data: policiesData, error: policiesError } = await supabaseAdmin
       .rpc("get_policies_for_table", { table_name: "sessions" });
 
     if (policiesError) {
-      console.error("Error checking policies:", policiesError);
       throw policiesError;
     }
 
-    console.log("RLS policies applied successfully");
+    // Verificar si RLS está habilitado
+    const { data: rlsData, error: rlsError } = await supabaseAdmin
+      .rpc("is_rls_enabled", { table_name: "sessions" });
+
+    if (rlsError) {
+      throw rlsError;
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "RLS policies applied successfully",
+        message: "RLS policies checked",
         rls_enabled: rlsData,
         policies: policiesData
       }),
@@ -69,8 +54,6 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error applying RLS policies:", error);
-    
     return new Response(
       JSON.stringify({
         success: false,

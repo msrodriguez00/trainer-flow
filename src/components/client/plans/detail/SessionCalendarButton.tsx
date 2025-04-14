@@ -31,15 +31,17 @@ const SessionCalendarButton: React.FC<SessionCalendarButtonProps> = ({
   const handleDateSelect = async (date: Date | undefined) => {
     if (date) {
       try {
+        console.log(`SessionCalendarButton - Intentando programar sesión ${sessionId} para la fecha:`, date);
         setIsUpdating(true);
         await onScheduleSession(sessionId, date);
+        console.log(`SessionCalendarButton - Sesión ${sessionId} programada exitosamente para:`, date);
         setIsOpen(false);
         toast({
           title: "Fecha programada",
           description: `Sesión programada para ${format(date, "d MMM yyyy", { locale: es })}`,
         });
       } catch (error) {
-        console.error("Error scheduling session:", error);
+        console.error("Error en SessionCalendarButton - No se pudo programar la sesión:", error);
         toast({
           title: "Error",
           description: "No se pudo programar la sesión. Por favor intenta de nuevo.",

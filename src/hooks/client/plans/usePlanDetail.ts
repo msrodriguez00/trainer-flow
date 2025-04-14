@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -199,19 +200,36 @@ export const usePlanDetail = (planId: string | undefined) => {
 
   const handleScheduleSession = async (sessionId: string, date: Date) => {
     try {
-      console.log(`Scheduling session ${sessionId} for date ${date.toISOString()}`);
+      console.log(`usePlanDetail - Iniciando programación de sesión ${sessionId} para fecha ${date.toISOString()}`);
       
       if (!clientId) {
+        console.error("usePlanDetail - Error: Usuario no autenticado");
         throw new Error("Usuario no autenticado");
       }
 
-      const { error } = await supabase
+      // Registramos el estado actual de la sesión antes de actualizar
+      const { data: beforeSession, error: beforeError } = await supabase
+        .from('sessions')
+        .select('scheduled_date, plan_id')
+        .eq('id', sessionId)
+        .single();
+      
+      if (beforeError) {
+        console.error("usePlanDetail - Error al obtener datos de sesión antes de actualizar:", beforeError);
+      } else {
+        console.log("usePlanDetail - Estado actual de la sesión antes de actualizar:", beforeSession);
+      }
+
+      // Actualizamos la sesión
+      console.log(`usePlanDetail - Actualizando sesión ${sessionId} con fecha ${date.toISOString()}`);
+      const { data: updateData, error } = await supabase
         .from('sessions')
         .update({ scheduled_date: date.toISOString() })
-        .eq('id', sessionId);
+        .eq('id', sessionId)
+        .select();
 
       if (error) {
-        console.error("Error updating session date:", error);
+        console.error("usePlanDetail - Error actualizando fecha de la sesión:", error);
         toast({
           title: "Error",
           description: `No se pudo programar la sesión: ${error.message}`,
@@ -219,12 +237,37 @@ export const usePlanDetail = (planId: string | undefined) => {
         });
         throw error;
       }
+      
+      console.log("usePlanDetail - Actualización exitosa de la sesión:", updateData);
+      
+      // Verificamos que la actualización se realizó correctamente
+      const { data: afterSession, error: afterError } = await supabase
+        .from('sessions')
+        .select('scheduled_date, plan_id')
+        .eq('id', sessionId)
+        .single();
+      
+      if (afterError) {
+        console.error("usePlanDetail - Error al obtener datos de sesión después de actualizar:", afterError);
+      } else {
+        console.log("usePlanDetail - Estado de la sesión después de actualizar:", afterSession);
+        
+        if (afterSession.scheduled_date === date.toISOString()) {
+          console.log("usePlanDetail - La fecha se actualizó correctamente en la base de datos");
+        } else {
+          console.error("usePlanDetail - La fecha en la base de datos no coincide con la solicitada");
+          console.log("Fecha esperada:", date.toISOString());
+          console.log("Fecha en BD:", afterSession.scheduled_date);
+        }
+      }
 
+      // Refrescamos los datos del plan para mostrar los cambios
+      console.log("usePlanDetail - Refrescando datos del plan");
       await fetchPlanDetails();
 
       return;
     } catch (error) {
-      console.error("Error scheduling session:", error);
+      console.error("usePlanDetail - Error general programando sesión:", error);
       toast({
         title: "Error",
         description: "No se pudo programar la sesión. Verifica tu conexión e intenta de nuevo.",
