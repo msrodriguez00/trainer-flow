@@ -27,6 +27,11 @@ const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({
     navigate(`/client-session/${session.id}`);
   };
   
+  // Create a handler that wraps onDateUpdated to match the expected signature
+  const handleDateUpdated = (newDate: string | null) => {
+    onDateUpdated(session.id, newDate);
+  };
+  
   return (
     <AccordionItem value={session.id} className="border rounded-md mb-4 overflow-hidden">
       <AccordionTrigger className="px-4 py-3 hover:bg-accent/20 [&[data-state=open]]:bg-accent/20">
@@ -40,8 +45,8 @@ const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <SessionDatePicker 
               sessionId={session.id} 
-              currentDate={session.scheduledDate} 
-              onDateUpdated={onDateUpdated}
+              initialDate={session.scheduledDate} 
+              onDateUpdated={handleDateUpdated}
             />
             
             <Button
@@ -58,7 +63,11 @@ const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({
             <div className="space-y-4 mt-4">
               <h4 className="text-sm font-medium">Series</h4>
               {session.series.map((series) => (
-                <SeriesDetail key={series.id} series={series} />
+                <SeriesDetail 
+                  key={series.id} 
+                  name={series.name} 
+                  exercises={series.exercises} 
+                />
               ))}
             </div>
           ) : (

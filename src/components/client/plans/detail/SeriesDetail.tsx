@@ -8,7 +8,7 @@ interface SeriesDetailProps {
   exercises: PlanExercise[];
 }
 
-export const SeriesDetail: React.FC<SeriesDetailProps> = ({ name, exercises }) => {
+const SeriesDetail: React.FC<SeriesDetailProps> = ({ name, exercises }) => {
   return (
     <div className="mt-4 first:mt-0">
       <h4 className="font-medium text-primary mb-2">{name}</h4>
