@@ -15,6 +15,11 @@ export const usePlans = () => {
   useEffect(() => {
     if (user) {
       fetchClientId();
+    } else {
+      // Reset state when user is not authenticated
+      setPlans([]);
+      setClientId(null);
+      setLoading(false);
     }
   }, [user]);
 
