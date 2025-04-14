@@ -343,6 +343,7 @@ export type Database = {
           name: string
           order_index: number
           plan_id: string
+          scheduled_date: string | null
         }
         Insert: {
           created_at?: string
@@ -350,6 +351,7 @@ export type Database = {
           name: string
           order_index?: number
           plan_id: string
+          scheduled_date?: string | null
         }
         Update: {
           created_at?: string
@@ -357,6 +359,7 @@ export type Database = {
           name?: string
           order_index?: number
           plan_id?: string
+          scheduled_date?: string | null
         }
         Relationships: [
           {

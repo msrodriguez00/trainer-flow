@@ -1,13 +1,21 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { Calendar, CalendarClock } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { 
+  Popover, 
+  PopoverContent, 
+  PopoverTrigger 
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+
 import { Plan } from "@/types";
 import MainLayout from "@/components/client/layout/MainLayout";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ClipboardList, ChevronLeft, Calendar, Activity } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useClientIdentification } from "@/hooks/client/useClientIdentification";
@@ -35,7 +43,6 @@ const ClientPlanDetail = () => {
       setLoading(true);
       console.log("Fetching plan details for ID:", id, "client ID:", clientId);
 
-      // Obtener el plan
       const { data: planData, error: planError } = await supabase
         .from("plans")
         .select(`
@@ -60,13 +67,13 @@ const ClientPlanDetail = () => {
       }
 
       if (planData) {
-        // Obtener las sesiones del plan
         const { data: sessionsData, error: sessionsError } = await supabase
           .from("sessions")
           .select(`
             id,
             name,
-            order_index
+            order_index,
+            scheduled_date
           `)
           .eq("plan_id", planData.id)
           .order("order_index", { ascending: true });
@@ -84,9 +91,7 @@ const ClientPlanDetail = () => {
 
         const sessions = [];
 
-        // Para cada sesión, obtener las series y ejercicios
         for (const session of (sessionsData || [])) {
-          // Obtener series
           const { data: seriesData, error: seriesError } = await supabase
             .from("series")
             .select(`
@@ -104,7 +109,6 @@ const ClientPlanDetail = () => {
 
           const seriesList = [];
 
-          // Para cada serie, obtener los ejercicios con JOIN a la tabla exercises
           for (const serie of (seriesData || [])) {
             const { data: exercisesWithDetails, error: exercisesError } = await supabase
               .from("plan_exercises")
@@ -127,7 +131,6 @@ const ClientPlanDetail = () => {
 
             console.log("Exercise data in plan detail for series", serie.id, ":", exercisesWithDetails);
             
-            // Debug para ver cada ejercicio
             exercisesWithDetails?.forEach((ex, idx) => {
               console.log(`Plan detail - Exercise ${idx} data:`, ex);
               console.log(`Plan detail - Exercise ${idx} name:`, ex.exercises?.name || "NO NAME FOUND");
@@ -167,7 +170,6 @@ const ClientPlanDetail = () => {
           });
         }
         
-        // Aplanar ejercicios para compatibilidad con la estructura existente
         const allExercises = [];
         sessions.forEach(session => {
           session.series.forEach(series => {
@@ -204,6 +206,31 @@ const ClientPlanDetail = () => {
     return format(new Date(dateString), "d 'de' MMMM, yyyy", {
       locale: es,
     });
+  };
+
+  const handleScheduleSession = async (sessionId: string, date: Date) => {
+    try {
+      const { error } = await supabase
+        .from('sessions')
+        .update({ scheduled_date: date.toISOString() })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+
+      await fetchPlanDetails();
+
+      toast({
+        title: "Sesión programada",
+        description: `La sesión ha sido programada para ${format(date, "PPP", { locale: es })}`,
+      });
+    } catch (error) {
+      console.error("Error scheduling session:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo programar la sesión",
+        variant: "destructive",
+      });
+    }
   };
 
   if (clientLoading || loading) {
@@ -246,7 +273,6 @@ const ClientPlanDetail = () => {
     );
   }
 
-  // Calcular el número total de ejercicios en todo el plan
   const totalExercises = plan?.sessions.reduce((total, session) => {
     return total + session.series.reduce((seriesTotal, series) => {
       return seriesTotal + series.exercises.length;
@@ -335,7 +361,15 @@ const ClientPlanDetail = () => {
                     {plan.sessions.map((session) => (
                       <AccordionItem key={session.id} value={session.id} className="border rounded-lg">
                         <AccordionTrigger className="px-4 py-3">
-                          <div className="font-medium">{session.name}</div>
+                          <div className="flex items-center justify-between w-full">
+                            <div className="font-medium">{session.name}</div>
+                            {session.scheduledDate && (
+                              <div className="text-sm text-muted-foreground flex items-center">
+                                <CalendarClock className="h-4 w-4 mr-2" />
+                                {format(new Date(session.scheduledDate), "d MMM yyyy", { locale: es })}
+                              </div>
+                            )}
+                          </div>
                         </AccordionTrigger>
                         <AccordionContent className="px-4 pb-4">
                           {session.series.map((serie) => (
@@ -362,6 +396,24 @@ const ClientPlanDetail = () => {
                               )}
                             </div>
                           ))}
+                          <div className="mt-4 flex justify-end">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <CalendarClock className="h-4 w-4 mr-2" />
+                                  Programar Sesión
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent>
+                                <CalendarComponent
+                                  mode="single"
+                                  selected={session.scheduledDate ? new Date(session.scheduledDate) : undefined}
+                                  onSelect={(date) => date && handleScheduleSession(session.id, date)}
+                                  className="pointer-events-auto"
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                         </AccordionContent>
                       </AccordionItem>
                     ))}
