@@ -12,18 +12,34 @@ import PlanHeader from "@/components/client/plans/detail/PlanHeader";
 import PlanSummary from "@/components/client/plans/detail/PlanSummary";
 import PlanSessionsList from "@/components/client/plans/detail/PlanSessionsList";
 import EmptyPlanState from "@/components/client/plans/detail/EmptyPlanState";
+import { useToast } from "@/hooks/use-toast";
 
 const ClientPlanDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { plan, loading, clientId } = useClientPlanDetail(id);
+  const { toast } = useToast();
+  const { plan, loading, clientId, refreshPlanDetails } = useClientPlanDetail(id);
 
   const handleSessionDateUpdate = useCallback((sessionId: string, newDate: string | null) => {
     if (!plan) return;
     
-    // We're intentionally not updating the database here as that's handled in the SessionDatePicker component
-    // This just updates the local state for the UI
-  }, [plan]);
+    console.log("Manejando actualización de fecha en ClientPlanDetail:", { sessionId, newDate });
+    
+    // Actualización local del estado para la UI (la actualización en BD ya se hizo en SessionDatePicker)
+    const updatedPlan = {...plan};
+    const sessionIndex = updatedPlan.sessions.findIndex(s => s.id === sessionId);
+    
+    if (sessionIndex !== -1) {
+      updatedPlan.sessions[sessionIndex].scheduledDate = newDate;
+      // Forzar actualización de datos desde el servidor
+      refreshPlanDetails();
+      
+      toast({
+        title: "Fecha actualizada",
+        description: "Los cambios se han guardado correctamente",
+      });
+    }
+  }, [plan, refreshPlanDetails, toast]);
 
   if (loading) {
     return <LoadingScreen />;

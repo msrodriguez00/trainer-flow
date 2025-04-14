@@ -28,6 +28,7 @@ export const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({
   };
 
   const handleDateUpdate = useCallback((newDate: string | null) => {
+    console.log("Fecha actualizada en SessionAccordionItem:", { sessionId: session.id, newDate });
     onDateUpdated(session.id, newDate);
   }, [session.id, onDateUpdated]);
 

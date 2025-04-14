@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Plan } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -11,15 +11,9 @@ export const useClientPlanDetail = (planId: string | undefined) => {
   const { toast } = useToast();
   const { clientId, loading: clientLoading } = useClientIdentification();
 
-  useEffect(() => {
-    if (planId && clientId) {
-      fetchPlanDetails();
-    } else if (!clientLoading && !clientId) {
-      setLoading(false);
-    }
-  }, [planId, clientId, clientLoading]);
-
-  const fetchPlanDetails = async () => {
+  const fetchPlanDetails = useCallback(async () => {
+    if (!planId || !clientId) return;
+    
     try {
       setLoading(true);
       console.log("Fetching plan details for ID:", planId, "client ID:", clientId);
@@ -167,11 +161,20 @@ export const useClientPlanDetail = (planId: string | undefined) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [planId, clientId, toast]);
+
+  useEffect(() => {
+    if (planId && clientId) {
+      fetchPlanDetails();
+    } else if (!clientLoading && !clientId) {
+      setLoading(false);
+    }
+  }, [planId, clientId, clientLoading, fetchPlanDetails]);
 
   return {
     plan,
     loading,
-    clientId
+    clientId,
+    refreshPlanDetails: fetchPlanDetails
   };
 };
