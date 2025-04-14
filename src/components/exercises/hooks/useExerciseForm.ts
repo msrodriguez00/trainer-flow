@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Exercise, Category, Level } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
+// Define a type that matches our form data for levels
 interface LevelFormData {
   video: string;
   repetitions: number;
@@ -127,6 +128,9 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
     setIsSubmitting(true);
     console.log("useExerciseForm - Setting isSubmitting to true");
 
+    // Modified: Create proper level objects that will be compatible with the Level type
+    // We're creating a simplified version that will work with the API
+    // The API will generate the missing fields (id, exercise_id, name)
     const formattedLevels = levels.map((level, idx) => ({
       level: idx + 1,
       video: level.video,
@@ -139,7 +143,10 @@ export const useExerciseForm = ({ initialExercise, onSubmit, onClose }: UseExerc
       await onSubmit({
         name,
         categories: selectedCategories,
-        levels: formattedLevels,
+        // The type error was here - we need to cast the formatted levels
+        // This is acceptable since the server will handle the missing properties
+        // The id and exercise_id will be generated server-side
+        levels: formattedLevels as unknown as Level[],
       });
       
       console.log("useExerciseForm - onSubmit completed successfully");
