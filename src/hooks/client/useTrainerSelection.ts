@@ -129,20 +129,30 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
         console.log("Final trainers with branding:", trainersWithBranding);
         setTrainers(trainersWithBranding);
         
-        if (!selectedTrainerId && trainersWithBranding.length > 0) {
-          console.log("No trainer selected, selecting first one:", trainersWithBranding[0].id);
-          handleTrainerSelect(trainersWithBranding[0].id);
-        } else if (selectedTrainerId) {
-          console.log("Verifying selected trainer exists:", selectedTrainerId);
-          const selectedTrainer = trainersWithBranding.find(t => t.id === selectedTrainerId);
-          
-          if (selectedTrainer) {
-            console.log("Selected trainer found, applying theme:", selectedTrainer);
-            applyTrainerTheme(selectedTrainer);
-          } else if (trainersWithBranding.length > 0) {
-            console.log("Selected trainer not found in data, selecting first one");
+        // FIX: Solo intentar seleccionar un entrenador si la lista tiene elementos
+        if (trainersWithBranding.length > 0) {
+          // Si no hay entrenador seleccionado, elegir el primero
+          if (!selectedTrainerId || selectedTrainerId === "") {
+            console.log("No trainer selected, selecting first one:", trainersWithBranding[0].id);
             handleTrainerSelect(trainersWithBranding[0].id);
+          } else {
+            // Si hay un entrenador seleccionado, verificar que exista en la lista
+            console.log("Verifying selected trainer exists:", selectedTrainerId);
+            const selectedTrainer = trainersWithBranding.find(t => t.id === selectedTrainerId);
+            
+            if (selectedTrainer) {
+              console.log("Selected trainer found, applying theme:", selectedTrainer);
+              applyTrainerTheme(selectedTrainer);
+            } else {
+              // Si el entrenador seleccionado no está en la lista, elegir el primero
+              console.log("Selected trainer not found in data, selecting first one");
+              handleTrainerSelect(trainersWithBranding[0].id);
+            }
           }
+        } else {
+          // No hay entrenadores disponibles, usar un entrenador por defecto
+          console.log("No trainers available despite finding IDs, using default");
+          setDefaultTrainer();
         }
       } else {
         console.log("No trainer IDs available, setting default trainer");
@@ -297,6 +307,14 @@ export const useTrainerSelection = (onTrainerChange?: (trainerId: string, traine
 
   const handleTrainerSelect = (trainerId: string) => {
     console.log("Trainer selected manually:", trainerId);
+    
+    // FIX: verificar primero si la lista de entrenadores tiene elementos
+    if (trainers.length === 0) {
+      console.log("No trainers available, cannot select trainer:", trainerId);
+      setDefaultTrainer();
+      return;
+    }
+    
     // Corregir el problema de búsqueda del entrenador
     const selected = trainers.find(t => t.id === trainerId);
     
