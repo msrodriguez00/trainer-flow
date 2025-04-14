@@ -107,14 +107,14 @@ const ClientPlanDetail = () => {
 
           // Para cada serie, obtener los ejercicios
           for (const serie of (seriesData || [])) {
-            // Obtener ejercicios
+            // Obtener ejercicios - Asegúrese de incluir toda la información necesaria
             const { data: planExercises, error: exercisesError } = await supabase
               .from("plan_exercises")
               .select(`
                 id,
                 exercise_id,
                 level,
-                exercises:exercise_id (id, name)
+                exercises:exercise_id (id, name, categories, levels)
               `)
               .eq("series_id", serie.id);
 
@@ -122,6 +122,8 @@ const ClientPlanDetail = () => {
               console.error("Error fetching exercises:", exercisesError);
               continue;
             }
+
+            console.log("Exercise data in plan detail for series", serie.id, ":", planExercises);
 
             const exercisesWithNames = planExercises?.map(ex => ({
               exerciseId: ex.exercise_id,
