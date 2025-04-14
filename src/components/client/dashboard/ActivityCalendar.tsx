@@ -1,8 +1,14 @@
 
 import { useState } from "react";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronRight } from "lucide-react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
+import { useScheduledSessions, ScheduledSession } from "@/hooks/client/useScheduledSessions";
+import { format, isSameDay } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { es } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 interface ActivityCalendarProps {
   selectedDate: Date;
@@ -15,12 +21,28 @@ const ActivityCalendar = ({
   onSelectDate, 
   className = "" 
 }: ActivityCalendarProps) => {
+  const { sessions, loading } = useScheduledSessions();
+  const navigate = useNavigate();
+  
   const formatDateDisplay = (date: Date) => {
-    return date.toLocaleDateString("es-ES", { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'long' 
-    });
+    return format(date, "EEEE, d 'de' MMMM", { locale: es });
+  };
+
+  // Helper para determinar si hay sesiones en una fecha específica
+  const hasSessionOnDate = (date: Date) => {
+    return sessions.some(session => 
+      isSameDay(new Date(session.scheduledDate), date)
+    );
+  };
+
+  // Obtener las sesiones para la fecha seleccionada
+  const sessionsForSelectedDate = sessions.filter(session => 
+    isSameDay(new Date(session.scheduledDate), selectedDate)
+  );
+
+  // Función para ir a los detalles del plan
+  const goToPlanDetails = (planId: string) => {
+    navigate(`/client-plan-detail/${planId}`);
   };
 
   return (
@@ -38,6 +60,12 @@ const ActivityCalendar = ({
             selected={selectedDate}
             onSelect={(date) => date && onSelectDate(date)}
             className="rounded-md border"
+            modifiers={{
+              hasSession: (date) => hasSessionOnDate(date),
+            }}
+            modifiersClassNames={{
+              hasSession: "bg-primary/20 text-primary font-bold",
+            }}
           />
         </div>
         
@@ -46,9 +74,37 @@ const ActivityCalendar = ({
             <h3 className="font-medium mb-2">
               {formatDateDisplay(selectedDate)}
             </h3>
-            <p className="text-sm text-gray-600">
-              No hay actividades programadas para este día.
-            </p>
+            
+            {loading ? (
+              <p className="text-sm text-gray-500">Cargando actividades...</p>
+            ) : sessionsForSelectedDate.length > 0 ? (
+              <div className="space-y-3">
+                {sessionsForSelectedDate.map((session) => (
+                  <div key={session.id} className="bg-secondary/50 p-3 rounded-md">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">{session.name}</h4>
+                        <p className="text-sm text-gray-600">Plan: {session.planName}</p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => goToPlanDetails(session.planId)}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Badge variant="outline" className="mt-1">
+                      {format(new Date(session.scheduledDate), "HH:mm", { locale: es })}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600">
+                No hay actividades programadas para este día.
+              </p>
+            )}
           </div>
         )}
       </CardContent>
