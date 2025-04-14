@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -111,11 +110,21 @@ const PlanDetails = () => {
               continue;
             }
             
+            // Map the evaluations data from snake_case to camelCase
+            const mappedEvaluations = ex.evaluations ? ex.evaluations.map((eval: any) => ({
+              timeRating: eval.time_rating,
+              weightRating: eval.weight_rating,
+              repetitionsRating: eval.repetitions_rating,
+              exerciseRating: eval.exercise_rating,
+              comment: eval.comment,
+              date: eval.date
+            })) : [];
+            
             planExercises.push({
               exerciseId: ex.exercise_id,
               exerciseName: exerciseData.name,
               level: ex.level,
-              evaluations: ex.evaluations || []
+              evaluations: mappedEvaluations
             });
           }
           

@@ -97,18 +97,31 @@ const Plans = () => {
               .from("plan_exercises")
               .select(`
                 id, exercise_id, level,
-                exercises:exercise_id (name)
+                exercises:exercise_id (name),
+                evaluations (*)
               `)
               .eq("series_id", series.id);
               
             if (exercisesError) throw exercisesError;
             
-            const exercises: PlanExercise[] = exercisesData.map((ex: any) => ({
-              exerciseId: ex.exercise_id,
-              exerciseName: ex.exercises?.name,
-              level: ex.level,
-              evaluations: []
-            }));
+            const exercises: PlanExercise[] = exercisesData.map((ex: any) => {
+              // Map evaluations from snake_case to camelCase
+              const mappedEvaluations = ex.evaluations ? ex.evaluations.map((eval: any) => ({
+                timeRating: eval.time_rating,
+                weightRating: eval.weight_rating,
+                repetitionsRating: eval.repetitions_rating,
+                exerciseRating: eval.exercise_rating,
+                comment: eval.comment,
+                date: eval.date
+              })) : [];
+              
+              return {
+                exerciseId: ex.exercise_id,
+                exerciseName: ex.exercises?.name,
+                level: ex.level,
+                evaluations: mappedEvaluations
+              }
+            });
             
             seriesList.push({
               id: series.id,
@@ -322,3 +335,4 @@ const Plans = () => {
 };
 
 export default Plans;
+
