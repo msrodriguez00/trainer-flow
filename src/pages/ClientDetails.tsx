@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -74,12 +75,31 @@ const ClientDetails = () => {
       const formattedPlans: Plan[] = [];
       
       for (const planData of data) {
+        // Fetch sessions for this plan
+        const { data: sessionsData, error: sessionsError } = await supabase
+          .from("sessions")
+          .select(`id, name, order_index`)
+          .eq("plan_id", planData.id)
+          .order("order_index", { ascending: true });
+          
+        if (sessionsError) throw sessionsError;
+        
         const sessions: Session[] = [];
         
-        for (const sessionData of sessionsData) {
+        for (const sessionData of sessionsData || []) { // Added || [] to handle potential null/undefined
+          // Fetch series for this session
+          const { data: seriesData, error: seriesError } = await supabase
+            .from("series")
+            .select(`id, name, order_index`)
+            .eq("session_id", sessionData.id)
+            .order("order_index", { ascending: true });
+            
+          if (seriesError) throw seriesError;
+          
           const seriesList: Series[] = [];
           
-          for (const seriesItem of seriesData) {
+          for (const seriesItem of seriesData || []) { // Added || [] to handle potential null/undefined
+            // Fetch exercises for this series
             const { data: exercisesData, error: exercisesError } = await supabase
               .from("plan_exercises")
               .select(`
@@ -92,6 +112,7 @@ const ClientDetails = () => {
             if (exercisesError) throw exercisesError;
             
             const exercises: PlanExercise[] = exercisesData.map((ex: any) => {
+              // Map evaluations from snake_case to camelCase
               const mappedEvaluations = ex.evaluations ? ex.evaluations.map((evaluation: any) => ({
                 timeRating: evaluation.time_rating,
                 weightRating: evaluation.weight_rating,
@@ -125,6 +146,7 @@ const ClientDetails = () => {
           });
         }
         
+        // Flatten exercises for backward compatibility
         const allExercises: PlanExercise[] = [];
         sessions.forEach(session => {
           session.series.forEach(series => {
@@ -202,7 +224,7 @@ const ClientDetails = () => {
           </div>
           <div className="flex space-x-2">
             <Button variant="outline" asChild>
-              <Link to={`/plans/new?clientId=${client.id}`}>
+              <Link to={`/plans/new?clientId=${client?.id}`}>
                 <ListPlus className="mr-2 h-4 w-4" />
                 Nuevo plan
               </Link>
