@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Plan } from "@/types";
 import { useClientIdentification } from "@/hooks/client/useClientIdentification";
+import { debugUpdateSession } from "@/utils/debugUtils";
 
 export interface PlanDetailState {
   plan: Plan | null;
@@ -54,32 +55,60 @@ export const usePlanDetail = (planId: string | undefined) => {
         return;
       }
 
-      if (planData) {
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from("sessions")
-          .select(`
-            id,
-            name,
-            order_index,
-            scheduled_date
-          `)
-          .eq("plan_id", planData.id)
-          .order("order_index", { ascending: true });
+      if (!planData) {
+        setState(prev => ({ ...prev, loading: false, plan: null }));
+        return;
+      }
 
-        if (sessionsError) {
-          console.error("Error fetching sessions:", sessionsError);
-          toast({
-            title: "Error",
-            description: "No se pudieron cargar las sesiones del plan",
-            variant: "destructive",
-          });
-          setState(prev => ({ ...prev, loading: false }));
-          return;
+      // Fetch sessions with retry logic
+      let sessionsData = null;
+      let sessionsError = null;
+      let retryCount = 0;
+      const MAX_RETRIES = 3;
+
+      while (retryCount < MAX_RETRIES && !sessionsData) {
+        try {
+          const response = await supabase
+            .from("sessions")
+            .select(`
+              id,
+              name,
+              order_index,
+              scheduled_date
+            `)
+            .eq("plan_id", planData.id)
+            .order("order_index", { ascending: true });
+          
+          sessionsData = response.data;
+          sessionsError = response.error;
+          
+          if (sessionsError) {
+            console.warn(`Retry ${retryCount + 1}/${MAX_RETRIES} - Error fetching sessions:`, sessionsError);
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+          }
+        } catch (err) {
+          console.error(`Retry ${retryCount + 1}/${MAX_RETRIES} - Exception fetching sessions:`, err);
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
         }
+      }
 
-        const sessions = [];
+      if (sessionsError) {
+        console.error("Final error fetching sessions after retries:", sessionsError);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las sesiones del plan",
+          variant: "destructive",
+        });
+        setState(prev => ({ ...prev, loading: false }));
+        return;
+      }
 
-        for (const session of (sessionsData || [])) {
+      const sessions = [];
+
+      for (const session of (sessionsData || [])) {
+        try {
           const { data: seriesData, error: seriesError } = await supabase
             .from("series")
             .select(`
@@ -98,56 +127,65 @@ export const usePlanDetail = (planId: string | undefined) => {
           const seriesList = [];
 
           for (const serie of (seriesData || [])) {
-            const { data: exercisesWithDetails, error: exercisesError } = await supabase
-              .from("plan_exercises")
-              .select(`
-                id,
-                exercise_id,
-                level,
-                evaluations (*),
-                exercises (
-                  id,
-                  name
-                )
-              `)
-              .eq("series_id", serie.id);
+            try {
+              // Use a timeout to prevent long-running queries
+              const fetchExercises = async () => {
+                const { data: exercisesWithDetails, error: exercisesError } = await supabase
+                  .from("plan_exercises")
+                  .select(`
+                    id,
+                    exercise_id,
+                    level,
+                    evaluations (*),
+                    exercises (
+                      id,
+                      name
+                    )
+                  `)
+                  .eq("series_id", serie.id)
+                  .timeout(5000); // Set a 5 second timeout
 
-            if (exercisesError) {
-              console.error("Error fetching exercises:", exercisesError);
-              continue;
-            }
+                if (exercisesError) {
+                  console.error("Error fetching exercises:", exercisesError);
+                  return [];
+                }
 
-            console.log("Exercise data in plan detail for series", serie.id, ":", exercisesWithDetails);
-            
-            exercisesWithDetails?.forEach((ex, idx) => {
-              console.log(`Plan detail - Exercise ${idx} data:`, ex);
-              console.log(`Plan detail - Exercise ${idx} name:`, ex.exercises?.name || "NO NAME FOUND");
-            });
-
-            const mappedExercises = exercisesWithDetails?.map(ex => {
-              const mappedEvaluations = ex.evaluations ? ex.evaluations.map((evaluation: any) => ({
-                timeRating: evaluation.time_rating,
-                weightRating: evaluation.weight_rating,
-                repetitionsRating: evaluation.repetitions_rating,
-                exerciseRating: evaluation.exercise_rating,
-                comment: evaluation.comment,
-                date: evaluation.date
-              })) : [];
-              
-              return {
-                exerciseId: ex.exercise_id,
-                exerciseName: ex.exercises?.name || "Ejercicio sin nombre",
-                level: ex.level,
-                evaluations: mappedEvaluations
+                return exercisesWithDetails || [];
               };
-            }) || [];
 
-            seriesList.push({
-              id: serie.id,
-              name: serie.name,
-              orderIndex: serie.order_index,
-              exercises: mappedExercises
-            });
+              const exercisesWithDetails = await fetchExercises();
+              
+              // Map exercises with safer access patterns
+              const mappedExercises = exercisesWithDetails.map(ex => {
+                // Safely access evaluations
+                const evaluations = Array.isArray(ex.evaluations) 
+                  ? ex.evaluations.map(evaluation => ({
+                      timeRating: evaluation?.time_rating,
+                      weightRating: evaluation?.weight_rating,
+                      repetitionsRating: evaluation?.repetitions_rating,
+                      exerciseRating: evaluation?.exercise_rating,
+                      comment: evaluation?.comment,
+                      date: evaluation?.date
+                    }))
+                  : [];
+                
+                return {
+                  exerciseId: ex.exercise_id,
+                  exerciseName: ex.exercises?.name || "Ejercicio sin nombre",
+                  level: ex.level || 1,
+                  evaluations
+                };
+              });
+
+              seriesList.push({
+                id: serie.id,
+                name: serie.name,
+                orderIndex: serie.order_index,
+                exercises: mappedExercises
+              });
+            } catch (err) {
+              console.error("Error processing series:", err);
+            }
           }
           
           sessions.push({
@@ -157,36 +195,33 @@ export const usePlanDetail = (planId: string | undefined) => {
             scheduledDate: session.scheduled_date,
             series: seriesList
           });
+        } catch (err) {
+          console.error("Error processing session:", err);
         }
-        
-        const allExercises = [];
-        sessions.forEach(session => {
-          session.series.forEach(series => {
-            allExercises.push(...series.exercises);
-          });
-        });
-
-        const fullPlan = {
-          id: planData.id,
-          name: planData.name,
-          clientId: clientId as string,
-          createdAt: planData.created_at,
-          month: planData.month,
-          sessions: sessions,
-          exercises: allExercises
-        };
-
-        console.log("Plan completo cargado:", fullPlan);
-        setState({
-          plan: fullPlan,
-          loading: false
-        });
-      } else {
-        setState({
-          plan: null,
-          loading: false
-        });
       }
+      
+      const allExercises = [];
+      sessions.forEach(session => {
+        session.series.forEach(series => {
+          allExercises.push(...series.exercises);
+        });
+      });
+
+      const fullPlan = {
+        id: planData.id,
+        name: planData.name,
+        clientId: clientId as string,
+        createdAt: planData.created_at,
+        month: planData.month,
+        sessions: sessions,
+        exercises: allExercises
+      };
+
+      console.log("Plan completo cargado:", fullPlan);
+      setState({
+        plan: fullPlan,
+        loading: false
+      });
     } catch (error) {
       console.error("Error en fetchPlanDetails:", error);
       toast({
@@ -207,29 +242,20 @@ export const usePlanDetail = (planId: string | undefined) => {
         throw new Error("Usuario no autenticado");
       }
 
-      // Registramos el estado actual de la sesión antes de actualizar
-      const { data: beforeSession, error: beforeError } = await supabase
-        .from('sessions')
-        .select('scheduled_date, plan_id')
-        .eq('id', sessionId)
-        .single();
-      
-      if (beforeError) {
-        console.error("usePlanDetail - Error al obtener datos de sesión antes de actualizar:", beforeError);
-      } else {
-        console.log("usePlanDetail - Estado actual de la sesión antes de actualizar:", beforeSession);
-      }
-
-      // Actualizamos la sesión
-      console.log(`usePlanDetail - Actualizando sesión ${sessionId} con fecha ${date.toISOString()}`);
-      const { data: updateData, error } = await supabase
+      // Usar método directo sin verificaciones previas
+      const { data, error } = await supabase
         .from('sessions')
         .update({ scheduled_date: date.toISOString() })
         .eq('id', sessionId)
-        .select();
+        .select('*');
 
       if (error) {
         console.error("usePlanDetail - Error actualizando fecha de la sesión:", error);
+        
+        // Intentar debug para entender el problema
+        const debugResult = await debugUpdateSession(sessionId, date);
+        console.log("Resultado depuración:", debugResult);
+        
         toast({
           title: "Error",
           description: `No se pudo programar la sesión: ${error.message}`,
@@ -238,34 +264,12 @@ export const usePlanDetail = (planId: string | undefined) => {
         throw error;
       }
       
-      console.log("usePlanDetail - Actualización exitosa de la sesión:", updateData);
+      console.log("usePlanDetail - Actualización exitosa de la sesión:", data);
       
-      // Verificamos que la actualización se realizó correctamente
-      const { data: afterSession, error: afterError } = await supabase
-        .from('sessions')
-        .select('scheduled_date, plan_id')
-        .eq('id', sessionId)
-        .single();
-      
-      if (afterError) {
-        console.error("usePlanDetail - Error al obtener datos de sesión después de actualizar:", afterError);
-      } else {
-        console.log("usePlanDetail - Estado de la sesión después de actualizar:", afterSession);
-        
-        if (afterSession.scheduled_date === date.toISOString()) {
-          console.log("usePlanDetail - La fecha se actualizó correctamente en la base de datos");
-        } else {
-          console.error("usePlanDetail - La fecha en la base de datos no coincide con la solicitada");
-          console.log("Fecha esperada:", date.toISOString());
-          console.log("Fecha en BD:", afterSession.scheduled_date);
-        }
-      }
-
-      // Refrescamos los datos del plan para mostrar los cambios
-      console.log("usePlanDetail - Refrescando datos del plan");
+      // Refrescar los datos para mostrar los cambios
       await fetchPlanDetails();
-
-      return;
+      
+      return true;
     } catch (error) {
       console.error("usePlanDetail - Error general programando sesión:", error);
       toast({

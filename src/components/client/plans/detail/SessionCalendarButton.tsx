@@ -27,13 +27,36 @@ const SessionCalendarButton: React.FC<SessionCalendarButtonProps> = ({
   const { toast } = useToast();
   const [isOpen, setIsOpen] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(
+    scheduledDate ? new Date(scheduledDate) : undefined
+  );
+
+  // Update selected date when scheduledDate prop changes
+  React.useEffect(() => {
+    if (scheduledDate) {
+      setSelectedDate(new Date(scheduledDate));
+    }
+  }, [scheduledDate]);
 
   const handleDateSelect = async (date: Date | undefined) => {
     if (date) {
       try {
         console.log(`SessionCalendarButton - Intentando programar sesión ${sessionId} para la fecha:`, date);
+        setSelectedDate(date);
         setIsUpdating(true);
-        await onScheduleSession(sessionId, date);
+        
+        // Make sure we're using a consistent date format
+        const adjustedDate = new Date(Date.UTC(
+          date.getFullYear(),
+          date.getMonth(),
+          date.getDate(),
+          date.getHours(),
+          date.getMinutes(),
+          date.getSeconds()
+        ));
+        
+        await onScheduleSession(sessionId, adjustedDate);
+        
         console.log(`SessionCalendarButton - Sesión ${sessionId} programada exitosamente para:`, date);
         setIsOpen(false);
         toast({
@@ -47,20 +70,33 @@ const SessionCalendarButton: React.FC<SessionCalendarButtonProps> = ({
           description: "No se pudo programar la sesión. Por favor intenta de nuevo.",
           variant: "destructive",
         });
+        // Reset to previous date if we have one
+        if (scheduledDate) {
+          setSelectedDate(new Date(scheduledDate));
+        }
       } finally {
         setIsUpdating(false);
       }
     }
   };
 
+  // Format date for display with proper timezone handling
+  const formattedDate = React.useMemo(() => {
+    if (!scheduledDate) return null;
+    try {
+      return format(new Date(scheduledDate), "d MMM yyyy", { locale: es });
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return "Fecha inválida";
+    }
+  }, [scheduledDate]);
+
   return (
     <div className="mt-2 md:mt-0 flex items-center">
-      {scheduledDate ? (
+      {formattedDate ? (
         <Badge variant="outline" className="flex items-center gap-1">
           <CalendarClock className="h-3 w-3" />
-          <span>
-            {format(new Date(scheduledDate), "d MMM yyyy", { locale: es })}
-          </span>
+          <span>{formattedDate}</span>
         </Badge>
       ) : (
         <div className="text-sm text-muted-foreground flex items-center">
@@ -91,9 +127,10 @@ const SessionCalendarButton: React.FC<SessionCalendarButtonProps> = ({
             <h5 className="text-sm font-medium mb-2">Selecciona una fecha</h5>
             <CalendarComponent
               mode="single"
-              selected={scheduledDate ? new Date(scheduledDate) : undefined}
+              selected={selectedDate}
               onSelect={handleDateSelect}
               className="pointer-events-auto"
+              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
             />
           </div>
         </PopoverContent>

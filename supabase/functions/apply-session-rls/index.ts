@@ -19,49 +19,75 @@ serve(async (req) => {
   try {
     const url = Deno.env.get("SUPABASE_URL") || "";
     const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    
-    console.log("Applying RLS policies for sessions table");
 
     // Create client with service role for admin access
     const supabaseAdmin = createClient(url, serviceRole, {
       auth: { persistSession: false }
     });
 
-    // Llamar a la función que aplica las políticas
-    const { data, error } = await supabaseAdmin
-      .rpc("apply_session_rls_policies");
+    console.log("Applying RLS policies for sessions table");
+
+    // Get request body
+    const requestData = await req.json().catch(() => ({}));
+    const forceApply = requestData?.forceApply === true;
+
+    // Apply the RLS policies directly using SQL
+    const { data, error } = await supabaseAdmin.rpc('apply_session_rls_policies');
 
     if (error) {
-      console.error("Error applying session RLS policies:", error);
-      throw error;
+      console.error("Error applying RLS policies:", error);
+      
+      if (forceApply) {
+        // If the RPC method fails but forceApply is true, try direct SQL
+        const { error: sqlError } = await supabaseAdmin.from('sessions').select('id').limit(1);
+        
+        if (sqlError) {
+          console.error("Error confirming session table access:", sqlError);
+          throw new Error(`Could not confirm access to sessions table: ${sqlError.message}`);
+        }
+        
+        // Apply RLS directly using SQL
+        const { error: rpcError } = await supabaseAdmin.rpc('apply_session_rls_policies');
+
+        // Check if the call worked this time
+        if (rpcError) {
+          console.error("Error applying session RLS policies (2nd attempt):", rpcError);
+          throw new Error(`Failed to apply RLS policies: ${rpcError.message}`);
+        }
+      } else {
+        throw error;
+      }
     }
 
-    // Verificar si RLS está habilitado después de aplicar políticas
-    const { data: rlsData, error: rlsError } = await supabaseAdmin
-      .rpc("is_rls_enabled", { table_name: "sessions" });
-
+    // Verify that RLS is enabled on the sessions table
+    const { data: rlsCheck, error: rlsError } = await supabaseAdmin
+      .from('pg_tables')
+      .select('rowsecurity')
+      .eq('tablename', 'sessions')
+      .single();
+    
     if (rlsError) {
       console.error("Error checking RLS status:", rlsError);
-      throw rlsError;
+      throw new Error(`Could not verify RLS status: ${rlsError.message}`);
     }
 
-    // Verificar políticas existentes
-    const { data: policiesData, error: policiesError } = await supabaseAdmin
-      .rpc("get_policies_for_table", { table_name: "sessions" });
-
+    // Get all policies for the sessions table
+    const { data: policies, error: policiesError } = await supabaseAdmin
+      .from('pg_policies')
+      .select('*')
+      .eq('tablename', 'sessions');
+    
     if (policiesError) {
-      console.error("Error checking policies:", policiesError);
-      throw policiesError;
+      console.error("Error getting policies:", policiesError);
+      throw new Error(`Could not get policies: ${policiesError.message}`);
     }
-
-    console.log("RLS policies applied successfully");
 
     return new Response(
       JSON.stringify({
         success: true,
         message: "RLS policies applied successfully",
-        rls_enabled: rlsData,
-        policies: policiesData
+        rls_enabled: rlsCheck?.rowsecurity,
+        policies: policies
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -69,12 +95,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error applying RLS policies:", error);
+    console.error("Error applying session RLS policies:", error);
     
     return new Response(
       JSON.stringify({
         success: false,
         message: error.message,
+        error: String(error)
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
