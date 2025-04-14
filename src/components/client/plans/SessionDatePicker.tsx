@@ -34,7 +34,7 @@ export const SessionDatePicker = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
-  // Asegurarse de que la fecha inicial se establezca correctamente
+  // Asegurar que la fecha inicial se establezca correctamente
   useEffect(() => {
     if (initialDate) {
       setDate(new Date(initialDate));
@@ -53,14 +53,20 @@ export const SessionDatePicker = ({
     try {
       setIsUpdating(true);
       
-      console.log("Actualizando fecha de sesión:", {
+      // Incluir logs de diagnóstico detallados
+      console.log("Intentando actualizar fecha de sesión:", {
         sessionId,
-        newDate: date?.toISOString() || null
+        newDate: date?.toISOString() || null,
+        authSession: await supabase.auth.getSession()
       });
 
       const { data, error } = await supabase
         .from("sessions")
-        .update({ scheduled_date: date?.toISOString() || null })
+        .update({ 
+          scheduled_date: date?.toISOString() || null,
+          // Añadir un timestamp para asegurar que la actualización sea reconocida
+          updated_at: new Date().toISOString()
+        })
         .eq("id", sessionId)
         .select();
 
@@ -68,18 +74,64 @@ export const SessionDatePicker = ({
 
       if (error) {
         console.error("Error al actualizar la fecha de la sesión:", error);
+        
+        // Comprobar si es un problema de permisos
+        if (error.code === "42501" || error.message.includes("permission") || error.message.includes("policy")) {
+          console.error("Error de permisos. Verificando políticas RLS...");
+          
+          // Intentar obtener información de la sesión para depurar
+          const { data: sessionData, error: sessionError } = await supabase
+            .from("sessions")
+            .select("*, plans(client_id)")
+            .eq("id", sessionId)
+            .single();
+            
+          console.log("Datos de sesión para depuración:", { sessionData, sessionError });
+        }
+        
         toast({
           title: "Error",
-          description: "No se pudo actualizar la fecha de la sesión",
+          description: `No se pudo actualizar la fecha de la sesión: ${error.message}`,
           variant: "destructive",
         });
         return;
       }
 
-      toast({
-        title: "Fecha actualizada",
-        description: "La fecha de la sesión ha sido actualizada",
-      });
+      // Verificar que la actualización fue exitosa
+      if (data && data.length > 0) {
+        console.log("Fecha actualizada exitosamente:", data[0]);
+        toast({
+          title: "Fecha actualizada",
+          description: "La fecha de la sesión ha sido guardada correctamente",
+        });
+      } else {
+        console.warn("La actualización no retornó datos, verificando resultado...");
+        // Verificar que la actualización se aplicó correctamente
+        const { data: verifyData, error: verifyError } = await supabase
+          .from("sessions")
+          .select("scheduled_date")
+          .eq("id", sessionId)
+          .single();
+          
+        console.log("Verificación de actualización:", { 
+          verifyData, 
+          verifyError,
+          expectedDate: date?.toISOString() || null
+        });
+        
+        if (verifyError || (verifyData?.scheduled_date !== (date?.toISOString() || null))) {
+          toast({
+            title: "Advertencia",
+            description: "La fecha podría no haberse actualizado correctamente",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Fecha actualizada",
+            description: "La fecha de la sesión ha sido guardada",
+          });
+        }
+      }
       
       setIsOpen(false);
       if (onDateUpdated) {
