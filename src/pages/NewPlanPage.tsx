@@ -15,6 +15,7 @@ const NewPlanPage = () => {
     name: string;
     clientId: string;
     exercises: any[];
+    sessions?: any[];
   }) => {
     toast({
       title: "Plan creado",

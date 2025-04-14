@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Plan } from "@/types";
+import { Plan, Session, Series, PlanExercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
 export const usePlans = () => {
@@ -58,6 +58,7 @@ export const usePlans = () => {
     
     setLoading(true);
     try {
+      // Obtener todos los planes del cliente
       const { data: plansData, error: plansError } = await supabase
         .from("plans")
         .select(`
@@ -86,48 +87,113 @@ export const usePlans = () => {
         const formattedPlans: Plan[] = [];
         
         for (const plan of plansData) {
-          const { data: planExercises, error: exercisesError } = await supabase
-            .from("plan_exercises")
+          // Para cada plan, obtenemos sus sesiones
+          const { data: sessionsData, error: sessionsError } = await supabase
+            .from("sessions")
             .select(`
               id,
-              exercise_id,
-              level
+              name,
+              order_index
             `)
-            .eq("plan_id", plan.id);
+            .eq("plan_id", plan.id)
+            .order("order_index", { ascending: true });
             
-          if (exercisesError) {
-            console.error("Error fetching exercises for plan:", plan.id, exercisesError);
+          if (sessionsError) {
+            console.error("Error fetching sessions for plan:", plan.id, sessionsError);
             continue;
           }
           
-          const exercisesWithNames = [];
+          const sessions: Session[] = [];
           
-          for (const planExercise of (planExercises || [])) {
-            const { data: exerciseData, error: exerciseError } = await supabase
-              .from("exercises")
-              .select("name")
-              .eq("id", planExercise.exercise_id)
-              .maybeSingle();
+          // Para cada sesión, obtenemos sus series
+          for (const session of (sessionsData || [])) {
+            const { data: seriesData, error: seriesError } = await supabase
+              .from("series")
+              .select(`
+                id,
+                name,
+                order_index
+              `)
+              .eq("session_id", session.id)
+              .order("order_index", { ascending: true });
               
-            if (exerciseError) {
-              console.error("Error fetching exercise:", planExercise.exercise_id, exerciseError);
+            if (seriesError) {
+              console.error("Error fetching series for session:", session.id, seriesError);
               continue;
             }
             
-            exercisesWithNames.push({
-              exerciseId: planExercise.exercise_id,
-              exerciseName: exerciseData?.name || "Ejercicio sin nombre",
-              level: planExercise.level,
-              evaluations: []
+            const seriesList: Series[] = [];
+            
+            // Para cada serie, obtenemos sus ejercicios
+            for (const serie of (seriesData || [])) {
+              const { data: planExercises, error: exercisesError } = await supabase
+                .from("plan_exercises")
+                .select(`
+                  id,
+                  exercise_id,
+                  level
+                `)
+                .eq("series_id", serie.id);
+                
+              if (exercisesError) {
+                console.error("Error fetching exercises for series:", serie.id, exercisesError);
+                continue;
+              }
+              
+              const exercisesWithNames: PlanExercise[] = [];
+              
+              // Para cada ejercicio, obtenemos su nombre
+              for (const planExercise of (planExercises || [])) {
+                const { data: exerciseData, error: exerciseError } = await supabase
+                  .from("exercises")
+                  .select("name")
+                  .eq("id", planExercise.exercise_id)
+                  .maybeSingle();
+                  
+                if (exerciseError) {
+                  console.error("Error fetching exercise:", planExercise.exercise_id, exerciseError);
+                  continue;
+                }
+                
+                exercisesWithNames.push({
+                  exerciseId: planExercise.exercise_id,
+                  exerciseName: exerciseData?.name || "Ejercicio sin nombre",
+                  level: planExercise.level,
+                  evaluations: []
+                });
+              }
+              
+              seriesList.push({
+                id: serie.id,
+                name: serie.name,
+                orderIndex: serie.order_index,
+                exercises: exercisesWithNames
+              });
+            }
+            
+            sessions.push({
+              id: session.id,
+              name: session.name,
+              orderIndex: session.order_index,
+              series: seriesList
             });
           }
+          
+          // Aplanamos los ejercicios para mantener compatibilidad con el código existente
+          const allExercises: PlanExercise[] = [];
+          sessions.forEach(session => {
+            session.series.forEach(serie => {
+              allExercises.push(...serie.exercises);
+            });
+          });
           
           formattedPlans.push({
             id: plan.id,
             name: plan.name,
             clientId: plan.client_id,
             createdAt: plan.created_at,
-            exercises: exercisesWithNames
+            sessions: sessions,
+            exercises: allExercises  // Para compatibilidad con el código existente
           });
         }
 

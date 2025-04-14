@@ -203,18 +203,21 @@ export type Database = {
           id: string
           level: number
           plan_id: string
+          series_id: string
         }
         Insert: {
           exercise_id: string
           id?: string
           level: number
           plan_id: string
+          series_id: string
         }
         Update: {
           exercise_id?: string
           id?: string
           level?: number
           plan_id?: string
+          series_id?: string
         }
         Relationships: [
           {
@@ -225,10 +228,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "plan_exercises_plan_id_fkey"
-            columns: ["plan_id"]
+            foreignKeyName: "plan_exercises_series_id_fkey"
+            columns: ["series_id"]
             isOneToOne: false
-            referencedRelation: "plans"
+            referencedRelation: "series"
             referencedColumns: ["id"]
           },
         ]
@@ -298,6 +301,70 @@ export type Database = {
         }
         Relationships: []
       }
+      series: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          order_index: number
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          order_index?: number
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          order_index?: number
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "series_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          order_index: number
+          plan_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          order_index?: number
+          plan_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          order_index?: number
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trainer_brands: {
         Row: {
           accent_color: string | null
@@ -353,9 +420,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_plan_id_from_series_id: {
+        Args: { p_series_id: string }
+        Returns: string
+      }
       is_admin: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      migrate_exercises_to_new_structure: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       update_user_role: {
         Args: { user_id: string; new_role: string }

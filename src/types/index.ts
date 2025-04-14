@@ -44,10 +44,25 @@ export type PlanExercise = {
   evaluations: Evaluation[];
 };
 
+export type Series = {
+  id: string;
+  name: string;
+  orderIndex: number;
+  exercises: PlanExercise[];
+};
+
+export type Session = {
+  id: string;
+  name: string;
+  orderIndex: number;
+  series: Series[];
+};
+
 export type Plan = {
   id: string;
   name: string;
   clientId: string;
-  exercises: PlanExercise[];
+  sessions: Session[];
+  exercises: PlanExercise[];  // Para mantener compatibilidad hacia atrás
   createdAt: string;
 };
