@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 interface SessionCalendarButtonProps {
   sessionId: string;
@@ -23,12 +24,29 @@ const SessionCalendarButton: React.FC<SessionCalendarButtonProps> = ({
   scheduledDate, 
   onScheduleSession 
 }) => {
+  const { toast } = useToast();
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [isUpdating, setIsUpdating] = React.useState(false);
+
   const handleDateSelect = async (date: Date | undefined) => {
     if (date) {
       try {
+        setIsUpdating(true);
         await onScheduleSession(sessionId, date);
+        setIsOpen(false);
+        toast({
+          title: "Fecha programada",
+          description: `Sesión programada para ${format(date, "d MMM yyyy", { locale: es })}`,
+        });
       } catch (error) {
         console.error("Error scheduling session:", error);
+        toast({
+          title: "Error",
+          description: "No se pudo programar la sesión. Por favor intenta de nuevo.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsUpdating(false);
       }
     }
   };
@@ -48,11 +66,22 @@ const SessionCalendarButton: React.FC<SessionCalendarButtonProps> = ({
           <span>Sin fecha programada</span>
         </div>
       )}
-      <Popover>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="ml-2">
-            <Calendar className="h-4 w-4 mr-1" />
-            {scheduledDate ? "Cambiar fecha" : "Programar"}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="ml-2" 
+            disabled={isUpdating}
+          >
+            {isUpdating ? (
+              <>Guardando...</>
+            ) : (
+              <>
+                <Calendar className="h-4 w-4 mr-1" />
+                {scheduledDate ? "Cambiar fecha" : "Programar"}
+              </>
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent>

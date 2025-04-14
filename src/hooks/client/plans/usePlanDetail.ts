@@ -201,48 +201,10 @@ export const usePlanDetail = (planId: string | undefined) => {
     try {
       console.log(`Scheduling session ${sessionId} for date ${date.toISOString()}`);
       
-      // Show loading toast
-      toast({
-        title: "Programando sesión...",
-        description: "Guardando la fecha seleccionada",
-      });
-      
-      // First verify that the session belongs to a plan owned by this client
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('sessions')
-        .select('plan_id')
-        .eq('id', sessionId)
-        .single();
-
-      if (sessionError) {
-        console.error("Error verifying session:", sessionError);
-        toast({
-          title: "Error",
-          description: "No se pudo verificar la sesión",
-          variant: "destructive",
-        });
-        throw sessionError;
+      if (!clientId) {
+        throw new Error("Usuario no autenticado");
       }
 
-      // Verify that the plan belongs to this client
-      const { data: planData, error: planError } = await supabase
-        .from('plans')
-        .select('client_id')
-        .eq('id', sessionData.plan_id)
-        .eq('client_id', clientId)
-        .single();
-
-      if (planError) {
-        console.error("Error verifying plan ownership:", planError);
-        toast({
-          title: "Error",
-          description: "No tienes permiso para modificar este plan",
-          variant: "destructive",
-        });
-        throw planError;
-      }
-
-      // If verification passed, update the session date
       const { error } = await supabase
         .from('sessions')
         .update({ scheduled_date: date.toISOString() })
@@ -260,17 +222,15 @@ export const usePlanDetail = (planId: string | undefined) => {
 
       await fetchPlanDetails();
 
-      toast({
-        title: "Sesión programada",
-        description: `La sesión ha sido programada para ${date.toLocaleDateString('es')}`,
-      });
+      return;
     } catch (error) {
       console.error("Error scheduling session:", error);
       toast({
         title: "Error",
-        description: "No se pudo programar la sesión. Verifica que tengas permisos para modificar este plan.",
+        description: "No se pudo programar la sesión. Verifica tu conexión e intenta de nuevo.",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
