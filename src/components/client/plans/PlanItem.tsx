@@ -1,7 +1,8 @@
 
 import React from "react";
-import { ClipboardList, Activity, Layers, FolderKanban, Calendar } from "lucide-react";
+import { ClipboardList, Activity, Layers, FolderKanban, Calendar, ArrowRight } from "lucide-react";
 import { Plan } from "@/types";
+import { useNavigate } from "react-router-dom";
 import { 
   Sheet, 
   SheetContent, 
@@ -17,6 +18,8 @@ interface PlanItemProps {
 }
 
 export const PlanItem: React.FC<PlanItemProps> = ({ plan }) => {
+  const navigate = useNavigate();
+  
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("es-ES", {
       day: "numeric",
@@ -31,6 +34,12 @@ export const PlanItem: React.FC<PlanItemProps> = ({ plan }) => {
       return seriesTotal + series.exercises.length;
     }, 0);
   }, 0);
+
+  const handleViewDetails = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/client-plan/${plan.id}`);
+  };
   
   return (
     <Sheet key={plan.id}>
@@ -70,6 +79,13 @@ export const PlanItem: React.FC<PlanItemProps> = ({ plan }) => {
         <div className="mt-6">
           <div className="mb-4 text-sm text-gray-500">
             Creado: {formatDate(plan.createdAt)}
+          </div>
+          
+          <div className="mb-6">
+            <Button onClick={handleViewDetails} className="w-full">
+              <span>Ver detalles completos</span>
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
           
           <h3 className="text-lg font-medium mb-2">Sesiones ({plan.sessions.length})</h3>

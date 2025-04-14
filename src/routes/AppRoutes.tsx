@@ -16,6 +16,7 @@ import Plans from "@/pages/Plans";
 import PlanDetails from "@/pages/PlanDetails";
 import ClientDashboard from "@/pages/ClientDashboard";
 import ClientPlans from "@/pages/ClientPlans";
+import ClientPlanDetail from "@/pages/ClientPlanDetail";
 import AdminDashboard from "@/pages/AdminDashboard";
 import TrainerDashboard from "@/pages/TrainerDashboard";
 import NotFound from "@/pages/NotFound";
@@ -90,6 +91,11 @@ const AppRoutes = () => {
         <Route path="/client-plans" element={
           <ProtectedRoute clientOnly>
             <ClientPlans />
+          </ProtectedRoute>
+        } />
+        <Route path="/client-plan/:id" element={
+          <ProtectedRoute clientOnly>
+            <ClientPlanDetail />
           </ProtectedRoute>
         } />
         <Route path="/admin" element={
