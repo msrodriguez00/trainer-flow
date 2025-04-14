@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/accordion";
 import SessionDatePicker from "../SessionDatePicker";
 import SeriesDetail from "./SeriesDetail";
+import { useToast } from "@/hooks/use-toast";
 
 interface SessionAccordionItemProps {
   session: Session;
@@ -21,6 +22,8 @@ export const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({
   session, 
   onDateUpdated 
 }) => {
+  const { toast } = useToast();
+  
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "d 'de' MMMM, yyyy", {
       locale: es,
@@ -36,8 +39,19 @@ export const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({
         currentDate: session.scheduledDate 
       }
     });
+    
+    // Show toast confirmation for better UX feedback
+    if (newDate !== session.scheduledDate) {
+      toast({
+        title: newDate ? "Fecha programada" : "Fecha eliminada",
+        description: newDate 
+          ? `Sesión "${session.name}" agendada para ${formatDate(newDate)}` 
+          : `Se eliminó la fecha de la sesión "${session.name}"`,
+      });
+    }
+    
     onDateUpdated(session.id, newDate);
-  }, [session, onDateUpdated]);
+  }, [session, onDateUpdated, toast]);
 
   return (
     <AccordionItem key={session.id} value={session.id} className="border rounded-lg">

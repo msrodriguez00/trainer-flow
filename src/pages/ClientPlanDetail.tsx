@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +19,30 @@ const ClientPlanDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { plan, loading, clientId, refreshPlanDetails } = useClientPlanDetail(id);
+  
+  // Add a state to track if a refresh is in progress
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Function to handle data refresh with debounce 
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    console.log("Solicitando actualización de datos del plan desde servidor");
+    
+    try {
+      await refreshPlanDetails();
+    } catch (error) {
+      console.error("Error al actualizar datos del plan:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron actualizar los datos del plan",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshPlanDetails, isRefreshing, toast]);
 
   const handleSessionDateUpdate = useCallback((sessionId: string, newDate: string | null) => {
     if (!plan) return;
@@ -47,11 +71,21 @@ const ClientPlanDetail = () => {
         fechaNueva: updatedPlan.sessions[sessionIndex].scheduledDate
       });
       
-      // Force a refresh of data from the server
-      console.log("Solicitando actualización de datos del plan desde servidor");
-      refreshPlanDetails();
+      // Force a refresh of data from the server to ensure we have the latest data
+      handleRefresh();
     }
-  }, [plan, refreshPlanDetails]);
+  }, [plan, id, handleRefresh]);
+
+  // Auto-refresh data when component mounts
+  useEffect(() => {
+    if (plan) {
+      const refreshTimeout = setTimeout(() => {
+        handleRefresh();
+      }, 1000); // Refresh after 1 second to ensure UI is settled
+
+      return () => clearTimeout(refreshTimeout);
+    }
+  }, [plan?.id]); // Only run when plan ID changes, not on every re-render
 
   if (loading) {
     return <LoadingScreen />;

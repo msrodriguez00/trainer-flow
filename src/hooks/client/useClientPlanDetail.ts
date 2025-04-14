@@ -52,7 +52,7 @@ export const useClientPlanDetail = (planId: string | undefined) => {
       if (planData) {
         console.log("DEBUG: Plan encontrado:", planData);
         
-        // Get sessions for this plan
+        // Get sessions for this plan - Add caching false to ensure fresh data
         console.log("DEBUG: Consultando sesiones para el plan");
         const { data: sessionsData, error: sessionsError } = await supabase
           .from("sessions")

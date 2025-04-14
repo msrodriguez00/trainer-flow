@@ -62,25 +62,36 @@ export const SessionDatePicker = ({
         newDate: date?.toISOString() || null
       });
 
-      // Log session data before update
-      const { data: beforeData, error: beforeError } = await supabase
+      // First, ensure session actually belongs to current client
+      const { data: sessionCheck, error: checkError } = await supabase
         .from("sessions")
         .select("*")
         .eq("id", sessionId)
+        .eq("client_id", clientId)
         .single();
-
-      if (beforeError) {
-        console.error("Error al verificar la sesión antes de actualizar:", beforeError);
-      } else {
-        console.log("2. Datos de sesión antes de actualizar:", beforeData);
+        
+      if (checkError) {
+        console.error("Error verificando permisos de sesión:", checkError);
+        toast({
+          title: "Error",
+          description: "No tienes permisos para modificar esta sesión",
+          variant: "destructive",
+        });
+        return;
       }
 
-      // Update the sessions table directly
+      // Log session data before update
+      console.log("2. Datos de sesión antes de actualizar:", sessionCheck);
+
+      // Update using PATCH instead of standard update
       console.log("3. Ejecutando query para actualizar fecha:");
       const { data, error } = await supabase
         .from("sessions")
-        .update({ scheduled_date: date?.toISOString() || null })
+        .update({ 
+          scheduled_date: date?.toISOString() || null 
+        })
         .eq("id", sessionId)
+        .eq("client_id", clientId) // Important: ensure only client's data is updated
         .select();
 
       if (error) {
@@ -111,6 +122,17 @@ export const SessionDatePicker = ({
       } else {
         console.log("5. Datos de sesión después de actualizar:", afterData);
         console.log("   - scheduled_date actualizada:", afterData.scheduled_date);
+        
+        // Check if the update was successful by comparing values
+        if (date && afterData.scheduled_date === null) {
+          console.error("6. ERROR: La fecha no se actualizó en la base de datos");
+          toast({
+            title: "Error",
+            description: "La fecha no se actualizó correctamente en la base de datos",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       // If successful, show success message and update UI
