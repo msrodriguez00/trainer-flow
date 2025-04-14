@@ -18,7 +18,7 @@ export const useClientPlanDetail = (planId: string | undefined) => {
       setLoading(true);
       console.log("Fetching plan details for ID:", planId, "client ID:", clientId);
 
-      // Obtener el plan
+      // Get the plan
       const { data: planData, error: planError } = await supabase
         .from("plans")
         .select(`
@@ -43,7 +43,7 @@ export const useClientPlanDetail = (planId: string | undefined) => {
       }
 
       if (planData) {
-        // Obtener las sesiones del plan
+        // Get sessions for this plan
         const { data: sessionsData, error: sessionsError } = await supabase
           .from("sessions")
           .select(`
@@ -68,9 +68,9 @@ export const useClientPlanDetail = (planId: string | undefined) => {
 
         const sessions = [];
 
-        // Para cada sesión, obtener las series y ejercicios
+        // For each session, get the series and exercises
         for (const session of (sessionsData || [])) {
-          // Obtener series
+          // Get series
           const { data: seriesData, error: seriesError } = await supabase
             .from("series")
             .select(`
@@ -88,9 +88,9 @@ export const useClientPlanDetail = (planId: string | undefined) => {
 
           const seriesList = [];
 
-          // Para cada serie, obtener los ejercicios
+          // For each series, get the exercises
           for (const serie of (seriesData || [])) {
-            // Obtener ejercicios con un JOIN para obtener todos los detalles del ejercicio
+            // Get exercises with a JOIN to get all exercise details
             const { data: planExercises, error: exercisesError } = await supabase
               .from("plan_exercises")
               .select(`
@@ -130,7 +130,7 @@ export const useClientPlanDetail = (planId: string | undefined) => {
           });
         }
 
-        // Aplanar ejercicios para compatibilidad con la estructura existente
+        // Flatten exercises for compatibility with existing structure
         const allExercises = [];
         sessions.forEach(session => {
           session.series.forEach(series => {

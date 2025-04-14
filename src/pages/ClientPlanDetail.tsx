@@ -25,21 +25,17 @@ const ClientPlanDetail = () => {
     
     console.log("Manejando actualización de fecha en ClientPlanDetail:", { sessionId, newDate });
     
-    // Actualización local del estado para la UI (la actualización en BD ya se hizo en SessionDatePicker)
+    // Local state update for UI (the DB update is done in SessionDatePicker)
     const updatedPlan = {...plan};
     const sessionIndex = updatedPlan.sessions.findIndex(s => s.id === sessionId);
     
     if (sessionIndex !== -1) {
       updatedPlan.sessions[sessionIndex].scheduledDate = newDate;
-      // Forzar actualización de datos desde el servidor
-      refreshPlanDetails();
       
-      toast({
-        title: "Fecha actualizada",
-        description: "Los cambios se han guardado correctamente",
-      });
+      // Force a refresh of data from the server
+      refreshPlanDetails();
     }
-  }, [plan, refreshPlanDetails, toast]);
+  }, [plan, refreshPlanDetails]);
 
   if (loading) {
     return <LoadingScreen />;

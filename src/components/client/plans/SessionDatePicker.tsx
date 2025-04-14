@@ -36,7 +36,7 @@ export const SessionDatePicker = ({
   const { toast } = useToast();
   const { clientId } = useClientIdentification();
 
-  // Asegurar que la fecha inicial se establezca correctamente
+  // Ensure date is updated if initialDate changes
   useEffect(() => {
     if (initialDate) {
       setDate(new Date(initialDate));
@@ -55,18 +55,19 @@ export const SessionDatePicker = ({
     try {
       setIsUpdating(true);
       
-      // Incluir logs para depuración
+      // Include logs for debugging
       console.log("Intentando actualizar fecha de sesión:", {
         sessionId,
         clientId,
         newDate: date?.toISOString() || null
       });
 
-      // Simplificar la actualización - directamente a la tabla sessions
-      const { error } = await supabase
+      // Update the sessions table directly
+      const { data, error } = await supabase
         .from("sessions")
         .update({ scheduled_date: date?.toISOString() || null })
-        .eq("id", sessionId);
+        .eq("id", sessionId)
+        .select();
 
       if (error) {
         console.error("Error al actualizar la fecha de la sesión:", error);
@@ -78,8 +79,8 @@ export const SessionDatePicker = ({
         return;
       }
 
-      // Si llega aquí, la actualización fue exitosa
-      console.log("Fecha actualizada exitosamente");
+      // If successful, show success message and update UI
+      console.log("Fecha actualizada exitosamente", data);
       toast({
         title: "Fecha actualizada",
         description: "La fecha de la sesión ha sido guardada correctamente",
