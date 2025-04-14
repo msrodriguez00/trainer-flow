@@ -60,12 +60,11 @@ export const SessionDatePicker = ({
         authSession: await supabase.auth.getSession()
       });
 
+      // Eliminar la referencia a updated_at que no existe en la tabla
       const { data, error } = await supabase
         .from("sessions")
         .update({ 
-          scheduled_date: date?.toISOString() || null,
-          // Añadir un timestamp para asegurar que la actualización sea reconocida
-          updated_at: new Date().toISOString()
+          scheduled_date: date?.toISOString() || null
         })
         .eq("id", sessionId)
         .select();
