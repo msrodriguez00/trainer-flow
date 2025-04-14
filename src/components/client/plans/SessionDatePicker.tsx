@@ -1,19 +1,15 @@
 
-import { useState, useCallback, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
-import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Check, X } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useClientIdentification } from "@/hooks/client/useClientIdentification";
+import { useSessionDate } from "./hooks/useSessionDate";
+import DatePickerTrigger from "./components/DatePickerTrigger";
+import DatePickerFooter from "./components/DatePickerFooter";
 
 interface SessionDatePickerProps {
   sessionId: string;
@@ -28,165 +24,30 @@ export const SessionDatePicker = ({
   disabled = false,
   onDateUpdated 
 }: SessionDatePickerProps) => {
-  const [date, setDate] = useState<Date | undefined>(
-    initialDate ? new Date(initialDate) : undefined
-  );
-  const [isOpen, setIsOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const { toast } = useToast();
-  const { clientId } = useClientIdentification();
+  const {
+    date,
+    isOpen,
+    isUpdating,
+    setIsOpen,
+    handleSelect,
+    handleSave,
+    handleClear,
+    formatDisplayDate,
+    disabled: hookDisabled
+  } = useSessionDate(sessionId, initialDate, onDateUpdated);
 
-  // Ensure date is updated if initialDate changes
-  useEffect(() => {
-    if (initialDate) {
-      setDate(new Date(initialDate));
-    } else {
-      setDate(undefined);
-    }
-  }, [initialDate]);
-
-  const handleSelect = useCallback((newDate: Date | undefined) => {
-    setDate(newDate);
-  }, []);
-
-  const handleSave = async () => {
-    if (disabled || !clientId) return;
-    
-    try {
-      setIsUpdating(true);
-      
-      // Enhanced debugging logs
-      console.log("1. Iniciando actualización de fecha de sesión:", {
-        sessionId,
-        clientId,
-        newDate: date?.toISOString() || null
-      });
-
-      // Verificar que la sesión existe y pertenece al cliente actual
-      const { data: sessionCheck, error: checkError } = await supabase
-        .from("sessions")
-        .select("*")
-        .eq("id", sessionId)
-        .eq("client_id", clientId)
-        .single();
-        
-      if (checkError) {
-        console.error("Error verificando permisos de sesión:", checkError);
-        toast({
-          title: "Error",
-          description: "No tienes permisos para modificar esta sesión",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log("2. Datos de sesión antes de actualizar:", sessionCheck);
-
-      // Actualizar la fecha de la sesión usando update en lugar de upsert
-      console.log("3. Ejecutando query para actualizar fecha:");
-      
-      const { data, error } = await supabase
-        .from("sessions")
-        .update({ scheduled_date: date?.toISOString() || null })
-        .eq("id", sessionId)
-        .eq("client_id", clientId)
-        .select();
-
-      if (error) {
-        console.error("4. ERROR en la actualización de fecha:", error);
-        console.error("  - Código:", error.code);
-        console.error("  - Mensaje:", error.message);
-        console.error("  - Detalles:", error.details);
-        toast({
-          title: "Error",
-          description: `No se pudo actualizar la fecha: ${error.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log("4. Respuesta exitosa de la actualización:", data);
-
-      // Verificar si la actualización fue realmente efectuada
-      const { data: afterData, error: afterError } = await supabase
-        .from("sessions")
-        .select("*")
-        .eq("id", sessionId)
-        .single();
-
-      if (afterError) {
-        console.error("5. Error al verificar la sesión después de actualizar:", afterError);
-      } else {
-        console.log("5. Datos de sesión después de actualizar:", afterData);
-        console.log("   - scheduled_date actualizada:", afterData.scheduled_date);
-        
-        // Validar si la actualización fue exitosa
-        const isDateEqual = date ? afterData.scheduled_date === date.toISOString() : afterData.scheduled_date === null;
-        
-        if (!isDateEqual) {
-          console.warn("6. ADVERTENCIA: Fecha persistida diferente a la solicitada");
-          toast({
-            title: "Advertencia",
-            description: "La fecha puede no haberse actualizado correctamente",
-          });
-        } else {
-          // Mostrar mensaje de éxito solo si hubo un cambio real
-          if (initialDate !== afterData.scheduled_date) {
-            toast({
-              title: "Fecha actualizada",
-              description: "La fecha de la sesión ha sido guardada correctamente",
-            });
-          }
-        }
-      }
-      
-      setIsOpen(false);
-      if (onDateUpdated) {
-        console.log("6. Llamando a onDateUpdated con:", date?.toISOString() || null);
-        onDateUpdated(date?.toISOString() || null);
-      }
-    } catch (error) {
-      console.error("Error inesperado en handleSave:", error);
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al actualizar la fecha",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleClear = () => {
-    setDate(undefined);
-  };
-
-  const formatDisplayDate = (dateStr?: string | null) => {
-    if (!dateStr) return "Sin fecha asignada";
-    try {
-      return format(new Date(dateStr), "d 'de' MMMM, yyyy", {
-        locale: es,
-      });
-    } catch (e) {
-      return "Fecha inválida";
-    }
-  };
+  const finalDisabled = disabled || hookDisabled;
+  const displayDate = date ? formatDisplayDate(date.toISOString()) : "Agendar fecha";
 
   return (
     <div>
-      <Popover open={isOpen} onOpenChange={disabled ? undefined : setIsOpen}>
+      <Popover open={isOpen} onOpenChange={finalDisabled ? undefined : setIsOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn(
-              "w-full justify-start text-left font-normal",
-              !date && "text-muted-foreground"
-            )}
-            disabled={disabled}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? formatDisplayDate(date.toISOString()) : "Agendar fecha"}
-          </Button>
+          <DatePickerTrigger 
+            displayText={displayDate}
+            hasDate={!!date}
+            disabled={finalDisabled}
+          />
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <div className="p-3">
@@ -198,34 +59,12 @@ export const SessionDatePicker = ({
               locale={es}
             />
           </div>
-          <div className="flex justify-between items-center p-2 border-t">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClear}
-              disabled={isUpdating}
-            >
-              <X className="mr-1 h-4 w-4" /> Limpiar
-            </Button>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsOpen(false)}
-                disabled={isUpdating}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleSave}
-                disabled={isUpdating}
-              >
-                <Check className="mr-1 h-4 w-4" /> {isUpdating ? "Guardando..." : "Guardar"}
-              </Button>
-            </div>
-          </div>
+          <DatePickerFooter
+            onClear={handleClear}
+            onCancel={() => setIsOpen(false)}
+            onSave={handleSave}
+            isUpdating={isUpdating}
+          />
         </PopoverContent>
       </Popover>
     </div>
