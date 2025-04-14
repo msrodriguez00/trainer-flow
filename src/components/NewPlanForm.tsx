@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Exercise, Client, PlanExercise } from "@/types";
@@ -152,6 +153,7 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
     if (validExercises.length === 0) return;
 
     try {
+      // 1. Crear el plan
       const { data: planData, error: planError } = await supabase
         .from("plans")
         .insert({
@@ -164,6 +166,7 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
 
       if (planError) throw planError;
 
+      // 2. Crear la sesión predeterminada
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
         .insert({
@@ -176,6 +179,7 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
 
       if (sessionError) throw sessionError;
       
+      // 3. Crear la serie predeterminada
       const { data: seriesData, error: seriesError } = await supabase
         .from("series")
         .insert({
@@ -188,15 +192,17 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
         
       if (seriesError) throw seriesError;
 
-      const planExercises = validExercises.map(ex => ({
+      // 4. Insertar los ejercicios con la serie_id y plan_id
+      const planExercisesData = validExercises.map(ex => ({
         series_id: seriesData.id,
         exercise_id: ex.exerciseId,
-        level: ex.level
+        level: ex.level,
+        plan_id: planData.id  // Necesario para la política RLS
       }));
 
       const { error: exError } = await supabase
         .from("plan_exercises")
-        .insert(planExercises);
+        .insert(planExercisesData);
 
       if (exError) throw exError;
 

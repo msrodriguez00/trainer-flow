@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Plus, Search, MoreHorizontal, ClipboardList } from "lucide-react";
-import { Plan, Client } from "@/types";
+import { Plan, Client, Session, Series, PlanExercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,32 +52,98 @@ const Plans = () => {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data: plansData, error: plansError } = await supabase
         .from("plans")
         .select(`
           id,
           name,
           client_id,
-          created_at,
-          plan_exercises:plan_exercises(*)
+          created_at
         `)
         .eq("trainer_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (plansError) throw plansError;
 
-      const formattedPlans: Plan[] = data.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        clientId: item.client_id,
-        createdAt: item.created_at,
-        exercises: item.plan_exercises.map((ex: any) => ({
-          exerciseId: ex.exercise_id,
-          level: ex.level,
-          evaluations: []
-        }))
-      }));
-
+      const formattedPlans: Plan[] = [];
+      
+      for (const plan of plansData) {
+        // Fetch sessions for this plan
+        const { data: sessionsData, error: sessionsError } = await supabase
+          .from("sessions")
+          .select(`id, name, order_index`)
+          .eq("plan_id", plan.id)
+          .order("order_index", { ascending: true });
+          
+        if (sessionsError) throw sessionsError;
+        
+        const sessions: Session[] = [];
+        
+        for (const session of sessionsData || []) {
+          // Fetch series for this session
+          const { data: seriesData, error: seriesError } = await supabase
+            .from("series")
+            .select(`id, name, order_index`)
+            .eq("session_id", session.id)
+            .order("order_index", { ascending: true });
+            
+          if (seriesError) throw seriesError;
+          
+          const seriesList: Series[] = [];
+          
+          for (const series of seriesData || []) {
+            // Fetch exercises for this series
+            const { data: exercisesData, error: exercisesError } = await supabase
+              .from("plan_exercises")
+              .select(`
+                id, exercise_id, level,
+                exercises:exercise_id (name)
+              `)
+              .eq("series_id", series.id);
+              
+            if (exercisesError) throw exercisesError;
+            
+            const exercises: PlanExercise[] = exercisesData.map((ex: any) => ({
+              exerciseId: ex.exercise_id,
+              exerciseName: ex.exercises?.name,
+              level: ex.level,
+              evaluations: []
+            }));
+            
+            seriesList.push({
+              id: series.id,
+              name: series.name,
+              orderIndex: series.order_index,
+              exercises
+            });
+          }
+          
+          sessions.push({
+            id: session.id,
+            name: session.name,
+            orderIndex: session.order_index,
+            series: seriesList
+          });
+        }
+        
+        // Flatten exercises for backward compatibility
+        const allExercises: PlanExercise[] = [];
+        sessions.forEach(session => {
+          session.series.forEach(series => {
+            allExercises.push(...series.exercises);
+          });
+        });
+        
+        formattedPlans.push({
+          id: plan.id,
+          name: plan.name,
+          clientId: plan.client_id,
+          createdAt: plan.created_at,
+          sessions,
+          exercises: allExercises
+        });
+      }
+      
       setPlans(formattedPlans);
     } catch (error) {
       console.error("Error fetching plans:", error);

@@ -8,7 +8,8 @@ import { Dumbbell, Users, ClipboardList, Plus, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Client, Plan, Exercise } from "@/types";
+import { Client, Plan, PlanExercise, Session, Series } from "@/types";
+import { fetchDashboardStats, fetchRecentPlans, fetchRecentClients } from "@/services/dashboardService";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -25,107 +26,31 @@ const Index = () => {
   
   useEffect(() => {
     if (user) {
-      fetchStats();
-      fetchRecentPlans();
-      fetchRecentClients();
+      fetchData();
     }
   }, [user]);
-
-  const fetchStats = async () => {
-    if (!user) return;
-    
+  
+  const fetchData = async () => {
     try {
-      // Fetch exercise count
-      const { count: exercisesCount, error: exercisesError } = await supabase
-        .from("exercises")
-        .select('*', { count: 'exact', head: true });
+      setLoading(true);
+      const [statsData, plansData, clientsData] = await Promise.all([
+        fetchDashboardStats(user!.id),
+        fetchRecentPlans(user!.id),
+        fetchRecentClients(user!.id)
+      ]);
       
-      // Fetch clients count
-      const { count: clientsCount, error: clientsError } = await supabase
-        .from("clients")
-        .select('*', { count: 'exact', head: true })
-        .eq("trainer_id", user.id);
-      
-      // Fetch plans count
-      const { count: plansCount, error: plansError } = await supabase
-        .from("plans")
-        .select('*', { count: 'exact', head: true })
-        .eq("trainer_id", user.id);
-      
-      if (exercisesError || clientsError || plansError) {
-        throw new Error("Error fetching stats");
-      }
-      
-      setStats({
-        exercises: exercisesCount || 0,
-        clients: clientsCount || 0,
-        plans: plansCount || 0,
-      });
+      setStats(statsData);
+      setRecentPlans(plansData);
+      setRecentClients(clientsData);
     } catch (error) {
-      console.error("Error fetching stats:", error);
+      console.error("Error fetching dashboard data:", error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar las estadísticas.",
+        description: "No se pudieron cargar los datos del dashboard.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchRecentPlans = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("plans")
-        .select(`
-          id,
-          name,
-          client_id,
-          created_at,
-          plan_exercises:plan_exercises(*)
-        `)
-        .eq("trainer_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(3);
-
-      if (error) throw error;
-
-      const formattedPlans: Plan[] = data.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        clientId: item.client_id,
-        createdAt: item.created_at,
-        exercises: item.plan_exercises.map((ex: any) => ({
-          exerciseId: ex.exercise_id,
-          level: ex.level,
-          evaluations: []
-        }))
-      }));
-
-      setRecentPlans(formattedPlans);
-    } catch (error) {
-      console.error("Error fetching recent plans:", error);
-    }
-  };
-
-  const fetchRecentClients = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("trainer_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(4);
-
-      if (error) throw error;
-
-      setRecentClients(data);
-    } catch (error) {
-      console.error("Error fetching recent clients:", error);
     }
   };
 

@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Plan, Exercise, Client, PlanExercise } from "@/types";
+import { Plan, Exercise, Client, PlanExercise, Session, Series } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ChevronLeft, Pencil, Save, UserCircle, Trash2, Loader2, PlusCircle } from "lucide-react";
@@ -37,6 +38,8 @@ const PlanDetails = () => {
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
   const [selectedExerciseId, setSelectedExerciseId] = useState("");
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>("");
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string>("");
 
   useEffect(() => {
     if (user && id) {
@@ -56,17 +59,89 @@ const PlanDetails = () => {
 
       if (planError) throw planError;
       
-      const { data: planExercisesData, error: planExercisesError } = await supabase
-        .from("plan_exercises")
-        .select(`
-          id,
-          exercise_id,
-          level,
-          evaluations (*)
-        `)
-        .eq("plan_id", id);
-
-      if (planExercisesError) throw planExercisesError;
+      // Obtener sesiones
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from("sessions")
+        .select("*")
+        .eq("plan_id", id)
+        .order("order_index", { ascending: true });
+        
+      if (sessionsError) throw sessionsError;
+      
+      const sessions: Session[] = [];
+      
+      // Para cada sesión, obtener sus series
+      for (const session of sessionsData) {
+        const { data: seriesData, error: seriesError } = await supabase
+          .from("series")
+          .select("*")
+          .eq("session_id", session.id)
+          .order("order_index", { ascending: true });
+          
+        if (seriesError) throw seriesError;
+        
+        const seriesList: Series[] = [];
+        
+        // Para cada serie, obtener sus ejercicios
+        for (const series of seriesData) {
+          const { data: exercisesData, error: exercisesError } = await supabase
+            .from("plan_exercises")
+            .select(`
+              id,
+              exercise_id,
+              level,
+              evaluations (*)
+            `)
+            .eq("series_id", series.id);
+            
+          if (exercisesError) throw exercisesError;
+          
+          const planExercises: PlanExercise[] = [];
+          
+          // Para cada ejercicio, obtener su información
+          for (const ex of exercisesData) {
+            const { data: exerciseData, error: exerciseError } = await supabase
+              .from("exercises")
+              .select("*")
+              .eq("id", ex.exercise_id)
+              .single();
+              
+            if (exerciseError) {
+              console.error("Error fetching exercise details:", exerciseError);
+              continue;
+            }
+            
+            planExercises.push({
+              exerciseId: ex.exercise_id,
+              exerciseName: exerciseData.name,
+              level: ex.level,
+              evaluations: ex.evaluations || []
+            });
+          }
+          
+          seriesList.push({
+            id: series.id,
+            name: series.name,
+            orderIndex: series.order_index,
+            exercises: planExercises
+          });
+        }
+        
+        sessions.push({
+          id: session.id,
+          name: session.name,
+          orderIndex: session.order_index,
+          series: seriesList
+        });
+      }
+      
+      // Aplanar ejercicios para mantener compatibilidad
+      const allExercises: PlanExercise[] = [];
+      sessions.forEach(session => {
+        session.series.forEach(series => {
+          allExercises.push(...series.exercises);
+        });
+      });
 
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
@@ -76,7 +151,8 @@ const PlanDetails = () => {
 
       if (clientError) throw clientError;
 
-      const exerciseIds = planExercisesData.map((item: any) => item.exercise_id);
+      // Recolectar todos los IDs de ejercicios para obtener sus detalles
+      const exerciseIds = allExercises.map(ex => ex.exerciseId);
       
       if (exerciseIds.length > 0) {
         const { data: exercisesData, error: exercisesError } = await supabase
@@ -96,30 +172,28 @@ const PlanDetails = () => {
         setExercises(typedExercises);
       }
 
-      const formattedExercises: PlanExercise[] = planExercisesData.map((item: any) => ({
-        exerciseId: item.exercise_id,
-        level: item.level,
-        evaluations: item.evaluations.map((evaluation: any) => ({
-          timeRating: evaluation.time_rating,
-          weightRating: evaluation.weight_rating,
-          repetitionsRating: evaluation.repetitions_rating,
-          exerciseRating: evaluation.exercise_rating,
-          comment: evaluation.comment,
-          date: evaluation.date
-        }))
-      }));
-
       const formattedPlan: Plan = {
         id: planData.id,
         name: planData.name,
         clientId: planData.client_id,
-        exercises: formattedExercises,
+        exercises: allExercises,
+        sessions: sessions,
         createdAt: planData.created_at
       };
 
       setPlan(formattedPlan);
       setClient(clientData);
       setEditedName(planData.name);
+      
+      // Si hay sesiones, seleccionar por defecto la primera
+      if (sessions.length > 0) {
+        setSelectedSessionId(sessions[0].id);
+        
+        // Si la sesión seleccionada tiene series, seleccionar por defecto la primera
+        if (sessions[0].series.length > 0) {
+          setSelectedSeriesId(sessions[0].series[0].id);
+        }
+      }
     } catch (error) {
       console.error("Error fetching plan details:", error);
       toast.error("Error al cargar el plan");
@@ -176,13 +250,6 @@ const PlanDetails = () => {
     
     if (confirm("¿Estás seguro de que quieres eliminar este plan?")) {
       try {
-        const { error: planExercisesError } = await supabase
-          .from("plan_exercises")
-          .delete()
-          .eq("plan_id", plan.id);
-
-        if (planExercisesError) throw planExercisesError;
-
         const { error: planError } = await supabase
           .from("plans")
           .delete()
@@ -200,22 +267,42 @@ const PlanDetails = () => {
   };
 
   const handleAddExercise = async () => {
-    if (!selectedExerciseId || !plan) return;
+    if (!selectedExerciseId || !selectedSeriesId || !plan) return;
     
     try {
-      const existingExercise = plan.exercises.find(e => e.exerciseId === selectedExerciseId);
+      // Comprobar si el ejercicio ya está en el plan
+      const exerciseExists = plan.exercises.some(e => e.exerciseId === selectedExerciseId);
       
-      if (existingExercise) {
+      if (exerciseExists) {
         toast.error("Este ejercicio ya está en el plan");
         return;
       }
       
+      // Recuperar el plan_id para la serie seleccionada
+      const { data: seriesData, error: seriesError } = await supabase
+        .from("series")
+        .select("session_id")
+        .eq("id", selectedSeriesId)
+        .single();
+        
+      if (seriesError) throw seriesError;
+      
+      const { data: sessionData, error: sessionError } = await supabase
+        .from("sessions")
+        .select("plan_id")
+        .eq("id", seriesData.session_id)
+        .single();
+        
+      if (sessionError) throw sessionError;
+      
+      // Insertar el nuevo ejercicio
       const { error } = await supabase
         .from("plan_exercises")
         .insert({
-          plan_id: plan.id,
+          series_id: selectedSeriesId,
           exercise_id: selectedExerciseId,
-          level: selectedLevel
+          level: selectedLevel,
+          plan_id: sessionData.plan_id // Incluir plan_id para políticas RLS
         });
 
       if (error) throw error;
@@ -238,10 +325,31 @@ const PlanDetails = () => {
     
     if (confirm("¿Estás seguro de que quieres eliminar este ejercicio del plan?")) {
       try {
+        // Encontrar en qué serie se encuentra este ejercicio
+        let seriesId: string | null = null;
+        
+        for (const session of plan.sessions) {
+          for (const series of session.series) {
+            for (const exercise of series.exercises) {
+              if (exercise.exerciseId === exerciseId) {
+                seriesId = series.id;
+                break;
+              }
+            }
+            if (seriesId) break;
+          }
+          if (seriesId) break;
+        }
+        
+        if (!seriesId) {
+          console.error("No se encontró la serie del ejercicio");
+          return;
+        }
+        
         const { data: planExerciseData, error: planExerciseError } = await supabase
           .from("plan_exercises")
           .select("id")
-          .eq("plan_id", plan.id)
+          .eq("series_id", seriesId)
           .eq("exercise_id", exerciseId)
           .single();
 
@@ -257,7 +365,7 @@ const PlanDetails = () => {
         const { error } = await supabase
           .from("plan_exercises")
           .delete()
-          .eq("plan_id", plan.id)
+          .eq("series_id", seriesId)
           .eq("exercise_id", exerciseId);
 
         if (error) throw error;
@@ -275,10 +383,31 @@ const PlanDetails = () => {
     if (!plan) return;
     
     try {
+      // Encontrar en qué serie se encuentra este ejercicio
+      let seriesId: string | null = null;
+      
+      for (const session of plan.sessions) {
+        for (const series of session.series) {
+          for (const exercise of series.exercises) {
+            if (exercise.exerciseId === exerciseId) {
+              seriesId = series.id;
+              break;
+            }
+          }
+          if (seriesId) break;
+        }
+        if (seriesId) break;
+      }
+      
+      if (!seriesId) {
+        console.error("No se encontró la serie del ejercicio");
+        return;
+      }
+      
       const { error } = await supabase
         .from("plan_exercises")
         .update({ level: newLevel })
-        .eq("plan_id", plan.id)
+        .eq("series_id", seriesId)
         .eq("exercise_id", exerciseId);
 
       if (error) throw error;
@@ -287,9 +416,19 @@ const PlanDetails = () => {
       const exerciseIndex = updatedPlan.exercises.findIndex(e => e.exerciseId === exerciseId);
       if (exerciseIndex !== -1) {
         updatedPlan.exercises[exerciseIndex].level = newLevel;
-        setPlan(updatedPlan);
       }
       
+      // También actualizar en la estructura de sesiones/series
+      for (const session of updatedPlan.sessions) {
+        for (const series of session.series) {
+          const exIndex = series.exercises.findIndex(e => e.exerciseId === exerciseId);
+          if (exIndex !== -1) {
+            series.exercises[exIndex].level = newLevel;
+          }
+        }
+      }
+      
+      setPlan(updatedPlan);
       toast.success("Nivel del ejercicio actualizado");
     } catch (error) {
       console.error("Error updating exercise level:", error);
@@ -439,6 +578,50 @@ const PlanDetails = () => {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
+            {/* Selección de sesión */}
+            {plan.sessions.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Sesión</label>
+                <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar sesión" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plan.sessions.map(session => (
+                      <SelectItem key={session.id} value={session.id}>
+                        {session.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {/* Selección de serie */}
+            {selectedSessionId && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Serie</label>
+                <Select 
+                  value={selectedSeriesId} 
+                  onValueChange={setSelectedSeriesId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar serie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plan.sessions
+                      .find(s => s.id === selectedSessionId)
+                      ?.series.map(series => (
+                        <SelectItem key={series.id} value={series.id}>
+                          {series.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {/* Selección de ejercicio */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Ejercicio</label>
               <Select value={selectedExerciseId} onValueChange={setSelectedExerciseId}>
@@ -455,6 +638,7 @@ const PlanDetails = () => {
               </Select>
             </div>
             
+            {/* Selección de nivel */}
             {selectedExerciseId && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Nivel</label>
@@ -481,7 +665,10 @@ const PlanDetails = () => {
             <Button variant="outline" onClick={() => setIsAddExerciseDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleAddExercise} disabled={!selectedExerciseId}>
+            <Button 
+              onClick={handleAddExercise} 
+              disabled={!selectedExerciseId || !selectedSeriesId}
+            >
               Añadir
             </Button>
           </DialogFooter>
