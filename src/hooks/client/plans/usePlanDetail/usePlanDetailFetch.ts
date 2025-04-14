@@ -1,33 +1,18 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { PlanDetailState, FetchPlanDetailsOptions } from "./types";
 import { Plan } from "@/types";
-import { useClientIdentification } from "@/hooks/client/useClientIdentification";
-import { debugUpdateSession } from "@/utils/debugUtils";
 
-export interface PlanDetailState {
-  plan: Plan | null;
-  loading: boolean;
-}
-
-export const usePlanDetail = (planId: string | undefined) => {
+export const usePlanDetailFetch = () => {
   const [state, setState] = useState<PlanDetailState>({
     plan: null,
     loading: true,
   });
   const { toast } = useToast();
-  const { clientId, loading: clientLoading } = useClientIdentification();
 
-  useEffect(() => {
-    if (planId && clientId) {
-      fetchPlanDetails();
-    } else if (!clientLoading && !clientId) {
-      setState(prev => ({ ...prev, loading: false }));
-    }
-  }, [planId, clientId, clientLoading]);
-
-  const fetchPlanDetails = async () => {
+  const fetchPlanDetails = async ({ planId, clientId }: FetchPlanDetailsOptions): Promise<Plan | null> => {
     try {
       setState(prev => ({ ...prev, loading: true }));
       console.log("Fetching plan details for ID:", planId, "client ID:", clientId);
@@ -52,12 +37,12 @@ export const usePlanDetail = (planId: string | undefined) => {
           variant: "destructive",
         });
         setState(prev => ({ ...prev, loading: false }));
-        return;
+        return null;
       }
 
       if (!planData) {
         setState(prev => ({ ...prev, loading: false, plan: null }));
-        return;
+        return null;
       }
 
       // Fetch sessions with retry logic
@@ -102,7 +87,7 @@ export const usePlanDetail = (planId: string | undefined) => {
           variant: "destructive",
         });
         setState(prev => ({ ...prev, loading: false }));
-        return;
+        return null;
       }
 
       const sessions = [];
@@ -128,7 +113,7 @@ export const usePlanDetail = (planId: string | undefined) => {
 
           for (const serie of (seriesData || [])) {
             try {
-              // Remove the timeout and use AbortSignal for limiting query time
+              // Use AbortSignal for limiting query time
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), 5000);
               
@@ -219,7 +204,7 @@ export const usePlanDetail = (planId: string | undefined) => {
       const fullPlan = {
         id: planData.id,
         name: planData.name,
-        clientId: clientId as string,
+        clientId: clientId,
         createdAt: planData.created_at,
         month: planData.month,
         sessions: sessions,
@@ -231,6 +216,8 @@ export const usePlanDetail = (planId: string | undefined) => {
         plan: fullPlan,
         loading: false
       });
+      
+      return fullPlan;
     } catch (error) {
       console.error("Error en fetchPlanDetails:", error);
       toast({
@@ -239,60 +226,13 @@ export const usePlanDetail = (planId: string | undefined) => {
         variant: "destructive",
       });
       setState(prev => ({ ...prev, loading: false }));
-    }
-  };
-
-  const handleScheduleSession = async (sessionId: string, date: Date) => {
-    try {
-      console.log(`usePlanDetail - Iniciando programación de sesión ${sessionId} para fecha ${date.toISOString()}`);
-      
-      if (!clientId) {
-        console.error("usePlanDetail - Error: Usuario no autenticado");
-        throw new Error("Usuario no autenticado");
-      }
-
-      // Usar método directo sin verificaciones previas
-      const { data, error } = await supabase
-        .from('sessions')
-        .update({ scheduled_date: date.toISOString() })
-        .eq('id', sessionId)
-        .select('*');
-
-      if (error) {
-        console.error("usePlanDetail - Error actualizando fecha de la sesión:", error);
-        
-        // Intentar debug para entender el problema
-        const debugResult = await debugUpdateSession(sessionId, date);
-        console.log("Resultado depuración:", debugResult);
-        
-        toast({
-          title: "Error",
-          description: `No se pudo programar la sesión: ${error.message}`,
-          variant: "destructive",
-        });
-        throw error;
-      }
-      
-      console.log("usePlanDetail - Actualización exitosa de la sesión:", data);
-      
-      // Refrescar los datos para mostrar los cambios
-      await fetchPlanDetails();
-      
-      return true;
-    } catch (error) {
-      console.error("usePlanDetail - Error general programando sesión:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo programar la sesión. Verifica tu conexión e intenta de nuevo.",
-        variant: "destructive",
-      });
-      throw error;
+      return null;
     }
   };
 
   return {
-    plan: state.plan,
-    loading: state.loading || clientLoading,
-    handleScheduleSession
+    planState: state,
+    setPlanState: setState,
+    fetchPlanDetails
   };
 };
