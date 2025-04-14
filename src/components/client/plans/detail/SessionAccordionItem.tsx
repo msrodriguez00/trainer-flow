@@ -48,9 +48,6 @@ export const SessionAccordionItem: React.FC<SessionAccordionItemProps> = ({
           ? `Sesión "${session.name}" agendada para ${formatDate(newDate)}` 
           : `Se eliminó la fecha de la sesión "${session.name}"`,
       });
-      
-      // Actualizar el estado local primero para mejor experiencia de usuario
-      const updatedSession = { ...session, scheduledDate: newDate };
     }
     
     // Propagar la actualización al componente padre

@@ -82,22 +82,14 @@ export const SessionDatePicker = ({
 
       console.log("2. Datos de sesión antes de actualizar:", sessionCheck);
 
-      // Actualizar la fecha de la sesión - IMPORTANTE: usar .upsert para mayor compatibilidad con RLS
+      // Actualizar la fecha de la sesión usando update en lugar de upsert
       console.log("3. Ejecutando query para actualizar fecha:");
-      
-      // Construir el objeto con los datos de actualización
-      const updateData = {
-        id: sessionId,
-        client_id: clientId,
-        scheduled_date: date?.toISOString() || null
-      };
       
       const { data, error } = await supabase
         .from("sessions")
-        .upsert(updateData, { 
-          onConflict: 'id',
-          ignoreDuplicates: false 
-        })
+        .update({ scheduled_date: date?.toISOString() || null })
+        .eq("id", sessionId)
+        .eq("client_id", clientId)
         .select();
 
       if (error) {
