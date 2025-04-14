@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +11,7 @@ import Navbar from "@/components/Navbar";
 import ClientInfoCard from "@/components/client/ClientInfoCard";
 import ClientPlansList from "@/components/client/ClientPlansList";
 import { ArrowLeft, UserPlus, Plus, ListPlus } from "lucide-react";
-import { Client, Plan } from "@/types";
+import { Client, Plan, Session, Series, PlanExercise } from "@/types";
 
 const ClientDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -64,12 +63,7 @@ const ClientDetails = () => {
           id,
           name,
           client_id,
-          created_at,
-          plan_exercises:plan_exercises(
-            id,
-            exercise_id,
-            level
-          )
+          created_at
         `)
         .eq("client_id", id)
         .eq("trainer_id", user.id)
@@ -77,17 +71,84 @@ const ClientDetails = () => {
 
       if (error) throw error;
 
-      const formattedPlans: Plan[] = data.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        clientId: item.client_id,
-        createdAt: item.created_at,
-        exercises: item.plan_exercises.map((ex: any) => ({
-          exerciseId: ex.exercise_id,
-          level: ex.level,
-          evaluations: []
-        }))
-      }));
+      const formattedPlans: Plan[] = [];
+      
+      for (const planData of data) {
+        // Fetch sessions for this plan
+        const { data: sessionsData, error: sessionsError } = await supabase
+          .from("sessions")
+          .select(`id, name, order_index`)
+          .eq("plan_id", planData.id)
+          .order("order_index", { ascending: true });
+          
+        if (sessionsError) throw sessionsError;
+        
+        const sessions: Session[] = [];
+        
+        for (const sessionData of sessionsData) {
+          // Fetch series for this session
+          const { data: seriesData, error: seriesError } = await supabase
+            .from("series")
+            .select(`id, name, order_index`)
+            .eq("session_id", sessionData.id)
+            .order("order_index", { ascending: true });
+            
+          if (seriesError) throw seriesError;
+          
+          const seriesList: Series[] = [];
+          
+          for (const seriesItem of seriesData) {
+            // Fetch exercises for this series
+            const { data: exercisesData, error: exercisesError } = await supabase
+              .from("plan_exercises")
+              .select(`
+                id, exercise_id, level,
+                exercises:exercise_id (name)
+              `)
+              .eq("series_id", seriesItem.id);
+              
+            if (exercisesError) throw exercisesError;
+            
+            const exercises: PlanExercise[] = exercisesData.map((ex: any) => ({
+              exerciseId: ex.exercise_id,
+              exerciseName: ex.exercises?.name,
+              level: ex.level,
+              evaluations: []
+            }));
+            
+            seriesList.push({
+              id: seriesItem.id,
+              name: seriesItem.name,
+              orderIndex: seriesItem.order_index,
+              exercises
+            });
+          }
+          
+          sessions.push({
+            id: sessionData.id,
+            name: sessionData.name,
+            orderIndex: sessionData.order_index,
+            series: seriesList
+          });
+        }
+        
+        // Flatten exercises for backward compatibility
+        const allExercises: PlanExercise[] = [];
+        sessions.forEach(session => {
+          session.series.forEach(series => {
+            allExercises.push(...series.exercises);
+          });
+        });
+        
+        formattedPlans.push({
+          id: planData.id,
+          name: planData.name,
+          clientId: planData.client_id,
+          createdAt: planData.created_at,
+          sessions,
+          exercises: allExercises
+        });
+      }
 
       setPlans(formattedPlans);
     } catch (error) {
@@ -97,6 +158,8 @@ const ClientDetails = () => {
         description: "No se pudieron cargar los planes del cliente",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 

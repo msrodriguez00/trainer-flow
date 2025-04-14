@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Exercise, Client, PlanExercise } from "@/types";
@@ -87,7 +86,6 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
 
     try {
       console.log("Fetching exercises...");
-      // Updated query to correctly handle the levels JSON field
       const { data, error } = await supabase
         .from("exercises")
         .select("id, name, categories, levels")
@@ -97,7 +95,6 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
 
       console.log("Exercises data received:", data);
 
-      // Format exercises using the direct levels JSON from the exercises table
       const formattedExercises: Exercise[] = data.map((item: any) => ({
         id: item.id,
         name: item.name,
@@ -132,7 +129,6 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
   const handleExerciseChange = (index: number, exerciseId: string) => {
     const updated = [...selectedExercises];
     updated[index].exerciseId = exerciseId;
-    // Reset level when changing exercise
     updated[index].level = 1;
     setSelectedExercises(updated);
   };
@@ -149,7 +145,6 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
     if (!user) return;
     if (!name || !clientId) return;
 
-    // Filter out any incomplete exercise selections
     const validExercises = selectedExercises.filter(
       (ex) => ex.exerciseId && ex.level > 0
     );
@@ -157,7 +152,6 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
     if (validExercises.length === 0) return;
 
     try {
-      // First create the plan
       const { data: planData, error: planError } = await supabase
         .from("plans")
         .insert({
@@ -170,9 +164,32 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
 
       if (planError) throw planError;
 
-      // Then create plan exercises
+      const { data: sessionData, error: sessionError } = await supabase
+        .from("sessions")
+        .insert({
+          name: "Sesión predeterminada",
+          plan_id: planData.id,
+          order_index: 0
+        })
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+      
+      const { data: seriesData, error: seriesError } = await supabase
+        .from("series")
+        .insert({
+          name: "Serie predeterminada",
+          session_id: sessionData.id,
+          order_index: 0
+        })
+        .select()
+        .single();
+        
+      if (seriesError) throw seriesError;
+
       const planExercises = validExercises.map(ex => ({
-        plan_id: planData.id,
+        series_id: seriesData.id,
         exercise_id: ex.exerciseId,
         level: ex.level
       }));
@@ -183,23 +200,21 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
 
       if (exError) throw exError;
 
-      // Call the onSubmit prop to notify parent
       onSubmit({
         name,
         clientId,
         exercises: validExercises.map((ex) => ({
-          ...ex,
+          exerciseId: ex.exerciseId,
+          level: ex.level,
           evaluations: [],
         })),
       });
 
-      // Show success toast
       toast({
         title: "Plan creado",
         description: `El plan "${name}" ha sido creado exitosamente.`,
       });
 
-      // Navigate back after successful creation
       navigate(-1);
 
     } catch (error) {
@@ -219,7 +234,7 @@ const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
     console.log("Getting levels for exercise:", exerciseId, "Found:", exercise);
     
     if (!exercise || !exercise.levels || exercise.levels.length === 0) {
-      return [1]; // Default to level 1 if no levels found
+      return [1];
     }
     
     return exercise.levels.map((l) => l.level);
