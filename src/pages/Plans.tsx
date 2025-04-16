@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -15,8 +16,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreHorizontal, ClipboardList } from "lucide-react";
-import { Plan, Client, Session, Series, PlanExercise } from "@/types";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Plus, Search, MoreHorizontal, ClipboardList, Loader2 } from "lucide-react";
+import { Plan, Client } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +40,9 @@ const formatDate = (dateString: string) => {
   }).format(date);
 };
 
+// Constante para el tamaño de la página
+const PAGE_SIZE = 10;
+
 const Plans = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -38,20 +51,59 @@ const Plans = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPlans, setTotalPlans] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     if (user) {
-      fetchPlans();
       fetchClients();
+      fetchPlanCount();
+      fetchPlans();
     }
-  }, [user]);
+  }, [user, currentPage]);
+
+  useEffect(() => {
+    if (user && searchTerm.length > 0) {
+      // Reset to first page when searching
+      setCurrentPage(1);
+      fetchPlans();
+    } else if (user && searchTerm.length === 0) {
+      fetchPlans();
+    }
+  }, [user, searchTerm]);
+
+  const fetchPlanCount = async () => {
+    if (!user) return;
+    
+    try {
+      // Get total count of plans for pagination
+      const { count, error } = await supabase
+        .from("plans")
+        .select('id', { count: 'exact', head: true })
+        .eq("trainer_id", user.id)
+        .ilike("name", `%${searchTerm}%`);
+      
+      if (error) throw error;
+      
+      setTotalPlans(count || 0);
+      setTotalPages(Math.max(1, Math.ceil((count || 0) / PAGE_SIZE)));
+    } catch (error) {
+      console.error("Error fetching plan count:", error);
+    }
+  };
 
   const fetchPlans = async () => {
     if (!user) return;
     
     setLoading(true);
     try {
-      const { data: plansData, error: plansError } = await supabase
+      console.log("Fetching plans for page:", currentPage);
+      const from = (currentPage - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      // Step 1: Get basic plan info with pagination
+      const { data: planData, error: planError } = await supabase
         .from("plans")
         .select(`
           id,
@@ -60,96 +112,54 @@ const Plans = () => {
           created_at
         `)
         .eq("trainer_id", user.id)
-        .order("created_at", { ascending: false });
+        .ilike("name", `%${searchTerm}%`)
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
-      if (plansError) throw plansError;
-
-      const formattedPlans: Plan[] = [];
+      if (planError) throw planError;
       
-      for (const plan of plansData) {
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from("sessions")
-          .select(`id, name, order_index`)
-          .eq("plan_id", plan.id)
-          .order("order_index", { ascending: true });
-          
-        if (sessionsError) throw sessionsError;
+      if (!planData || planData.length === 0) {
+        setPlans([]);
+        setLoading(false);
+        return;
+      }
+
+      // Extract plan IDs for use in subsequent queries
+      const planIds = planData.map(plan => plan.id);
+      
+      // Step 2: Get exercise counts for each plan using a single query
+      const { data: exerciseCounts, error: countError } = await supabase
+        .from("plan_exercises")
+        .select(`
+          plan_id,
+          count
+        `, { count: 'exact' })
+        .in("plan_id", planIds)
+        .group('plan_id');
         
-        const sessions: Session[] = [];
-        
-        for (const session of sessionsData || []) {
-          const { data: seriesData, error: seriesError } = await supabase
-            .from("series")
-            .select(`id, name, order_index`)
-            .eq("session_id", session.id)
-            .order("order_index", { ascending: true });
-            
-          if (seriesError) throw seriesError;
-          
-          const seriesList: Series[] = [];
-          
-          for (const series of seriesData || []) {
-            const { data: exercisesData, error: exercisesError } = await supabase
-              .from("plan_exercises")
-              .select(`
-                id, exercise_id, level,
-                exercises:exercise_id (name),
-                evaluations (*)
-              `)
-              .eq("series_id", series.id);
-              
-            if (exercisesError) throw exercisesError;
-            
-            const exercises: PlanExercise[] = exercisesData.map((ex: any) => {
-              const mappedEvaluations = ex.evaluations ? ex.evaluations.map((evaluation: any) => ({
-                timeRating: evaluation.time_rating,
-                weightRating: evaluation.weight_rating,
-                repetitionsRating: evaluation.repetitions_rating,
-                exerciseRating: evaluation.exercise_rating,
-                comment: evaluation.comment,
-                date: evaluation.date
-              })) : [];
-              
-              return {
-                exerciseId: ex.exercise_id,
-                exerciseName: ex.exercises?.name,
-                level: ex.level,
-                evaluations: mappedEvaluations
-              }
-            });
-            
-            seriesList.push({
-              id: series.id,
-              name: series.name,
-              orderIndex: series.order_index,
-              exercises
-            });
-          }
-          
-          sessions.push({
-            id: session.id,
-            name: session.name,
-            orderIndex: session.order_index,
-            series: seriesList
-          });
-        }
-        
-        const allExercises: PlanExercise[] = [];
-        sessions.forEach(session => {
-          session.series.forEach(series => {
-            allExercises.push(...series.exercises);
-          });
-        });
-        
-        formattedPlans.push({
+      if (countError) {
+        console.error("Error fetching exercise counts:", countError);
+        // Continue execution even if this fails
+      }
+      
+      // Convert the exercise counts into a map for easy access
+      const exerciseCountMap = {};
+      exerciseCounts?.forEach(item => {
+        exerciseCountMap[item.plan_id] = parseInt(item.count);
+      });
+
+      // Step 3: Map the data to the Plan format
+      const formattedPlans: Plan[] = planData.map(plan => {
+        return {
           id: plan.id,
           name: plan.name,
           clientId: plan.client_id,
           createdAt: plan.created_at,
-          sessions,
-          exercises: allExercises
-        });
-      }
+          // Provide minimal data for the plans list view
+          sessions: [],
+          exercises: new Array(exerciseCountMap[plan.id] || 0).fill({})  // Just to get the length right
+        };
+      });
       
       setPlans(formattedPlans);
     } catch (error) {
@@ -181,14 +191,11 @@ const Plans = () => {
     }
   };
 
-  const filteredPlans = plans.filter((plan) => {
-    const client = clients.find((c) => c.id === plan.clientId);
-    return (
-      plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (client &&
-        client.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  });
+  const getExerciseCount = (plan: Plan): number => {
+    if (!plan.exercises) return 0;
+    if (!Array.isArray(plan.exercises)) return 0;
+    return plan.exercises.length;
+  };
 
   const handleCreatePlan = () => {
     navigate("/plans/new");
@@ -203,7 +210,10 @@ const Plans = () => {
 
       if (error) throw error;
 
-      setPlans(plans.filter((plan) => plan.id !== id));
+      // Refresh the plans after deleting
+      fetchPlanCount();
+      fetchPlans();
+      
       toast({
         title: "Plan eliminado",
         description: "Se ha eliminado el plan correctamente",
@@ -217,6 +227,77 @@ const Plans = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Generate pagination items
+  const generatePaginationItems = () => {
+    const items = [];
+    
+    // Always show first page
+    items.push(
+      <PaginationItem key="first">
+        <PaginationLink 
+          isActive={currentPage === 1} 
+          onClick={() => handlePageChange(1)}
+        >
+          1
+        </PaginationLink>
+      </PaginationItem>
+    );
+    
+    // Add ellipsis if needed
+    if (currentPage > 3) {
+      items.push(
+        <PaginationItem key="ellipsis1">
+          <PaginationEllipsis />
+        </PaginationItem>
+      );
+    }
+    
+    // Add pages around current page
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      if (i > 1 && i < totalPages) {
+        items.push(
+          <PaginationItem key={i}>
+            <PaginationLink 
+              isActive={currentPage === i} 
+              onClick={() => handlePageChange(i)}
+            >
+              {i}
+            </PaginationLink>
+          </PaginationItem>
+        );
+      }
+    }
+    
+    // Add ellipsis if needed
+    if (currentPage < totalPages - 2) {
+      items.push(
+        <PaginationItem key="ellipsis2">
+          <PaginationEllipsis />
+        </PaginationItem>
+      );
+    }
+    
+    // Always show last page if there's more than one page
+    if (totalPages > 1) {
+      items.push(
+        <PaginationItem key="last">
+          <PaginationLink 
+            isActive={currentPage === totalPages} 
+            onClick={() => handlePageChange(totalPages)}
+          >
+            {totalPages}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+    
+    return items;
   };
 
   return (
@@ -234,7 +315,7 @@ const Plans = () => {
         <div className="mb-6 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
           <Input
-            placeholder="Buscar planes por nombre o cliente..."
+            placeholder="Buscar planes por nombre..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -242,68 +323,100 @@ const Plans = () => {
         </div>
 
         {loading ? (
-          <div className="text-center py-10">
-            <p>Cargando planes...</p>
+          <div className="text-center py-10 flex flex-col items-center">
+            <Loader2 className="h-10 w-10 animate-spin mb-4 text-gray-400" />
+            <p className="text-gray-500">Cargando planes...</p>
           </div>
-        ) : filteredPlans.length > 0 ? (
-          <div className="space-y-4">
-            {filteredPlans.map((plan) => {
-              const client = clients.find((c) => c.id === plan.clientId);
-              
-              return (
-                <Card 
-                  key={plan.id}
-                  className="hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/plans/${plan.id}`)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg">{plan.name}</CardTitle>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            className="text-red-600"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(plan.id);
-                            }}
-                          >
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center mb-3">
-                      {client && (
-                        <>
-                          <img
-                            src={client.avatar || "https://i.pravatar.cc/150"}
-                            alt={client.name}
-                            className="h-8 w-8 rounded-full mr-2"
-                          />
-                          <span className="text-gray-700">{client.name}</span>
-                        </>
-                      )}
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <ClipboardList className="h-4 w-4" />
-                        <span>{plan.exercises.length} ejercicios</span>
+        ) : plans.length > 0 ? (
+          <>
+            <div className="space-y-4">
+              {plans.map((plan) => {
+                const client = clients.find((c) => c.id === plan.clientId);
+                const exerciseCount = getExerciseCount(plan);
+                
+                return (
+                  <Card 
+                    key={plan.id}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/plans/${plan.id}`)}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg">{plan.name}</CardTitle>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(plan.id);
+                              }}
+                            >
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                      <div>Creado: {formatDate(plan.createdAt)}</div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center mb-3">
+                        {client && (
+                          <>
+                            <img
+                              src={client.avatar || "https://i.pravatar.cc/150"}
+                              alt={client.name}
+                              className="h-8 w-8 rounded-full mr-2"
+                            />
+                            <span className="text-gray-700">{client.name}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <ClipboardList className="h-4 w-4" />
+                          <span>{exerciseCount} ejercicios</span>
+                        </div>
+                        <div>Creado: {formatDate(plan.createdAt)}</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                    
+                    {generatePaginationItems()}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+                <div className="text-center text-sm text-gray-500 mt-4">
+                  Mostrando {Math.min(PAGE_SIZE, plans.length)} de {totalPlans} planes
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-20">
             <h3 className="text-lg font-medium text-gray-900">
