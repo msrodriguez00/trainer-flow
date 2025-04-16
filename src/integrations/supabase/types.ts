@@ -446,6 +446,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_complete_plan: {
+        Args: {
+          p_name: string
+          p_client_id: string
+          p_trainer_id: string
+          p_month: string
+          p_sessions: Json
+        }
+        Returns: Json
+      }
       get_client_plans: {
         Args: { p_client_id: string }
         Returns: Json

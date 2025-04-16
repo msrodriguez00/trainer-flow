@@ -84,7 +84,7 @@ export const fetchSessionData = async (sessionId: string): Promise<SessionData |
       return {
         id: series.id,
         name: series.name,
-        orderIndex: series.order_index, // Convert order_index to orderIndex to match the Series type
+        orderIndex: series.order_index, // Convertir order_index a orderIndex para que coincida con el tipo Series
         exercises: formattedExercises
       };
     });
@@ -106,13 +106,13 @@ export const saveSessionProgress = async (
   completedSeries: string[]
 ): Promise<boolean> => {
   try {
-    // In a real application, you would save the progress to the database
-    // For this simplified version, we just log it
+    // En una aplicación real, guardarías el progreso en la base de datos
+    // Para esta versión simplificada, solo lo registramos en consola
     console.log("Saving progress for session", sessionId);
     console.log("Completed exercises:", completedExercises);
     console.log("Completed series:", completedSeries);
     
-    // This would be expanded to actually save to Supabase in a real implementation
+    // Esto se expandiría para guardar realmente en Supabase en una implementación real
     return true;
   } catch (error) {
     console.error("Error saving session progress:", error);

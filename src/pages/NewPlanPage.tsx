@@ -12,6 +12,7 @@ const NewPlanPage = () => {
   const { toast } = useToast();
 
   const handleCreatePlan = (plan: {
+    id: string;
     name: string;
     clientId: string;
     month?: string;

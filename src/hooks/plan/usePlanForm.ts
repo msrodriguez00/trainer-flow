@@ -112,103 +112,45 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
     });
 
     try {
-      // Step 1: Create the plan
-      console.log("Step 1: Creating plan record");
-      const { data: planData, error: planError } = await supabase
-        .from("plans")
-        .insert({
-          name,
-          client_id: clientId,
-          trainer_id: user.id,
-          month: month || null
-        })
-        .select()
-        .single();
+      // Preparar los datos en formato JSON para la función RPC
+      const sessionsData = sessions.map(session => ({
+        name: session.name,
+        series: session.series.map(series => ({
+          name: series.name,
+          exercises: series.exercises
+            .filter(ex => ex.exerciseId && ex.level > 0)
+            .map(ex => ({
+              exerciseId: ex.exerciseId,
+              level: ex.level
+            }))
+        }))
+      }));
+      
+      console.log("Calling create_complete_plan RPC function with data:", {
+        name,
+        client_id: clientId,
+        trainer_id: user.id,
+        month: month || null,
+        sessions: sessionsData
+      });
 
-      if (planError) {
-        console.error("Error creating plan record:", planError);
-        throw planError;
+      // Llamar a la función RPC para crear el plan completo en una transacción
+      const { data: planData, error } = await supabase.rpc('create_complete_plan', {
+        p_name: name,
+        p_client_id: clientId,
+        p_trainer_id: user.id,
+        p_month: month || null,
+        p_sessions: sessionsData
+      });
+
+      if (error) {
+        console.error("Error al crear el plan:", error);
+        throw error;
       }
       
-      console.log("Plan created successfully:", planData);
+      console.log("Plan created successfully with RPC:", planData);
 
-      // Step 2: Create sessions for this plan
-      for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex++) {
-        const session = sessions[sessionIndex];
-        console.log(`Step 2.${sessionIndex+1}: Creating session "${session.name}"`);
-        
-        const { data: sessionData, error: sessionError } = await supabase
-          .from("sessions")
-          .insert({
-            name: session.name,
-            plan_id: planData.id,
-            order_index: sessionIndex,
-            client_id: clientId
-          })
-          .select()
-          .single();
-
-        if (sessionError) {
-          console.error(`Error creating session "${session.name}":`, sessionError);
-          throw sessionError;
-        }
-        
-        console.log(`Session "${session.name}" created successfully:`, sessionData);
-
-        // Step 3: Create series for this session
-        for (let seriesIndex = 0; seriesIndex < session.series.length; seriesIndex++) {
-          const series = session.series[seriesIndex];
-          console.log(`Step 3.${sessionIndex+1}.${seriesIndex+1}: Creating series "${series.name}"`);
-          
-          const { data: seriesData, error: seriesError } = await supabase
-            .from("series")
-            .insert({
-              name: series.name,
-              session_id: sessionData.id,
-              order_index: seriesIndex,
-              client_id: clientId
-            })
-            .select()
-            .single();
-            
-          if (seriesError) {
-            console.error(`Error creating series "${series.name}":`, seriesError);
-            throw seriesError;
-          }
-          
-          console.log(`Series "${series.name}" created successfully:`, seriesData);
-
-          // Step 4: Create exercises for this series
-          const validExercises = series.exercises.filter(ex => ex.exerciseId && ex.level > 0);
-          console.log(`Found ${validExercises.length} valid exercises for series "${series.name}"`);
-          
-          if (validExercises.length > 0) {
-            // IMPORTANT CHANGE: Removed client_id from the planExercisesData since that column doesn't exist
-            const planExercisesData = validExercises.map(ex => ({
-              series_id: seriesData.id,
-              exercise_id: ex.exerciseId,
-              level: ex.level,
-              plan_id: planData.id
-            }));
-            
-            console.log("Exercise data to be inserted:", JSON.stringify(planExercisesData));
-
-            const { error: exError } = await supabase
-              .from("plan_exercises")
-              .insert(planExercisesData);
-
-            if (exError) {
-              console.error(`Error creating exercises for series "${series.name}":`, exError);
-              console.error("Request payload:", JSON.stringify(planExercisesData));
-              throw exError;
-            }
-            
-            console.log(`Successfully added ${validExercises.length} exercises to series "${series.name}"`);
-          }
-        }
-      }
-
-      // Step 5: Prepare response data
+      // Preparar los datos para la respuesta
       const allExercises = [];
       sessions.forEach(session => {
         session.series.forEach(series => {
@@ -223,11 +165,10 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
           });
         });
       });
-      
-      console.log(`Plan creation complete with ${allExercises.length} total exercises`);
 
       if (onSubmit) {
         onSubmit({
+          id: planData.id,
           name,
           clientId,
           month,
