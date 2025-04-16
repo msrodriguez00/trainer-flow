@@ -446,9 +446,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_complete_plan: {
+        Args: { p_plan_id: string; p_client_id: string }
+        Returns: Json
+      }
+      get_dashboard_stats: {
+        Args: { p_trainer_id: string }
+        Returns: Json
+      }
       get_plan_id_from_series_id: {
         Args: { p_series_id: string }
         Returns: string
+      }
+      get_recent_plans_with_clients: {
+        Args: { p_trainer_id: string; p_limit?: number }
+        Returns: Json
       }
       is_admin: {
         Args: { user_id: string }

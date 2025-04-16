@@ -36,15 +36,18 @@ export async function fetchPlanDetails(planId: string, clientId: string): Promis
     
     console.log("Plan complete data loaded successfully");
     
+    // Cast the data to any to allow property access
+    const planData = data as any;
+    
     // The data returned from the database function should already be in the correct format
     const plan: Plan = {
-      id: data.id,
-      name: data.name,
-      clientId: data.clientId,
-      createdAt: data.createdAt,
-      month: data.month,
-      sessions: data.sessions || [],
-      exercises: data.exercises || []
+      id: planData.id,
+      name: planData.name,
+      clientId: planData.clientId,
+      createdAt: planData.createdAt,
+      month: planData.month,
+      sessions: planData.sessions || [],
+      exercises: planData.exercises || []
     };
 
     return plan;

@@ -15,10 +15,13 @@ export const fetchDashboardStats = async (userId: string) => {
       throw error;
     }
     
+    // Cast the data to any to access properties
+    const statsData = data as any;
+    
     return {
-      exercises: data.exercises || 0,
-      clients: data.clients || 0,
-      plans: data.plans || 0,
+      exercises: statsData.exercises || 0,
+      clients: statsData.clients || 0,
+      plans: statsData.plans || 0,
     };
   } catch (error) {
     console.error("Dashboard service - Error fetching stats:", error);
@@ -45,8 +48,11 @@ export const fetchRecentPlans = async (userId: string): Promise<Plan[]> => {
       return [];
     }
     
+    // Cast data to any to access array methods
+    const plansData = data as any[];
+    
     // Transform the data to match the expected Plan type
-    const formattedPlans: Plan[] = data.map((plan: any) => {
+    const formattedPlans: Plan[] = plansData.map((plan: any) => {
       return {
         id: plan.id,
         name: plan.name,
