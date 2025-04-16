@@ -19,8 +19,11 @@ export const useClientPlanDetail = (planId: string | undefined) => {
     
     try {
       setLoading(true);
+      console.log("Loading plan details with optimized query");
       const planData = await fetchPlanDetails(planId, clientId);
       setPlan(planData);
+    } catch (error) {
+      console.error("Error loading plan details:", error);
     } finally {
       setLoading(false);
     }

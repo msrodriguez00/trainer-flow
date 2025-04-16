@@ -1,44 +1,24 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Client, Plan } from "@/types";
 
 export const fetchDashboardStats = async (userId: string) => {
   try {
-    console.log("Dashboard service - Fetching exercises count");
-    const { count: exercisesCount, error: exercisesError } = await supabase
-      .from("exercises")
-      .select('*', { count: 'exact', head: true });
+    console.log("Dashboard service - Fetching stats using optimized database function");
     
-    console.log("Dashboard service - Fetching clients count");
-    const { count: clientsCount, error: clientsError } = await supabase
-      .from("clients")
-      .select('*', { count: 'exact', head: true })
-      .eq("trainer_id", userId);
+    const { data, error } = await supabase.rpc('get_dashboard_stats', {
+      p_trainer_id: userId
+    });
     
-    console.log("Dashboard service - Fetching plans count");
-    const { count: plansCount, error: plansError } = await supabase
-      .from("plans")
-      .select('*', { count: 'exact', head: true })
-      .eq("trainer_id", userId);
-    
-    if (exercisesError) {
-      console.error("Dashboard service - Error fetching exercises count:", exercisesError);
-      throw exercisesError;
-    }
-    
-    if (clientsError) {
-      console.error("Dashboard service - Error fetching clients count:", clientsError);
-      throw clientsError;
-    }
-    
-    if (plansError) {
-      console.error("Dashboard service - Error fetching plans count:", plansError);
-      throw plansError;
+    if (error) {
+      console.error("Dashboard service - Error fetching stats:", error);
+      throw error;
     }
     
     return {
-      exercises: exercisesCount || 0,
-      clients: clientsCount || 0,
-      plans: plansCount || 0,
+      exercises: data.exercises || 0,
+      clients: data.clients || 0,
+      plans: data.plans || 0,
     };
   } catch (error) {
     console.error("Dashboard service - Error fetching stats:", error);
@@ -48,40 +28,32 @@ export const fetchDashboardStats = async (userId: string) => {
 
 export const fetchRecentPlans = async (userId: string): Promise<Plan[]> => {
   try {
-    console.log("Dashboard service - Fetching recent plans");
+    console.log("Dashboard service - Fetching recent plans with optimized query");
     
-    // Get basic plan data with limit for dashboard
-    const { data: planBasicData, error: planError } = await supabase
-      .from("plans")
-      .select(`
-        id,
-        name,
-        client_id,
-        created_at
-      `)
-      .eq("trainer_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(3);
+    const { data, error } = await supabase.rpc('get_recent_plans_with_clients', {
+      p_trainer_id: userId,
+      p_limit: 3
+    });
 
-    if (planError) {
-      console.error("Dashboard service - Error fetching plans:", planError);
-      throw planError;
+    if (error) {
+      console.error("Dashboard service - Error fetching recent plans:", error);
+      throw error;
     }
     
-    if (!planBasicData || planBasicData.length === 0) {
+    if (!data || data.length === 0) {
       console.log("Dashboard service - No plans found");
       return [];
     }
     
-    // Format plans with minimal data needed for the dashboard
-    const formattedPlans: Plan[] = planBasicData.map(plan => {
+    // Transform the data to match the expected Plan type
+    const formattedPlans: Plan[] = data.map((plan: any) => {
       return {
         id: plan.id,
         name: plan.name,
-        clientId: plan.client_id,
-        createdAt: plan.created_at,
+        clientId: plan.clientId,
+        createdAt: plan.createdAt,
         sessions: [],
-        exercises: [] // Empty array for exercises since we don't fetch them
+        exercises: [] // Empty array for exercises since we don't fetch them for the dashboard
       };
     });
     
