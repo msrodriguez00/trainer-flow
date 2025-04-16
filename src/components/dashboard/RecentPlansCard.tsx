@@ -5,6 +5,7 @@ import { Plan, Client } from "@/types";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Plus } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface RecentPlansCardProps {
   plans: Plan[];
@@ -15,6 +16,16 @@ interface RecentPlansCardProps {
 
 const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansCardProps) => {
   const navigate = useNavigate();
+  
+  // Get initials for avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
 
   return (
     <Card>
@@ -45,11 +56,15 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
                   >
                     <div className="flex items-center">
                       {client && (
-                        <img
-                          src={client.avatar || "https://i.pravatar.cc/150"}
-                          alt={client.name}
-                          className="h-10 w-10 rounded-full mr-3"
-                        />
+                        <Avatar className="h-10 w-10 mr-3">
+                          <AvatarImage 
+                            src={client.avatar || undefined} 
+                            alt={client.name} 
+                          />
+                          <AvatarFallback>
+                            {client.name ? getInitials(client.name) : "CL"}
+                          </AvatarFallback>
+                        </Avatar>
                       )}
                       <div>
                         <h3 className="font-medium">{plan.name}</h3>
