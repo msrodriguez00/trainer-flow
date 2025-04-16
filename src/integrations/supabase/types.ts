@@ -446,6 +446,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_client_plans: {
+        Args: { p_client_id: string }
+        Returns: Json
+      }
       get_complete_plan: {
         Args: { p_plan_id: string; p_client_id: string }
         Returns: Json

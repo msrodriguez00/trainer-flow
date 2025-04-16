@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plan, Session, Series, PlanExercise } from "@/types";
+import { Plan } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useClientIdentification } from "@/hooks/client/useClientIdentification";
 
@@ -24,6 +23,44 @@ export const usePlans = () => {
     
     setLoading(true);
     console.log("Fetching plans for client ID:", clientId);
+    
+    try {
+      // Use the optimized database function to fetch all plans with their full structure in a single query
+      const { data, error } = await supabase.rpc('get_client_plans', {
+        p_client_id: clientId
+      });
+
+      if (error) {
+        console.error("Error fetching plans using optimized function:", error);
+        // Fall back to the legacy method if the RPC function fails
+        return fetchClientPlansLegacy();
+      }
+
+      console.log("Plans data fetched using optimized function:", data ? "Data received" : "No data");
+
+      if (data && Array.isArray(data)) {
+        // The data is already in the correct format from our database function
+        setPlans(data);
+      } else {
+        console.log("No plans found or invalid data format");
+        setPlans([]);
+      }
+    } catch (error) {
+      console.error("Error in fetchClientPlans:", error);
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al cargar los planes",
+        variant: "destructive",
+      });
+      // Try the legacy method as fallback
+      return fetchClientPlansLegacy();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchClientPlansLegacy = async () => {
+    console.log("Using legacy method to fetch client plans");
     
     try {
       // First, get all plans assigned to this client
@@ -51,7 +88,7 @@ export const usePlans = () => {
         return;
       }
 
-      console.log("Plans data fetched:", plansData?.length || 0, "plans found");
+      console.log("Plans data fetched using legacy method:", plansData?.length || 0, "plans found");
 
       if (plansData && plansData.length > 0) {
         const formattedPlans: Plan[] = [];
@@ -176,7 +213,7 @@ export const usePlans = () => {
         setPlans([]);
       }
     } catch (error) {
-      console.error("Error in fetchClientPlans:", error);
+      console.error("Error in fetchClientPlansLegacy:", error);
       toast({
         title: "Error",
         description: "Ocurrió un error al cargar los planes",
