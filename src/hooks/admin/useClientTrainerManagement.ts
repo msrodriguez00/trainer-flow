@@ -20,7 +20,7 @@ export const useClientTrainerManagement = () => {
       // First get the clients
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
-        .select("*");
+        .select("id, name, email, current_trainer_id");
 
       if (clientsError) {
         console.error("Error al obtener clientes:", clientsError);
@@ -29,7 +29,7 @@ export const useClientTrainerManagement = () => {
       
       console.log("Clientes base obtenidos:", clientsData?.length || 0);
       
-      // Now get the client-trainer relationships to correctly map trainers to clients
+      // Now get the client-trainer relationships - this is our source of truth
       const { data: relationshipsData, error: relationshipsError } = await supabase
         .from("client_trainer_relationships")
         .select("client_id, trainer_id, is_primary");
@@ -53,7 +53,7 @@ export const useClientTrainerManagement = () => {
       // Merge client data with relationships
       const clientsWithTrainers = clientsData?.map(client => ({
         ...client,
-        trainers: clientRelationships[client.id] || client.trainers || []
+        trainers: clientRelationships[client.id] || []
       }));
       
       setClients(clientsWithTrainers || []);
@@ -131,16 +131,31 @@ export const useClientTrainerManagement = () => {
         if (insertError) throw insertError;
       }
       
-      // Update the primary trainer in the clients table for backward compatibility
+      // Update existing relationships to set primary trainer
       if (trainerIds.length > 0) {
         const primaryTrainerId = trainerIds[0]; // First trainer in the list is primary
         
+        // Update is_primary for all existing relationships
+        await Promise.all(
+          existingTrainerIds
+            .filter(id => trainerIds.includes(id))
+            .map(async (trainerId) => {
+              const isPrimary = trainerId === primaryTrainerId;
+              
+              const { error } = await supabase
+                .from("client_trainer_relationships")
+                .update({ is_primary: isPrimary })
+                .eq("client_id", clientId)
+                .eq("trainer_id", trainerId);
+                
+              if (error) throw error;
+            })
+        );
+        
+        // Also update current_trainer_id in clients table
         const { error: updateError } = await supabase
           .from("clients")
-          .update({ 
-            trainer_id: primaryTrainerId,
-            trainers: trainerIds  // Keep this for backward compatibility
-          })
+          .update({ current_trainer_id: primaryTrainerId })
           .eq("id", clientId);
           
         if (updateError) throw updateError;
@@ -148,10 +163,7 @@ export const useClientTrainerManagement = () => {
         // No trainers - clear the primary trainer
         const { error: updateError } = await supabase
           .from("clients")
-          .update({ 
-            trainer_id: null,
-            trainers: []
-          })
+          .update({ current_trainer_id: null })
           .eq("id", clientId);
           
         if (updateError) throw updateError;

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Trainer } from "@/components/client/dashboard/types";
 import { createDefaultTrainer } from "./trainerThemeUtils";
@@ -15,16 +16,14 @@ export async function fetchClientTrainerData(userEmail: string | null | undefine
     
     console.log("Loading trainers for user email:", userEmail);
     
-    // Check if the client exists and has trainers assigned
+    // Check if the client exists and get its ID
     const { data: clientData, error: clientError } = await supabase
       .from("clients")
       .select(`
         id,
         email,
         name,
-        current_trainer_id,
-        trainer_id,
-        trainers
+        current_trainer_id
       `)
       .eq("email", userEmail.toLowerCase())
       .maybeSingle();
@@ -41,16 +40,26 @@ export async function fetchClientTrainerData(userEmail: string | null | undefine
     
     console.log("Client data loaded:", clientData);
     
-    // Check if client has a current trainer set
+    // Get current trainer from client data
     const currentTrainerId = clientData.current_trainer_id || null;
     
-    // Get trainer IDs from client data
+    // Get trainer IDs from the relationships table - this is now our source of truth
+    const { data: relationships, error: relationshipsError } = await supabase
+      .from("client_trainer_relationships")
+      .select("trainer_id, is_primary")
+      .eq("client_id", clientData.id);
+      
+    if (relationshipsError) {
+      console.error("Error fetching client-trainer relationships:", relationshipsError);
+      throw relationshipsError;
+    }
+    
     let trainerIds: string[] = [];
     
-    if (clientData.trainers && clientData.trainers.length > 0) {
-      trainerIds = clientData.trainers;
-    } else if (clientData.trainer_id) {
-      trainerIds = [clientData.trainer_id];
+    if (relationships && relationships.length > 0) {
+      // Sort relationships to put primary trainer first
+      relationships.sort((a, b) => (a.is_primary ? -1 : 1));
+      trainerIds = relationships.map(rel => rel.trainer_id);
     }
     
     return { clientData, trainerIds, currentTrainerId };

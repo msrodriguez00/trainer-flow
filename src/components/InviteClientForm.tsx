@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,19 +51,43 @@ const InviteClientForm = ({ onSuccess }: InviteClientFormProps) => {
         throw inviteError;
       }
 
-      // Si el cliente existe, añadir entrenador a su lista de entrenadores
+      // Si el cliente existe, añadir entrenador a la tabla de relaciones si no existe ya
       if (existingClients && existingClients.length > 0) {
         const client = existingClients[0];
         
-        // Añadir entrenador actual a la matriz de entrenadores del cliente si aún no está
-        const updatedTrainers = [...(client.trainers || [])];
-        if (!updatedTrainers.includes(user.id)) {
-          updatedTrainers.push(user.id);
+        // Verificar si ya existe la relación
+        const { data: existingRelationship } = await supabase
+          .from("client_trainer_relationships")
+          .select("*")
+          .eq("client_id", client.id)
+          .eq("trainer_id", user.id)
+          .maybeSingle();
+          
+        // Si no existe la relación, crearla
+        if (!existingRelationship) {
+          // Verificar si tiene otras relaciones para determinar si es primario
+          const { data: existingRelations } = await supabase
+            .from("client_trainer_relationships")
+            .select("*")
+            .eq("client_id", client.id);
+            
+          const isPrimary = !existingRelations || existingRelations.length === 0;
           
           await supabase
-            .from("clients")
-            .update({ trainers: updatedTrainers })
-            .eq("id", client.id);
+            .from("client_trainer_relationships")
+            .insert({
+              client_id: client.id,
+              trainer_id: user.id,
+              is_primary: isPrimary
+            });
+            
+          // Si es primario, actualizar también el current_trainer_id
+          if (isPrimary) {
+            await supabase
+              .from("clients")
+              .update({ current_trainer_id: user.id })
+              .eq("id", client.id);
+          }
         }
         
         toast({
