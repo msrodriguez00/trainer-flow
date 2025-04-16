@@ -10,6 +10,15 @@ import { useExerciseOperations } from "./useExerciseOperations";
 import { createInitialSession } from "./sessionUtils";
 import { UsePlanFormResult } from "./types";
 
+// Define an interface for the RPC function response
+interface CreateCompletePlanResponse {
+  id: string;
+  name: string;
+  clientId: string;
+  month: string | null;
+  sessionsCount: number;
+}
+
 export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => void): UsePlanFormResult {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -135,7 +144,7 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
       });
 
       // Llamar a la función RPC para crear el plan completo en una transacción
-      const { data: planData, error } = await supabase.rpc('create_complete_plan', {
+      const { data, error } = await supabase.rpc<CreateCompletePlanResponse>('create_complete_plan', {
         p_name: name,
         p_client_id: clientId,
         p_trainer_id: user.id,
@@ -148,6 +157,13 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
         throw error;
       }
       
+      // Ensure data exists and has the expected structure
+      if (!data || typeof data !== 'object') {
+        throw new Error("La respuesta de la función RPC no tiene el formato esperado");
+      }
+
+      // Type assertion to ensure TypeScript recognizes the data structure
+      const planData = data as CreateCompletePlanResponse;
       console.log("Plan created successfully with RPC:", planData);
 
       // Preparar los datos para la respuesta
