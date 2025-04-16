@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Client, Plan } from "@/types";
 
@@ -43,16 +42,14 @@ export const fetchRecentPlans = async (userId: string): Promise<Plan[]> => {
       throw error;
     }
     
-    if (!data || data.length === 0) {
+    // Handle the case where data might not be an array
+    if (!data || !Array.isArray(data) || data.length === 0) {
       console.log("Dashboard service - No plans found");
       return [];
     }
     
-    // Cast data to any to access array methods
-    const plansData = data as any[];
-    
     // Transform the data to match the expected Plan type
-    const formattedPlans: Plan[] = plansData.map((plan: any) => {
+    const formattedPlans: Plan[] = data.map((plan: any) => {
       return {
         id: plan.id,
         name: plan.name,
