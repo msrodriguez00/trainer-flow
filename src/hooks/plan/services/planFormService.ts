@@ -69,8 +69,9 @@ export const usePlanFormService = () => {
     sessionsData: any[]
   ): Promise<CreateCompletePlanResponse> => {
     try {
-      // Fix the type arguments - the first type parameter should be the return type
-      const { data, error } = await supabase.rpc<any>('create_complete_plan', {
+      // Fix the type arguments - specify 'create_complete_plan' as the function name (first arg)
+      // and use any for now as the return type (second arg)
+      const { data, error } = await supabase.rpc('create_complete_plan', {
         p_name: name,
         p_client_id: clientId,
         p_trainer_id: trainerId,
@@ -87,8 +88,14 @@ export const usePlanFormService = () => {
         throw new Error("No data returned from create_complete_plan");
       }
 
-      // Add proper type assertion to handle the JSON response
-      return data as CreateCompletePlanResponse;
+      // Use a double type assertion to safely convert from Json to the expected type
+      return {
+        id: data.id as string,
+        name: data.name as string,
+        clientId: data.clientId as string,
+        month: data.month as string | null,
+        sessionsCount: data.sessionsCount as number
+      };
     } catch (error) {
       console.error("Error in createCompletePlan:", error);
       throw error;
