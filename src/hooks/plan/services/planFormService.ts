@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CreateCompletePlanResponse } from "../types/planFormTypes";
 import { Session } from "../types";
 import { useToast } from "@/hooks/use-toast";
+import { Json } from "@/integrations/supabase/types";
 
 export const usePlanFormService = () => {
   const { toast } = useToast();
@@ -69,8 +70,6 @@ export const usePlanFormService = () => {
     sessionsData: any[]
   ): Promise<CreateCompletePlanResponse> => {
     try {
-      // Fix the type arguments - specify 'create_complete_plan' as the function name (first arg)
-      // and use any for now as the return type (second arg)
       const { data, error } = await supabase.rpc('create_complete_plan', {
         p_name: name,
         p_client_id: clientId,
@@ -88,13 +87,20 @@ export const usePlanFormService = () => {
         throw new Error("No data returned from create_complete_plan");
       }
 
-      // Use a double type assertion to safely convert from Json to the expected type
+      // First check that data is an object
+      if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+        throw new Error("Invalid data format returned from create_complete_plan");
+      }
+      
+      // Now we can safely cast and access properties
+      const typedData = data as Record<string, Json>;
+      
       return {
-        id: data.id as string,
-        name: data.name as string,
-        clientId: data.clientId as string,
-        month: data.month as string | null,
-        sessionsCount: data.sessionsCount as number
+        id: String(typedData.id || ''),
+        name: String(typedData.name || ''),
+        clientId: String(typedData.clientId || ''),
+        month: typedData.month ? String(typedData.month) : null,
+        sessionsCount: Number(typedData.sessionsCount || 0)
       };
     } catch (error) {
       console.error("Error in createCompletePlan:", error);
