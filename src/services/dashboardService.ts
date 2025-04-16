@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Client, Plan } from "@/types";
 
@@ -126,7 +125,17 @@ export const fetchRecentClients = async (userId: string): Promise<Client[]> => {
       throw error;
     }
 
-    return data || [];
+    // Formatear los datos y asegurarse de que el avatar sea correcto
+    const formattedClients = data?.map(client => ({
+      id: client.id,
+      name: client.name,
+      email: client.email,
+      avatar: client.avatar,
+      created_at: client.created_at
+    })) || [];
+
+    console.log("Clientes formateados con avatares:", formattedClients);
+    return formattedClients;
   } catch (error) {
     console.error("Dashboard service - Error in fetchRecentClients:", error);
     throw error;
