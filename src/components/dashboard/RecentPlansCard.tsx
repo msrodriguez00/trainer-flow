@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Plan, Client } from "@/types";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { AlertCircle, Plus } from "lucide-react";
 
 interface RecentPlansCardProps {
   plans: Plan[];
@@ -15,6 +15,12 @@ interface RecentPlansCardProps {
 
 const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansCardProps) => {
   const navigate = useNavigate();
+
+  // Function to safely get exercise count
+  const getExerciseCount = (plan: Plan): number => {
+    if (!plan.exercises) return 0;
+    return Array.isArray(plan.exercises) ? plan.exercises.length : 0;
+  };
 
   return (
     <Card>
@@ -36,6 +42,8 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
             {plans.length > 0 ? (
               plans.map((plan) => {
                 const client = clients.find((c) => c.id === plan.clientId);
+                const exerciseCount = getExerciseCount(plan);
+                
                 return (
                   <div
                     key={plan.id}
@@ -58,7 +66,7 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
                       </div>
                     </div>
                     <div className="text-sm text-gray-500">
-                      {plan.exercises.length} ejercicios
+                      {exerciseCount} ejercicios
                     </div>
                   </div>
                 );

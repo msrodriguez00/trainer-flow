@@ -69,7 +69,11 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) return;
+    if (!user) {
+      console.error("No user found for plan creation");
+      return;
+    }
+    
     if (!name || !clientId) {
       toast({
         title: "Error",
@@ -98,8 +102,18 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
       });
       return;
     }
+    
+    console.log("Creating plan with data:", {
+      name,
+      clientId,
+      month: month || null,
+      trainer_id: user.id,
+      sessionCount: sessions.length
+    });
 
     try {
+      // Step 1: Create the plan
+      console.log("Step 1: Creating plan record");
       const { data: planData, error: planError } = await supabase
         .from("plans")
         .insert({
@@ -111,10 +125,17 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
         .select()
         .single();
 
-      if (planError) throw planError;
+      if (planError) {
+        console.error("Error creating plan record:", planError);
+        throw planError;
+      }
+      
+      console.log("Plan created successfully:", planData);
 
+      // Step 2: Create sessions for this plan
       for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex++) {
         const session = sessions[sessionIndex];
+        console.log(`Step 2.${sessionIndex+1}: Creating session "${session.name}"`);
         
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
@@ -127,10 +148,17 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
           .select()
           .single();
 
-        if (sessionError) throw sessionError;
+        if (sessionError) {
+          console.error(`Error creating session "${session.name}":`, sessionError);
+          throw sessionError;
+        }
+        
+        console.log(`Session "${session.name}" created successfully:`, sessionData);
 
+        // Step 3: Create series for this session
         for (let seriesIndex = 0; seriesIndex < session.series.length; seriesIndex++) {
           const series = session.series[seriesIndex];
+          console.log(`Step 3.${sessionIndex+1}.${seriesIndex+1}: Creating series "${series.name}"`);
           
           const { data: seriesData, error: seriesError } = await supabase
             .from("series")
@@ -143,9 +171,16 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
             .select()
             .single();
             
-          if (seriesError) throw seriesError;
+          if (seriesError) {
+            console.error(`Error creating series "${series.name}":`, seriesError);
+            throw seriesError;
+          }
+          
+          console.log(`Series "${series.name}" created successfully:`, seriesData);
 
+          // Step 4: Create exercises for this series
           const validExercises = series.exercises.filter(ex => ex.exerciseId && ex.level > 0);
+          console.log(`Found ${validExercises.length} valid exercises for series "${series.name}"`);
           
           if (validExercises.length > 0) {
             const planExercisesData = validExercises.map(ex => ({
@@ -155,16 +190,25 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
               plan_id: planData.id,
               client_id: clientId
             }));
+            
+            console.log("Exercise data to be inserted:", JSON.stringify(planExercisesData));
 
             const { error: exError } = await supabase
               .from("plan_exercises")
               .insert(planExercisesData);
 
-            if (exError) throw exError;
+            if (exError) {
+              console.error(`Error creating exercises for series "${series.name}":`, exError);
+              console.error("Request payload:", JSON.stringify(planExercisesData));
+              throw exError;
+            }
+            
+            console.log(`Successfully added ${validExercises.length} exercises to series "${series.name}"`);
           }
         }
       }
 
+      // Step 5: Prepare response data
       const allExercises = [];
       sessions.forEach(session => {
         session.series.forEach(series => {
@@ -179,6 +223,8 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
           });
         });
       });
+      
+      console.log(`Plan creation complete with ${allExercises.length} total exercises`);
 
       if (onSubmit) {
         onSubmit({
@@ -199,7 +245,7 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
       console.error("Error creating plan:", error);
       toast({
         title: "Error",
-        description: "No se pudo crear el plan.",
+        description: "No se pudo crear el plan. Revisa la consola para más detalles.",
         variant: "destructive",
       });
     }
