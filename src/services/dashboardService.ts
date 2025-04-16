@@ -58,7 +58,7 @@ export const fetchRecentPlans = async (userId: string): Promise<Plan[]> => {
         name: plan.name,
         clientId: plan.clientId,
         createdAt: plan.createdAt,
-        clientData: plan.client, // Preserve client data including avatar
+        clientData: plan.client, // Include client data with avatar
         sessions: [],
         exercises: [] // Empty array for exercises since we don't fetch them for the dashboard
       };
@@ -107,7 +107,9 @@ const fetchRecentPlansDirectly = async (userId: string): Promise<Plan[]> => {
         clientData: plan.clients ? {
           id: plan.clients.id,
           name: plan.clients.name,
-          avatar: plan.clients.avatar
+          avatar: plan.clients.avatar,
+          email: plan.clients.email,
+          created_at: plan.clients.created_at
         } : undefined,
         sessions: [],
         exercises: [] // Empty array for exercises since we don't fetch them for the dashboard

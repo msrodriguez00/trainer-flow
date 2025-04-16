@@ -67,4 +67,5 @@ export type Plan = {
   exercises: PlanExercise[];  // Para mantener compatibilidad hacia atrás
   createdAt: string;
   month?: string;  // Campo de mes (opcional)
+  clientData?: Client;  // Añadido para permitir datos de cliente integrados
 };
