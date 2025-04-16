@@ -27,6 +27,9 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
       .substring(0, 2);
   };
 
+  // Debug: Log rendered plans
+  console.log("RecentPlansCard - Rendering plans:", plans);
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -46,7 +49,16 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
           <div className="space-y-4">
             {plans.length > 0 ? (
               plans.map((plan) => {
-                const client = clients.find((c) => c.id === plan.clientId);
+                // Get client data either from clientData or from clients array
+                const clientData = plan.clientData || clients.find((c) => c.id === plan.clientId);
+                
+                console.log("RecentPlansCard - Plan client data:", {
+                  planId: plan.id,
+                  clientId: plan.clientId,
+                  clientData,
+                  clientFromData: plan.clientData,
+                  clientFromClients: clients.find((c) => c.id === plan.clientId)
+                });
                 
                 return (
                   <div
@@ -55,21 +67,27 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
                     onClick={() => navigate(`/plans/${plan.id}`)}
                   >
                     <div className="flex items-center">
-                      {client && (
+                      {clientData && (
                         <Avatar className="h-10 w-10 mr-3">
                           <AvatarImage 
-                            src={client.avatar || undefined} 
-                            alt={client.name} 
+                            src={clientData.avatar || undefined} 
+                            alt={clientData.name}
+                            onError={(e) => {
+                              console.error("Avatar image failed to load:", e);
+                              const target = e.target as HTMLImageElement;
+                              target.onerror = null; // Prevent infinite loop
+                              target.style.display = 'none'; // Hide the img element
+                            }}
                           />
-                          <AvatarFallback>
-                            {client.name ? getInitials(client.name) : "CL"}
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {clientData.name ? getInitials(clientData.name) : "CL"}
                           </AvatarFallback>
                         </Avatar>
                       )}
                       <div>
                         <h3 className="font-medium">{plan.name}</h3>
                         <p className="text-sm text-gray-500">
-                          {client?.name || "Cliente"}
+                          {clientData?.name || "Cliente"}
                         </p>
                       </div>
                     </div>

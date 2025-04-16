@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Client, Plan } from "@/types";
 
@@ -48,6 +49,8 @@ export const fetchRecentPlans = async (userId: string): Promise<Plan[]> => {
       return [];
     }
     
+    console.log("Dashboard service - Plans data received:", data);
+    
     // Transform the data to match the expected Plan type
     const formattedPlans: Plan[] = data.map((plan: any) => {
       return {
@@ -55,12 +58,13 @@ export const fetchRecentPlans = async (userId: string): Promise<Plan[]> => {
         name: plan.name,
         clientId: plan.clientId,
         createdAt: plan.createdAt,
+        clientData: plan.client, // Preserve client data including avatar
         sessions: [],
         exercises: [] // Empty array for exercises since we don't fetch them for the dashboard
       };
     });
     
-    console.log(`Dashboard service - Successfully fetched ${formattedPlans.length} recent plans`);
+    console.log(`Dashboard service - Successfully fetched ${formattedPlans.length} recent plans with client data:`, formattedPlans);
     return formattedPlans;
   } catch (error) {
     console.error("Dashboard service - Error in fetchRecentPlans:", error);
@@ -74,9 +78,10 @@ const fetchRecentPlansDirectly = async (userId: string): Promise<Plan[]> => {
   try {
     console.log("Dashboard service - Using fallback method to fetch recent plans");
     
+    // Fetch plans and join with clients to get their data
     const { data, error } = await supabase
       .from("plans")
-      .select("id, name, client_id, created_at")
+      .select("*, clients(*)")
       .eq("trainer_id", userId)
       .order("created_at", { ascending: false })
       .limit(3);
@@ -90,6 +95,8 @@ const fetchRecentPlansDirectly = async (userId: string): Promise<Plan[]> => {
       return [];
     }
     
+    console.log("Dashboard service - Raw plans data from direct query:", data);
+    
     // Transform the data to match the expected Plan type
     const formattedPlans: Plan[] = data.map((plan) => {
       return {
@@ -97,12 +104,17 @@ const fetchRecentPlansDirectly = async (userId: string): Promise<Plan[]> => {
         name: plan.name,
         clientId: plan.client_id,
         createdAt: plan.created_at,
+        clientData: plan.clients ? {
+          id: plan.clients.id,
+          name: plan.clients.name,
+          avatar: plan.clients.avatar
+        } : undefined,
         sessions: [],
         exercises: [] // Empty array for exercises since we don't fetch them for the dashboard
       };
     });
     
-    console.log(`Dashboard service - Successfully fetched ${formattedPlans.length} recent plans using fallback`);
+    console.log(`Dashboard service - Successfully fetched ${formattedPlans.length} recent plans using fallback with client data:`, formattedPlans);
     return formattedPlans;
   } catch (error) {
     console.error("Dashboard service - Error in fallback method:", error);
@@ -134,7 +146,7 @@ export const fetchRecentClients = async (userId: string): Promise<Client[]> => {
       created_at: client.created_at
     })) || [];
 
-    console.log("Clientes formateados con avatares:", formattedClients);
+    console.log("Dashboard service - Formatted clients with avatars:", formattedClients);
     return formattedClients;
   } catch (error) {
     console.error("Dashboard service - Error in fetchRecentClients:", error);

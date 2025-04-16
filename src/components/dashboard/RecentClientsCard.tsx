@@ -24,6 +24,9 @@ const RecentClientsCard = ({ clients, loading, onAddClient }: RecentClientsCardP
       .toUpperCase()
       .substring(0, 2);
   };
+  
+  // Debug: Log clients
+  console.log("RecentClientsCard - Rendering clients:", clients);
 
   return (
     <Card>
@@ -43,28 +46,38 @@ const RecentClientsCard = ({ clients, loading, onAddClient }: RecentClientsCardP
         ) : (
           <div className="space-y-4">
             {clients.length > 0 ? (
-              clients.map((client) => (
-                <div
-                  key={client.id}
-                  className="flex items-center p-3 border rounded-md hover:bg-gray-50 cursor-pointer"
-                  onClick={() => navigate(`/clients/${client.id}`)}
-                >
-                  <Avatar className="h-10 w-10 mr-3">
-                    <AvatarImage 
-                      src={client.avatar || undefined} 
-                      alt={client.name} 
-                      className="object-cover"
-                    />
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {getInitials(client.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-medium">{client.name}</h3>
-                    <p className="text-sm text-gray-500">{client.email}</p>
+              clients.map((client) => {
+                console.log("RecentClientsCard - Client avatar:", client.avatar);
+                
+                return (
+                  <div
+                    key={client.id}
+                    className="flex items-center p-3 border rounded-md hover:bg-gray-50 cursor-pointer"
+                    onClick={() => navigate(`/clients/${client.id}`)}
+                  >
+                    <Avatar className="h-10 w-10 mr-3">
+                      <AvatarImage 
+                        src={client.avatar || undefined} 
+                        alt={client.name} 
+                        className="object-cover"
+                        onError={(e) => {
+                          console.error("Client avatar failed to load:", client.avatar);
+                          const target = e.target as HTMLImageElement;
+                          target.onerror = null; // Prevent infinite loop
+                          target.style.display = 'none'; // Hide the img element
+                        }}
+                      />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {getInitials(client.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-medium">{client.name}</h3>
+                      <p className="text-sm text-gray-500">{client.email}</p>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center py-4">
                 <p className="text-gray-500">No hay clientes</p>
