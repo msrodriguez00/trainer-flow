@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -40,17 +41,24 @@ const Plans = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log("Plans page - User loaded:", !!user);
     if (user) {
+      console.log("Plans page - Starting to fetch plans and clients for user:", user.id);
       fetchPlans();
       fetchClients();
     }
   }, [user]);
 
   const fetchPlans = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log("Plans page - No user available, skipping fetchPlans");
+      return;
+    }
     
+    console.log("Plans page - Starting to fetch plans for trainer:", user.id);
     setLoading(true);
     try {
+      console.log("Plans page - Fetching basic plan data from supabase");
       const { data: plansData, error: plansError } = await supabase
         .from("plans")
         .select(`
@@ -62,104 +70,147 @@ const Plans = () => {
         .eq("trainer_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (plansError) throw plansError;
+      if (plansError) {
+        console.error("Plans page - Error fetching basic plan data:", plansError);
+        throw plansError;
+      }
 
+      console.log(`Plans page - Successfully fetched ${plansData?.length || 0} plans, now fetching details`);
+      
       const formattedPlans: Plan[] = [];
       
-      for (const plan of plansData) {
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from("sessions")
-          .select(`id, name, order_index`)
-          .eq("plan_id", plan.id)
-          .order("order_index", { ascending: true });
-          
-        if (sessionsError) throw sessionsError;
-        
-        const sessions: Session[] = [];
-        
-        for (const session of sessionsData || []) {
-          const { data: seriesData, error: seriesError } = await supabase
-            .from("series")
+      for (const plan of plansData || []) {
+        console.log(`Plans page - Processing plan: ${plan.id} - ${plan.name}`);
+        try {
+          const { data: sessionsData, error: sessionsError } = await supabase
+            .from("sessions")
             .select(`id, name, order_index`)
-            .eq("session_id", session.id)
+            .eq("plan_id", plan.id)
             .order("order_index", { ascending: true });
             
-          if (seriesError) throw seriesError;
-          
-          const seriesList: Series[] = [];
-          
-          for (const series of seriesData || []) {
-            const { data: exercisesData, error: exercisesError } = await supabase
-              .from("plan_exercises")
-              .select(`
-                id, exercise_id, level,
-                exercises:exercise_id (name),
-                evaluations (*)
-              `)
-              .eq("series_id", series.id);
-              
-            if (exercisesError) throw exercisesError;
-            
-            const exercises: PlanExercise[] = exercisesData.map((ex: any) => {
-              const mappedEvaluations = ex.evaluations ? ex.evaluations.map((evaluation: any) => ({
-                timeRating: evaluation.time_rating,
-                weightRating: evaluation.weight_rating,
-                repetitionsRating: evaluation.repetitions_rating,
-                exerciseRating: evaluation.exercise_rating,
-                comment: evaluation.comment,
-                date: evaluation.date
-              })) : [];
-              
-              return {
-                exerciseId: ex.exercise_id,
-                exerciseName: ex.exercises?.name,
-                level: ex.level,
-                evaluations: mappedEvaluations
-              }
-            });
-            
-            seriesList.push({
-              id: series.id,
-              name: series.name,
-              orderIndex: series.order_index,
-              exercises
-            });
+          if (sessionsError) {
+            console.error(`Plans page - Error fetching sessions for plan ${plan.id}:`, sessionsError);
+            throw sessionsError;
           }
           
-          sessions.push({
-            id: session.id,
-            name: session.name,
-            orderIndex: session.order_index,
-            series: seriesList
+          console.log(`Plans page - Fetched ${sessionsData?.length || 0} sessions for plan ${plan.id}`);
+          
+          const sessions: Session[] = [];
+          
+          for (const session of sessionsData || []) {
+            console.log(`Plans page - Processing session: ${session.id} for plan ${plan.id}`);
+            try {
+              const { data: seriesData, error: seriesError } = await supabase
+                .from("series")
+                .select(`id, name, order_index`)
+                .eq("session_id", session.id)
+                .order("order_index", { ascending: true });
+                
+              if (seriesError) {
+                console.error(`Plans page - Error fetching series for session ${session.id}:`, seriesError);
+                throw seriesError;
+              }
+              
+              console.log(`Plans page - Fetched ${seriesData?.length || 0} series for session ${session.id}`);
+              
+              const seriesList: Series[] = [];
+              
+              for (const series of seriesData || []) {
+                console.log(`Plans page - Processing series: ${series.id} for session ${session.id}`);
+                try {
+                  const { data: exercisesData, error: exercisesError } = await supabase
+                    .from("plan_exercises")
+                    .select(`
+                      id, exercise_id, level,
+                      exercises:exercise_id (name),
+                      evaluations (*)
+                    `)
+                    .eq("series_id", series.id);
+                    
+                  if (exercisesError) {
+                    console.error(`Plans page - Error fetching exercises for series ${series.id}:`, exercisesError);
+                    throw exercisesError;
+                  }
+                  
+                  console.log(`Plans page - Fetched ${exercisesData?.length || 0} exercises for series ${series.id}`);
+                  
+                  const exercises: PlanExercise[] = exercisesData.map((ex: any) => {
+                    const mappedEvaluations = ex.evaluations ? ex.evaluations.map((evaluation: any) => ({
+                      timeRating: evaluation.time_rating,
+                      weightRating: evaluation.weight_rating,
+                      repetitionsRating: evaluation.repetitions_rating,
+                      exerciseRating: evaluation.exercise_rating,
+                      comment: evaluation.comment,
+                      date: evaluation.date
+                    })) : [];
+                    
+                    return {
+                      exerciseId: ex.exercise_id,
+                      exerciseName: ex.exercises?.name,
+                      level: ex.level,
+                      evaluations: mappedEvaluations
+                    }
+                  });
+                  
+                  seriesList.push({
+                    id: series.id,
+                    name: series.name,
+                    orderIndex: series.order_index,
+                    exercises
+                  });
+                } catch (seriesError) {
+                  console.error(`Plans page - Error processing series ${series.id}:`, seriesError);
+                  // Continue with other series despite this error
+                }
+              }
+              
+              sessions.push({
+                id: session.id,
+                name: session.name,
+                orderIndex: session.order_index,
+                series: seriesList
+              });
+            } catch (sessionError) {
+              console.error(`Plans page - Error processing session ${session.id}:`, sessionError);
+              // Continue with other sessions despite this error
+            }
+          }
+          
+          console.log(`Plans page - Calculating all exercises for plan ${plan.id}`);
+          const allExercises: PlanExercise[] = [];
+          sessions.forEach(session => {
+            session.series.forEach(series => {
+              allExercises.push(...series.exercises);
+            });
           });
+          
+          console.log(`Plans page - Plan ${plan.id} has ${allExercises.length} total exercises`);
+          
+          formattedPlans.push({
+            id: plan.id,
+            name: plan.name,
+            clientId: plan.client_id,
+            createdAt: plan.created_at,
+            sessions,
+            exercises: allExercises
+          });
+        } catch (planError) {
+          console.error(`Plans page - Error processing plan ${plan.id}:`, planError);
+          // Continue with other plans despite this error
         }
-        
-        const allExercises: PlanExercise[] = [];
-        sessions.forEach(session => {
-          session.series.forEach(series => {
-            allExercises.push(...series.exercises);
-          });
-        });
-        
-        formattedPlans.push({
-          id: plan.id,
-          name: plan.name,
-          clientId: plan.client_id,
-          createdAt: plan.created_at,
-          sessions,
-          exercises: allExercises
-        });
       }
       
+      console.log(`Plans page - Completed processing ${formattedPlans.length} plans`);
       setPlans(formattedPlans);
     } catch (error) {
-      console.error("Error fetching plans:", error);
+      console.error("Plans page - Error in fetchPlans:", error);
       toast({
         title: "Error",
         description: "No se pudieron cargar los planes.",
         variant: "destructive",
       });
     } finally {
+      console.log("Plans page - Finished fetching plans, setting loading to false");
       setLoading(false);
     }
   };
@@ -329,3 +380,4 @@ const Plans = () => {
 };
 
 export default Plans;
+
