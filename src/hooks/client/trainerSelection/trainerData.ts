@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Trainer } from "@/components/client/dashboard/types";
 import { createDefaultTrainer } from "./trainerThemeUtils";
@@ -70,59 +69,56 @@ export async function fetchTrainersWithBranding(trainerIds: string[]): Promise<{
       return { trainers: [] };
     }
     
-    // Check access to trainer profiles - using public.profiles
-    const { data: trainersData, error: trainersError } = await supabase
-      .from("profiles")
-      .select("id, name, role")
-      .in("id", trainerIds)
-      .eq("role", "trainer");
+    console.log("Fetching trainers with branding in a single query for IDs:", trainerIds);
     
-    if (trainersError) {
-      console.error("Error fetching trainers data:", trainersError);
-      throw trainersError;
+    // Fetch trainer profiles and branding in a single JOIN query
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(`
+        id, 
+        name, 
+        role,
+        trainer_brands!trainer_id(
+          logo_url,
+          primary_color,
+          secondary_color,
+          accent_color
+        )
+      `)
+      .in('id', trainerIds)
+      .eq('role', 'trainer');
+    
+    if (error) {
+      console.error("Error fetching trainers with branding:", error);
+      throw error;
     }
     
-    console.log("Trainer profiles loaded:", trainersData);
+    console.log("Received trainers data with branding:", data?.length || 0, "trainers");
     
-    if (!trainersData || trainersData.length === 0) {
-      console.log("No trainer profiles found for IDs:", trainerIds);
+    if (!data || data.length === 0) {
       return { trainers: [] };
     }
     
-    const trainersWithBranding: Trainer[] = [];
-    
-    for (const trainer of trainersData) {
-      console.log("Fetching branding for trainer:", trainer.id);
+    // Map the joined data to our Trainer format
+    const trainersWithBranding: Trainer[] = data.map(trainer => {
+      const brandingData = trainer.trainer_brands?.[0] || null;
       
-      // Using service role or fetch with different approach if needed
-      const { data: brandData, error: brandError } = await supabase
-        .from("trainer_brands")
-        .select("*")
-        .eq("trainer_id", trainer.id)
-        .maybeSingle();
-      
-      if (brandError) {
-        console.warn("Error fetching branding for trainer:", trainer.id, brandError);
-      }
-      
-      console.log("Branding data for trainer:", trainer.id, brandData);
-      
-      trainersWithBranding.push({
+      return {
         id: trainer.id,
         name: trainer.name || "Entrenador sin nombre",
-        branding: brandData ? {
-          logo_url: brandData.logo_url,
-          primary_color: brandData.primary_color || "#9b87f5",
-          secondary_color: brandData.secondary_color || "#E5DEFF",
-          accent_color: brandData.accent_color || "#7E69AB"
+        branding: brandingData ? {
+          logo_url: brandingData.logo_url,
+          primary_color: brandingData.primary_color || "#9b87f5",
+          secondary_color: brandingData.secondary_color || "#E5DEFF",
+          accent_color: brandingData.accent_color || "#7E69AB"
         } : {
           logo_url: null,
           primary_color: "#9b87f5",
           secondary_color: "#E5DEFF",
           accent_color: "#7E69AB"
         }
-      });
-    }
+      };
+    });
     
     return { trainers: trainersWithBranding };
   } catch (error: any) {
