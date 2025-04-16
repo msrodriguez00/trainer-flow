@@ -18,8 +18,10 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
 
   // Function to safely get exercise count
   const getExerciseCount = (plan: Plan): number => {
+    // Safety checks to handle potentially undefined or null exercises array
     if (!plan.exercises) return 0;
-    return Array.isArray(plan.exercises) ? plan.exercises.length : 0;
+    if (!Array.isArray(plan.exercises)) return 0;
+    return plan.exercises.length;
   };
 
   return (

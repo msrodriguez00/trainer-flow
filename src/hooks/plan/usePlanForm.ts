@@ -183,12 +183,12 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
           console.log(`Found ${validExercises.length} valid exercises for series "${series.name}"`);
           
           if (validExercises.length > 0) {
+            // IMPORTANT CHANGE: Removed client_id from the planExercisesData since that column doesn't exist
             const planExercisesData = validExercises.map(ex => ({
               series_id: seriesData.id,
               exercise_id: ex.exerciseId,
               level: ex.level,
-              plan_id: planData.id,
-              client_id: clientId
+              plan_id: planData.id
             }));
             
             console.log("Exercise data to be inserted:", JSON.stringify(planExercisesData));
