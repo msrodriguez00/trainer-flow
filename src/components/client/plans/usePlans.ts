@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plan } from "@/types";
+import { Plan, Session, Series, PlanExercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useClientIdentification } from "@/hooks/client/useClientIdentification";
 
@@ -39,8 +40,8 @@ export const usePlans = () => {
       console.log("Plans data fetched using optimized function:", data ? "Data received" : "No data");
 
       if (data && Array.isArray(data)) {
-        // The data is already in the correct format from our database function
-        setPlans(data);
+        // The data is already in the correct format but we need to cast it to ensure TypeScript is satisfied
+        setPlans(data as Plan[]);
       } else {
         console.log("No plans found or invalid data format");
         setPlans([]);
