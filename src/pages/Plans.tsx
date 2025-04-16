@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -127,27 +126,24 @@ const Plans = () => {
       // Extract plan IDs for use in subsequent queries
       const planIds = planData.map(plan => plan.id);
       
-      // Step 2: Get exercise counts for each plan using a single query
-      const { data: exerciseCounts, error: countError } = await supabase
-        .from("plan_exercises")
-        .select(`
-          plan_id,
-          count
-        `, { count: 'exact' })
-        .in("plan_id", planIds)
-        .group('plan_id');
-        
-      if (countError) {
-        console.error("Error fetching exercise counts:", countError);
-        // Continue execution even if this fails
-      }
+      // Step 2: Get exercise counts for each plan using individual counts
+      const exerciseCountMap: Record<string, number> = {};
       
-      // Convert the exercise counts into a map for easy access
-      const exerciseCountMap = {};
-      exerciseCounts?.forEach(item => {
-        exerciseCountMap[item.plan_id] = parseInt(item.count);
-      });
-
+      // Get counts for each plan
+      await Promise.all(planIds.map(async (planId) => {
+        const { count, error } = await supabase
+          .from("plan_exercises")
+          .select('*', { count: 'exact', head: true })
+          .eq('plan_id', planId);
+          
+        if (error) {
+          console.error(`Error fetching exercise count for plan ${planId}:`, error);
+          return;
+        }
+        
+        exerciseCountMap[planId] = count || 0;
+      }));
+      
       // Step 3: Map the data to the Plan format
       const formattedPlans: Plan[] = planData.map(plan => {
         return {
