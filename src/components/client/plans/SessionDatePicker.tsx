@@ -6,7 +6,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 import { useSessionDate } from "./hooks/useSessionDate";
 import DatePickerTrigger from "./components/DatePickerTrigger";
 import DatePickerFooter from "./components/DatePickerFooter";
