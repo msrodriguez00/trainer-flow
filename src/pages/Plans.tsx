@@ -24,7 +24,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Plus, Search, MoreHorizontal, ClipboardList, Loader2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Calendar, Loader2 } from "lucide-react";
 import { Plan, Client } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -101,7 +101,7 @@ const Plans = () => {
       const from = (currentPage - 1) * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      // Step 1: Get basic plan info with pagination
+      // Get basic plan info with pagination
       const { data: planData, error: planError } = await supabase
         .from("plans")
         .select(`
@@ -122,38 +122,16 @@ const Plans = () => {
         setLoading(false);
         return;
       }
-
-      // Extract plan IDs for use in subsequent queries
-      const planIds = planData.map(plan => plan.id);
       
-      // Step 2: Get exercise counts for each plan using individual counts
-      const exerciseCountMap: Record<string, number> = {};
-      
-      // Get counts for each plan
-      await Promise.all(planIds.map(async (planId) => {
-        const { count, error } = await supabase
-          .from("plan_exercises")
-          .select('*', { count: 'exact', head: true })
-          .eq('plan_id', planId);
-          
-        if (error) {
-          console.error(`Error fetching exercise count for plan ${planId}:`, error);
-          return;
-        }
-        
-        exerciseCountMap[planId] = count || 0;
-      }));
-      
-      // Step 3: Map the data to the Plan format
+      // Format plans with just basic data (no exercise count)
       const formattedPlans: Plan[] = planData.map(plan => {
         return {
           id: plan.id,
           name: plan.name,
           clientId: plan.client_id,
           createdAt: plan.created_at,
-          // Provide minimal data for the plans list view
           sessions: [],
-          exercises: new Array(exerciseCountMap[plan.id] || 0).fill({})  // Just to get the length right
+          exercises: [] // Empty array for exercises, we're not fetching them
         };
       });
       
@@ -185,12 +163,6 @@ const Plans = () => {
     } catch (error) {
       console.error("Error fetching clients:", error);
     }
-  };
-
-  const getExerciseCount = (plan: Plan): number => {
-    if (!plan.exercises) return 0;
-    if (!Array.isArray(plan.exercises)) return 0;
-    return plan.exercises.length;
   };
 
   const handleCreatePlan = () => {
@@ -328,7 +300,6 @@ const Plans = () => {
             <div className="space-y-4">
               {plans.map((plan) => {
                 const client = clients.find((c) => c.id === plan.clientId);
-                const exerciseCount = getExerciseCount(plan);
                 
                 return (
                   <Card 
@@ -372,12 +343,11 @@ const Plans = () => {
                           </>
                         )}
                       </div>
-                      <div className="flex justify-between text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <ClipboardList className="h-4 w-4" />
-                          <span>{exerciseCount} ejercicios</span>
+                      <div className="flex justify-end text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          <span>Creado: {formatDate(plan.createdAt)}</span>
                         </div>
-                        <div>Creado: {formatDate(plan.createdAt)}</div>
                       </div>
                     </CardContent>
                   </Card>

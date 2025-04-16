@@ -16,14 +16,6 @@ interface RecentPlansCardProps {
 const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansCardProps) => {
   const navigate = useNavigate();
 
-  // Function to safely get exercise count
-  const getExerciseCount = (plan: Plan): number => {
-    // Safety checks to handle potentially undefined or null exercises array
-    if (!plan.exercises) return 0;
-    if (!Array.isArray(plan.exercises)) return 0;
-    return plan.exercises.length;
-  };
-
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -44,7 +36,6 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
             {plans.length > 0 ? (
               plans.map((plan) => {
                 const client = clients.find((c) => c.id === plan.clientId);
-                const exerciseCount = getExerciseCount(plan);
                 
                 return (
                   <div
@@ -66,9 +57,6 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
                           {client?.name || "Cliente"}
                         </p>
                       </div>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {exerciseCount} ejercicios
                     </div>
                   </div>
                 );

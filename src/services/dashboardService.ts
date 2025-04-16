@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Client, Plan } from "@/types";
 
@@ -51,7 +50,7 @@ export const fetchRecentPlans = async (userId: string): Promise<Plan[]> => {
   try {
     console.log("Dashboard service - Fetching recent plans");
     
-    // Step 1: Get basic plan data with limit for dashboard
+    // Get basic plan data with limit for dashboard
     const { data: planBasicData, error: planError } = await supabase
       .from("plans")
       .select(`
@@ -74,38 +73,15 @@ export const fetchRecentPlans = async (userId: string): Promise<Plan[]> => {
       return [];
     }
     
-    // Step 2: Get plan IDs for more efficient queries
-    const planIds = planBasicData.map(plan => plan.id);
-    
-    // Step 3: Get exercise counts for each plan using individual count queries
-    // This is more compatible with Supabase's current version than group by
-    const exerciseCountMap: Record<string, number> = {};
-    
-    // Get counts for each plan in parallel
-    await Promise.all(planIds.map(async (planId) => {
-      const { count, error } = await supabase
-        .from("plan_exercises")
-        .select('*', { count: 'exact', head: true })
-        .eq('plan_id', planId);
-        
-      if (error) {
-        console.error(`Dashboard service - Error fetching exercise count for plan ${planId}:`, error);
-        return;
-      }
-      
-      exerciseCountMap[planId] = count || 0;
-    }));
-    
-    // Step 4: Format the plans with minimal data needed for the dashboard
+    // Format plans with minimal data needed for the dashboard
     const formattedPlans: Plan[] = planBasicData.map(plan => {
       return {
         id: plan.id,
         name: plan.name,
         clientId: plan.client_id,
         createdAt: plan.created_at,
-        // Include only minimal data necessary for the dashboard view
         sessions: [],
-        exercises: new Array(exerciseCountMap[plan.id] || 0).fill({})
+        exercises: [] // Empty array for exercises since we don't fetch them
       };
     });
     
