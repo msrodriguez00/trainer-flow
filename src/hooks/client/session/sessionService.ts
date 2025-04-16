@@ -82,7 +82,9 @@ export const fetchSessionData = async (sessionId: string): Promise<SessionData |
       });
 
       return {
-        ...series,
+        id: series.id,
+        name: series.name,
+        orderIndex: series.order_index, // Convert order_index to orderIndex to match the Series type
         exercises: formattedExercises
       };
     });
