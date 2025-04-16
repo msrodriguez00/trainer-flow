@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Client, Plan, Session, Series, PlanExercise } from "@/types";
+import { Client, Plan } from "@/types";
 
 export const fetchDashboardStats = async (userId: string) => {
   try {
@@ -49,9 +49,9 @@ export const fetchDashboardStats = async (userId: string) => {
 
 export const fetchRecentPlans = async (userId: string): Promise<Plan[]> => {
   try {
-    console.log("Dashboard service - Fetching basic plan data");
+    console.log("Dashboard service - Fetching recent plans");
     
-    // Step 1: Get basic plan data first
+    // Step 1: Get basic plan data with limit for dashboard
     const { data: planBasicData, error: planError } = await supabase
       .from("plans")
       .select(`
@@ -70,150 +70,46 @@ export const fetchRecentPlans = async (userId: string): Promise<Plan[]> => {
     }
     
     if (!planBasicData || planBasicData.length === 0) {
-      console.log("Dashboard service - No plans found for user");
+      console.log("Dashboard service - No plans found");
       return [];
     }
     
-    console.log("Dashboard service - Found", planBasicData.length, "plans");
+    // Step 2: Get plan IDs for more efficient queries
+    const planIds = planBasicData.map(plan => plan.id);
     
-    const formattedPlans: Plan[] = [];
-      
-    for (const planData of planBasicData) {
-      try {
-        console.log(`Plan service - Processing plan ${planData.id}`);
+    // Step 3: Get exercise counts for each plan using individual count queries
+    // This is more compatible with Supabase's current version than group by
+    const exerciseCountMap: Record<string, number> = {};
+    
+    // Get counts for each plan in parallel
+    await Promise.all(planIds.map(async (planId) => {
+      const { count, error } = await supabase
+        .from("plan_exercises")
+        .select('*', { count: 'exact', head: true })
+        .eq('plan_id', planId);
         
-        // Step 2: Fetch sessions for this plan
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from("sessions")
-          .select(`id, name, order_index`)
-          .eq("plan_id", planData.id)
-          .order("order_index", { ascending: true });
-          
-        if (sessionsError) {
-          console.error(`Plan service - Error fetching sessions for plan ${planData.id}:`, sessionsError);
-          // Don't throw, just continue with empty sessions
-          formattedPlans.push({
-            id: planData.id,
-            name: planData.name,
-            clientId: planData.client_id,
-            createdAt: planData.created_at,
-            sessions: [],
-            exercises: []
-          });
-          continue;
-        }
-        
-        console.log(`Plan service - Fetched ${sessionsData?.length || 0} sessions for plan ${planData.id}`);
-        
-        const sessions: Session[] = [];
-        const allExercises: PlanExercise[] = [];
-        
-        // Step 3: Process each session
-        for (const sessionData of sessionsData || []) {
-          try {
-            console.log(`Plan service - Processing session: ${sessionData.id} for plan ${planData.id}`);
-            
-            // Step 4: Fetch series for this session
-            const { data: seriesData, error: seriesError } = await supabase
-              .from("series")
-              .select(`id, name, order_index`)
-              .eq("session_id", sessionData.id)
-              .order("order_index", { ascending: true });
-              
-            if (seriesError) {
-              console.error(`Plan service - Error fetching series for session ${sessionData.id}:`, seriesError);
-              // Don't throw, continue with empty series
-              sessions.push({
-                id: sessionData.id,
-                name: sessionData.name,
-                orderIndex: sessionData.order_index,
-                series: []
-              });
-              continue;
-            }
-            
-            console.log(`Plan service - Fetched ${seriesData?.length || 0} series for session ${sessionData.id}`);
-            
-            const seriesList: Series[] = [];
-            
-            // Step 5: Process each series
-            for (const seriesItem of seriesData || []) {
-              try {
-                console.log(`Plan service - Processing series: ${seriesItem.id} for session ${sessionData.id}`);
-                
-                // Step 6: Fetch exercises for this series with a safer query
-                const { data: exercisesData, error: exercisesError } = await supabase
-                  .from("plan_exercises")
-                  .select(`
-                    id, exercise_id, level,
-                    exercises:exercise_id (name)
-                  `)
-                  .eq("series_id", seriesItem.id);
-                  
-                if (exercisesError) {
-                  console.error(`Plan service - Error fetching exercises for series ${seriesItem.id}:`, exercisesError);
-                  // Don't throw, continue with empty exercises
-                  seriesList.push({
-                    id: seriesItem.id,
-                    name: seriesItem.name,
-                    orderIndex: seriesItem.order_index,
-                    exercises: []
-                  });
-                  continue;
-                }
-                
-                // Step 7: Transform exercise data
-                const exercises: PlanExercise[] = (exercisesData || []).map((ex: any) => {
-                  const planExercise = {
-                    exerciseId: ex.exercise_id,
-                    exerciseName: ex.exercises?.name || "Ejercicio sin nombre",
-                    level: ex.level,
-                    evaluations: []
-                  };
-                  
-                  allExercises.push(planExercise);
-                  return planExercise;
-                });
-                
-                seriesList.push({
-                  id: seriesItem.id,
-                  name: seriesItem.name,
-                  orderIndex: seriesItem.order_index,
-                  exercises
-                });
-              } catch (seriesError) {
-                console.error(`Plan service - Error processing series ${seriesItem.id}:`, seriesError);
-              }
-            }
-            
-            sessions.push({
-              id: sessionData.id,
-              name: sessionData.name,
-              orderIndex: sessionData.order_index,
-              series: seriesList
-            });
-          } catch (sessionError) {
-            console.error(`Plan service - Error processing session ${sessionData.id}:`, sessionError);
-          }
-        }
-        
-        console.log(`Plan service - Calculating all exercises for plan ${planData.id}`);
-        console.log(`Plan service - Plan ${planData.id} has ${allExercises.length} total exercises`);
-        
-        formattedPlans.push({
-          id: planData.id,
-          name: planData.name,
-          clientId: planData.client_id,
-          createdAt: planData.created_at,
-          sessions,
-          exercises: allExercises
-        });
-      } catch (planProcessError) {
-        console.error(`Plan service - Error processing plan ${planData.id}:`, planProcessError);
+      if (error) {
+        console.error(`Dashboard service - Error fetching exercise count for plan ${planId}:`, error);
+        return;
       }
-    }
+      
+      exerciseCountMap[planId] = count || 0;
+    }));
     
-    console.log(`Plan service - Completed processing ${formattedPlans.length} plans`);
+    // Step 4: Format the plans with minimal data needed for the dashboard
+    const formattedPlans: Plan[] = planBasicData.map(plan => {
+      return {
+        id: plan.id,
+        name: plan.name,
+        clientId: plan.client_id,
+        createdAt: plan.created_at,
+        // Include only minimal data necessary for the dashboard view
+        sessions: [],
+        exercises: new Array(exerciseCountMap[plan.id] || 0).fill({})
+      };
+    });
+    
+    console.log(`Dashboard service - Successfully fetched ${formattedPlans.length} recent plans`);
     return formattedPlans;
     
   } catch (error) {
