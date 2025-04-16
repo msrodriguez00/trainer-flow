@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { updateSessionDate } from "../services/sessionDateService";
 import { useClientIdentification } from "@/hooks/client/useClientIdentification";
@@ -26,6 +25,13 @@ export const useSessionDate = (
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
   const { clientId } = useClientIdentification();
+  
+  console.log("useSessionDate hook initialized:", { 
+    sessionId, 
+    initialDate, 
+    clientId, 
+    hasClient: !!clientId 
+  });
 
   // Ensure date is updated if initialDate changes
   useEffect(() => {

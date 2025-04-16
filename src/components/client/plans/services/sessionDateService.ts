@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Updated return type to include 'warning'
@@ -17,6 +16,12 @@ export async function updateSessionDate(
   clientId: string, 
   date: Date | null
 ): Promise<SessionDateServiceResult> {
+  console.log("===== INICIO DE updateSessionDate =====");
+  console.log("Parámetros recibidos:", {
+    sessionId,
+    clientId,
+    date: date?.toISOString() || null
+  });
   try {
     console.log("1. Iniciando actualización de fecha de sesión:", {
       sessionId,
@@ -94,11 +99,13 @@ export async function updateSessionDate(
     
     // Validar si la actualización fue exitosa
     const isDateEqual = date 
-      ? afterData.scheduled_date === date.toISOString() 
+      ? new Date(afterData.scheduled_date).getTime() === new Date(date.toISOString()).getTime()
       : afterData.scheduled_date === null;
     
     if (!isDateEqual) {
       console.warn("6. ADVERTENCIA: Fecha persistida diferente a la solicitada");
+      console.warn(`   - Fecha solicitada: ${date?.toISOString() || 'null'}`);
+      console.warn(`   - Fecha persistida: ${afterData.scheduled_date}`);
       return {
         success: true,
         data: afterData,
