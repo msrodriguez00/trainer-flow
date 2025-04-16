@@ -69,23 +69,14 @@ export const usePlanFormService = () => {
     sessionsData: any[]
   ): Promise<CreateCompletePlanResponse> => {
     try {
-      // Fix the type arguments by specifying both input and output types
-      const { data, error } = await supabase.rpc<CreateCompletePlanResponse, {
-        p_name: string;
-        p_client_id: string;
-        p_trainer_id: string;
-        p_month: string | null;
-        p_sessions: any[];
-      }>(
-        'create_complete_plan',
-        {
-          p_name: name,
-          p_client_id: clientId,
-          p_trainer_id: trainerId,
-          p_month: month || null,
-          p_sessions: sessionsData
-        }
-      );
+      // Fix the type arguments - the first type parameter should be the return type
+      const { data, error } = await supabase.rpc<any>('create_complete_plan', {
+        p_name: name,
+        p_client_id: clientId,
+        p_trainer_id: trainerId,
+        p_month: month || null,
+        p_sessions: sessionsData
+      });
 
       if (error) {
         console.error("Error creating plan:", error);
@@ -97,7 +88,7 @@ export const usePlanFormService = () => {
       }
 
       // Add proper type assertion to handle the JSON response
-      return data as unknown as CreateCompletePlanResponse;
+      return data as CreateCompletePlanResponse;
     } catch (error) {
       console.error("Error in createCompletePlan:", error);
       throw error;
