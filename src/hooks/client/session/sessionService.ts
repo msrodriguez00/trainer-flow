@@ -20,7 +20,7 @@ export const fetchSessionData = async (sessionId: string): Promise<SessionData |
       return null;
     }
 
-    // Fetch series data for this session
+    // Fetch all series data for this session in a single query
     const { data: seriesData, error: seriesError } = await supabase
       .from("series")
       .select(`
@@ -36,30 +36,36 @@ export const fetchSessionData = async (sessionId: string): Promise<SessionData |
       throw new Error(seriesError.message);
     }
 
-    // Now for each series, fetch the exercises
-    const seriesWithExercises: any[] = [];
+    // Extract all series IDs for the next query
+    const seriesIds = seriesData.map(series => series.id);
+    
+    // Fetch ALL exercises for ALL series in a single query
+    const { data: allExercises, error: exercisesError } = await supabase
+      .from("plan_exercises")
+      .select(`
+        id,
+        level,
+        exercise_id,
+        series_id,
+        exercises:exercise_id (
+          name,
+          levels
+        )
+      `)
+      .in("series_id", seriesIds);
 
-    for (const series of seriesData) {
-      const { data: exercises, error: exercisesError } = await supabase
-        .from("plan_exercises")
-        .select(`
-          id,
-          level,
-          exercise_id,
-          exercises:exercise_id (
-            name,
-            levels
-          )
-        `)
-        .eq("series_id", series.id);
+    if (exercisesError) {
+      console.error("Error fetching exercises:", exercisesError);
+      throw new Error(exercisesError.message);
+    }
 
-      if (exercisesError) {
-        console.error("Error fetching exercises for series:", exercisesError);
-        continue;
-      }
-
+    // Now organize exercises by series
+    const seriesWithExercises = seriesData.map(series => {
+      // Filter exercises that belong to this series
+      const seriesExercises = allExercises.filter(ex => ex.series_id === series.id);
+      
       // Transform exercises to the expected format
-      const formattedExercises = exercises.map((ex) => {
+      const formattedExercises = seriesExercises.map(ex => {
         // Get level data for the exercise
         const levelData = ex.exercises.levels[ex.level - 1] || {};
         
@@ -75,11 +81,11 @@ export const fetchSessionData = async (sessionId: string): Promise<SessionData |
         };
       });
 
-      seriesWithExercises.push({
+      return {
         ...series,
         exercises: formattedExercises
-      });
-    }
+      };
+    });
 
     return {
       id: sessionData.id,
