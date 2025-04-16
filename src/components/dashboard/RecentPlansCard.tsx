@@ -15,7 +15,6 @@ interface RecentPlansCardProps {
 
 const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansCardProps) => {
   const navigate = useNavigate();
-  console.log("RecentPlansCard - Rendering with plans:", plans?.length);
 
   return (
     <Card>
@@ -36,14 +35,7 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
           <div className="space-y-4">
             {plans.length > 0 ? (
               plans.map((plan) => {
-                console.log("RecentPlansCard - Rendering plan:", plan.id);
                 const client = clients.find((c) => c.id === plan.clientId);
-                
-                // Calculate exercise count from nested structure, or use length if available
-                const exerciseCount = typeof plan.exercises === 'number' 
-                  ? plan.exercises 
-                  : plan.exercises.length;
-                
                 return (
                   <div
                     key={plan.id}
@@ -66,7 +58,7 @@ const RecentPlansCard = ({ plans, clients, loading, onCreatePlan }: RecentPlansC
                       </div>
                     </div>
                     <div className="text-sm text-gray-500">
-                      {exerciseCount} ejercicios
+                      {plan.exercises.length} ejercicios
                     </div>
                   </div>
                 );
