@@ -1,19 +1,8 @@
 
-import { PlanExercise, Client } from "@/types";
 import PlanForm from "./plan/PlanForm";
+import { PlanFormProps } from "@/hooks/plan/types/planFormTypes";
 
-interface NewPlanFormProps {
-  initialClientId?: string;
-  onSubmit: (plan: {
-    name: string;
-    clientId: string;
-    month?: string;
-    exercises: PlanExercise[];
-    sessions?: any[];
-  }) => void;
-}
-
-const NewPlanForm = ({ initialClientId, onSubmit }: NewPlanFormProps) => {
+const NewPlanForm = ({ initialClientId, onSubmit }: PlanFormProps) => {
   return (
     <PlanForm
       initialClientId={initialClientId}

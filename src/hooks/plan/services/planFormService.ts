@@ -1,12 +1,13 @@
 
-import { Exercise, Client } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { CreateCompletePlanResponse } from "../types/planFormTypes";
+import { Session } from "../types";
 import { useToast } from "@/hooks/use-toast";
 
 export const usePlanFormService = () => {
   const { toast } = useToast();
 
-  const fetchClients = async (userId: string): Promise<Client[]> => {
+  const fetchClients = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from("clients")
@@ -28,7 +29,7 @@ export const usePlanFormService = () => {
     }
   };
 
-  const fetchExercises = async (): Promise<Exercise[]> => {
+  const fetchExercises = async () => {
     try {
       console.log("Fetching exercises...");
       const { data, error } = await supabase
@@ -40,7 +41,7 @@ export const usePlanFormService = () => {
 
       console.log("Exercises data received:", data);
 
-      const formattedExercises: Exercise[] = data.map((item: any) => ({
+      const formattedExercises = data.map((item: any) => ({
         id: item.id,
         name: item.name,
         categories: item.categories || [],
@@ -60,8 +61,41 @@ export const usePlanFormService = () => {
     }
   };
 
+  const createCompletePlan = async (
+    name: string,
+    clientId: string,
+    trainerId: string, 
+    month: string | null,
+    sessionsData: any[]
+  ) => {
+    try {
+      const { data, error } = await supabase.rpc<CreateCompletePlanResponse>('create_complete_plan', {
+        p_name: name,
+        p_client_id: clientId,
+        p_trainer_id: trainerId,
+        p_month: month || null,
+        p_sessions: sessionsData
+      });
+
+      if (error) {
+        console.error("Error creating plan:", error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error("No data returned from create_complete_plan");
+      }
+
+      return data as CreateCompletePlanResponse;
+    } catch (error) {
+      console.error("Error in createCompletePlan:", error);
+      throw error;
+    }
+  };
+
   return {
     fetchClients,
-    fetchExercises
+    fetchExercises,
+    createCompletePlan
   };
 };

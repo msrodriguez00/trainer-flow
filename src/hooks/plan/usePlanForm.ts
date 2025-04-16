@@ -1,34 +1,26 @@
 
 import { useState, useEffect } from "react";
-import { Client, Exercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { usePlanFormService } from "./planFormService";
+import { usePlanFormService } from "./services/planFormService";
 import { useSessionOperations } from "./useSessionOperations";
 import { useExerciseOperations } from "./useExerciseOperations";
 import { createInitialSession } from "./sessionUtils";
 import { UsePlanFormResult } from "./types";
+import { usePlanFormValidation } from "./utils/planFormValidation";
+import { CreateCompletePlanResponse, PlanFormSubmitResult } from "./types/planFormTypes";
 
-// Define an interface for the RPC function response
-interface CreateCompletePlanResponse {
-  id: string;
-  name: string;
-  clientId: string;
-  month: string | null;
-  sessionsCount: number;
-}
-
-export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => void): UsePlanFormResult {
+export function usePlanForm(initialClientId?: string, onSubmit?: (plan: PlanFormSubmitResult) => void): UsePlanFormResult {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { fetchClients, fetchExercises } = usePlanFormService();
+  const { fetchClients, fetchExercises, createCompletePlan } = usePlanFormService();
+  const { validatePlanForm, prepareSessionsData } = usePlanFormValidation();
   
   const [name, setName] = useState("");
   const [month, setMonth] = useState("");
   const [clientId, setClientId] = useState(initialClientId || "");
-  const [clients, setClients] = useState<Client[]>([]);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [clients, setClients] = useState([]);
+  const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const {
@@ -83,57 +75,13 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
       return;
     }
     
-    if (!name || !clientId) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos requeridos.",
-        variant: "destructive",
-      });
+    if (!validatePlanForm(name, clientId, sessions)) {
       return;
     }
-
-    let hasExercises = false;
-    for (const session of sessions) {
-      for (const series of session.series) {
-        if (series.exercises.length > 0 && series.exercises.some(ex => ex.exerciseId)) {
-          hasExercises = true;
-          break;
-        }
-      }
-      if (hasExercises) break;
-    }
-
-    if (!hasExercises) {
-      toast({
-        title: "Error",
-        description: "El plan debe tener al menos un ejercicio.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    console.log("Creating plan with data:", {
-      name,
-      clientId,
-      month: month || null,
-      trainer_id: user.id,
-      sessionCount: sessions.length
-    });
 
     try {
-      // Preparar los datos en formato JSON para la función RPC
-      const sessionsData = sessions.map(session => ({
-        name: session.name,
-        series: session.series.map(series => ({
-          name: series.name,
-          exercises: series.exercises
-            .filter(ex => ex.exerciseId && ex.level > 0)
-            .map(ex => ({
-              exerciseId: ex.exerciseId,
-              level: ex.level
-            }))
-        }))
-      }));
+      // Prepare the data in JSON format for the RPC function
+      const sessionsData = prepareSessionsData(sessions);
       
       console.log("Calling create_complete_plan RPC function with data:", {
         name,
@@ -143,30 +91,18 @@ export function usePlanForm(initialClientId?: string, onSubmit?: (plan: any) => 
         sessions: sessionsData
       });
 
-      // Llamar a la función RPC para crear el plan completo en una transacción
-      const { data, error } = await supabase.rpc<CreateCompletePlanResponse>('create_complete_plan', {
-        p_name: name,
-        p_client_id: clientId,
-        p_trainer_id: user.id,
-        p_month: month || null,
-        p_sessions: sessionsData
-      });
+      // Call the RPC function to create the complete plan in a transaction
+      const planData = await createCompletePlan(
+        name, 
+        clientId, 
+        user.id, 
+        month || null,
+        sessionsData
+      );
 
-      if (error) {
-        console.error("Error al crear el plan:", error);
-        throw error;
-      }
-      
-      // Ensure data exists and has the expected structure
-      if (!data || typeof data !== 'object') {
-        throw new Error("La respuesta de la función RPC no tiene el formato esperado");
-      }
-
-      // Type assertion to ensure TypeScript recognizes the data structure
-      const planData = data as CreateCompletePlanResponse;
       console.log("Plan created successfully with RPC:", planData);
 
-      // Preparar los datos para la respuesta
+      // Prepare data for the response
       const allExercises = [];
       sessions.forEach(session => {
         session.series.forEach(series => {

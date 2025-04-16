@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,11 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-interface PlanFormProps {
-  initialClientId?: string;
-  onSubmit: (plan: any) => void;
-}
+import { PlanFormProps } from "@/hooks/plan/types/planFormTypes";
 
 // Array of months in Spanish
 const months = [
