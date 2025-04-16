@@ -37,6 +37,7 @@ export const useSessionDate = (
   }, [initialDate]);
 
   const handleSelect = useCallback((newDate: Date | undefined) => {
+    console.log("Fecha seleccionada:", newDate);
     setDate(newDate);
   }, []);
 
@@ -46,6 +47,7 @@ export const useSessionDate = (
     setIsUpdating(true);
     
     try {
+      console.log("1. Guardando fecha:", date?.toISOString() || null);
       const result: SessionDateServiceResult = await updateSessionDate(sessionId, clientId, date || null);
       
       if (!result.success) {
@@ -84,6 +86,7 @@ export const useSessionDate = (
   }, [sessionId, clientId, date, initialDate, toast, onDateUpdated]);
 
   const handleClear = useCallback(() => {
+    console.log("Limpiando fecha");
     setDate(undefined);
   }, []);
 
